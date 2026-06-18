@@ -1,0 +1,62 @@
+name: flutter_pet_memorial
+description: "哈基米倒数日 - 宠物纪念日记录"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  android_intent_plus: ^5.3.0
+  crypto: ^3.0.7
+  flutter_overlay_window:
+    path: packages/flutter_overlay_window
+  dio: ^5.9.2
+  encrypt: ^5.0.3
+  flutter:
+    sdk: flutter
+  flutter_local_notifications: ^17.0.0
+  flutter_localizations:
+    sdk: flutter
+  flutter_timezone: ^5.1.0
+  gal: ^2.3.2
+  go_router: ^12.0.0
+  image_picker: ^0.8.9
+  lunar: ^1.7.8
+  path_provider: ^2.1.5
+  share_plus: ^8.0.0
+  shared_preferences: ^2.3.2
+  timezone: ^0.9.0
+  url_launcher: ^6.3.2
+  wechat_assets_picker: 10.0.0
+  photo_manager: 3.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/logo.png
+  adaptive_icon_background: "#FEF8F1"
+  adaptive_icon_foreground: assets/images/logo.png
+  web:
+    generate: true
+    image_path: assets/images/logo.png
+    background_color: "#FEF8F1"
+    theme_color: "#FFB2A6"
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-VariableFont_wght.ttf
+  assets:
+    - assets/language/
+    - assets/images/
+    - assets/images/action_menu/
+    - assets/images/bg_style/

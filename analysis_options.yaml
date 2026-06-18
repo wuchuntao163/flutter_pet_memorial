@@ -1,0 +1,6 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - packages/flutter_overlay_window/example/**
+    - packages/flutter_overlay_window/test/**

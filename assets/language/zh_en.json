@@ -1,0 +1,291 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "back": "Back",
+    "save": "Save",
+    "edit": "Edit",
+    "share": "Share",
+    "unit_day": "days",
+    "unit_week": "weeks",
+    "unit_month": "months",
+    "unit_year": "years"
+  },
+  "app": {
+    "title": "Hakimi Countdown",
+    "adoption_success": "Adopted successfully! Welcome!"
+  },
+  "nav": {
+    "日子": "Days",
+    "我的": "Me"
+  },
+  "language": {
+    "title": "Switch Language",
+    "empty_list": "No languages available",
+    "switch_success": "Switched successfully",
+    "switch_failed": "Switch failed: "
+  },
+  "permissions": {
+    "gallery_denied": "Photo library access is required to select photos. Please enable it in Settings.",
+    "camera_denied": "Camera access is required to take photos. Please enable it in Settings.",
+    "album_save_denied": "Photo library write access is required to save images. Please enable it in Settings.",
+    "open_settings": "Open Settings"
+  },
+  "desktop_pet": {
+    "android_only": "Desktop floating pet only supports Android",
+    "permission_required": "Please grant \"Display over other apps\" permission",
+    "enable_failed": "Failed to enable desktop floating pet, please check permissions",
+    "enabled_tip": "Desktop floating pet enabled. Return to home screen to see your pet.",
+    "overlay_title": "Hakimi Countdown",
+    "overlay_content": "Tap notification to manage overlay permission"
+  },
+  "profile": {
+    "reselect_pet": "Reselect Pet",
+    "desktop_pet": "Desktop Floating Pet",
+    "switch_language": "Switch Language",
+    "cloud_sync": "Cloud Sync",
+    "share_app": "Share with Friends",
+    "rate_us": "Rate Us",
+    "contact_service": "Contact Support",
+    "contact_service_unavailable": "Customer service is not available yet",
+    "logout": "Log Out",
+    "share_failed": "Share failed: ",
+    "cannot_open_store": "Cannot open app store",
+    "open_failed": "Open failed: ",
+    "bind_phone": "Bind Phone"
+  },
+  "banner": {
+    "open_wechat_title": "Notice",
+    "open_wechat_content": "This will open WeChat to launch a mini program. Continue?",
+    "mini_program_unsupported": "WeChat mini programs are not supported in this environment"
+  },
+  "logout": {
+    "title": "Log Out",
+    "message": "Log out? Cloud sync will be turned off."
+  },
+  "reselect": {
+    "title": "Reselect Pet",
+    "message": "Reselect pet? All current pet data will be cleared."
+  },
+  "pet_type": {
+    "title": "Hakimi Countdown",
+    "subtitle": "Choose a pet to accompany you",
+    "generate_ai": "Generate AI Pet",
+    "regenerate_ai": "Regenerate Avatar",
+    "hint": "Once chosen, don't abandon your pet~"
+  },
+  "pet_naming": {
+    "title": "Name your pet",
+    "subtitle": "It will accompany you through every important day",
+    "hint_dog": "Default: Puppy",
+    "hint_cat": "Default: Kitty",
+    "hint_other": "Default: Cute Pet",
+    "default_name_dog": "Puppy",
+    "default_name_cat": "Kitty",
+    "default_name_other": "Cute Pet",
+    "custom_pet_label": "AI Pet",
+    "name_limit": "0/10",
+    "name_tip": "Max 10 characters; leave blank for default name",
+    "back": "Back",
+    "creating": "Creating...",
+    "confirm": "Confirm",
+    "generate_ai_first": "Please generate AI pet first",
+    "image_not_loaded": "Pet image not loaded",
+    "create_failed": "Create failed: "
+  },
+  "memorial": {
+    "add_title": "Add Memorial",
+    "edit_title": "Edit Memorial",
+    "save": "Save Changes",
+    "add": "Add Memorial",
+    "back": "Back",
+    "name_label": "Memorial Name",
+    "name_hint": "e.g. Mao Mao's Birthday",
+    "date_label": "Date",
+    "date_label_full": "Date (countdown to future dates)",
+    "date_hint": "Can set future countdown",
+    "date_placeholder": "Year / Month / Day",
+    "date_picker_help": "Select date",
+    "solar": "Solar",
+    "lunar": "Lunar",
+    "type_label": "Type",
+    "repeat_label": "Repeat",
+    "pin_title": "Pin to Top",
+    "pin_subtitle": "Show this memorial at the top of home",
+    "reminder_title": "Reminder",
+    "reminder_subtitle": "Get a notification on the memorial day",
+    "delete_title": "Delete Memorial",
+    "delete_prefix": "Delete \"",
+    "delete_suffix": "\"?",
+    "empty_list": "Record every memorable day",
+    "add_new": "Add New Day",
+    "days_prefix": "Together for ",
+    "days_suffix": " days",
+    "summon_pet": "Summon Pet",
+    "recall_pet": "Recall Pet",
+    "section_title": "Memorials",
+    "name_required": "Please enter memorial name",
+    "date_required": "Please select date",
+    "type_required": "Please select type",
+    "add_success": "Added",
+    "edit_success": "Saved",
+    "delete_success": "Deleted",
+    "create_pet_first": "Please create a pet profile first",
+    "not_found": "Memorial not found"
+  },
+  "repeat": {
+    "none": "Never",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "picker_title": "Repeat frequency"
+  },
+  "memorial_type": {
+    "birthday": "Birthday",
+    "event": "Event",
+    "festival": "Holiday",
+    "work": "Work",
+    "life": "Life",
+    "custom": "Custom",
+    "birth_section": "Birthday",
+    "festival_section": "Holiday",
+    "event_section": "Event",
+    "default_section": "Memorial"
+  },
+  "memorial_status": {
+    "past": "Past",
+    "upcoming": "Left",
+    "past_long": "Passed",
+    "upcoming_long": "Left",
+    "past_grid": " since",
+    "upcoming_grid": " left"
+  },
+  "weekday": {
+    "mon": "Monday",
+    "tue": "Tuesday",
+    "wed": "Wednesday",
+    "thu": "Thursday",
+    "fri": "Friday",
+    "sat": "Saturday",
+    "sun": "Sunday"
+  },
+  "dialogs": {
+    "lunar_picker_title": "Select lunar date",
+    "solar_picker_title": "Select solar date",
+    "select_from_album": "From album",
+    "take_photo": "Take photo",
+    "type_name_required": "Please enter type name",
+    "delete_type_title": "Delete type",
+    "delete_type_prefix": "Delete \"",
+    "delete_type_suffix": "\"?",
+    "add_type_title": "Add type",
+    "edit_type_title": "Edit type",
+    "type_name_hint": "Type name, e.g. Travel",
+    "type_theme_color": "Theme color",
+    "type_icon": "Type icon",
+    "type_icon_required": "Please select a type icon",
+    "type_icon_empty": "No icons available",
+    "background_picker": "Background style",
+    "number_picker": "Number style"
+  },
+  "avatar": {
+    "regenerate": "Regenerate",
+    "generate": "Generate pet avatar",
+    "photo_fail": "Camera failed: ",
+    "uploading": "Uploading photo...",
+    "generating": "Generating pet image...",
+    "matting": "Removing background...",
+    "generate_fail": "Generation failed: ",
+    "generate_first": "Please generate pet avatar first",
+    "dialog_title": "Generate virtual pet",
+    "upload_hint": "Upload a photo to generate virtual pet",
+    "feature_label": "Describe your pet",
+    "use_avatar": "Use this avatar",
+    "upload_title": "Upload pet photo",
+    "upload_subtitle": "Tap to choose from album or camera",
+    "reupload": "Re-upload",
+    "feature_hint": "e.g. orange fur, blue eyes...",
+    "tap_preview": "Tap to preview",
+    "style_title": "Choose generation style",
+    "style_subtitle": "Pick your favorite style",
+    "style_hint": "Any pet species",
+    "style_next": "Next",
+    "style_empty": "No styles available"
+  },
+  "bind_phone": {
+    "title": "Bind phone",
+    "phone_hint": "Phone number",
+    "code_hint": "Verification code",
+    "get_code": "Get code",
+    "binding": "Binding...",
+    "confirm": "Confirm",
+    "code_sent": "Code sent",
+    "bind_success": "Bound successfully",
+    "invalid_phone": "Please enter a valid phone number",
+    "invalid_code": "Please enter verification code"
+  },
+  "birthday": {
+    "saved_to_album": "Saved to album",
+    "save_failed": "Save failed: ",
+    "share": "Share",
+    "save": "Save",
+    "back": "Back",
+    "no_data": "No memorial data",
+    "blur_section": "Blur image",
+    "color_section": "Text color",
+    "font_section": "Font style",
+    "blur_label": "Blur",
+    "clear_label": "Clear",
+    "color_white": "White",
+    "color_black": "Black",
+    "color_auto": "Auto",
+    "bg_style": "Background",
+    "num_style": "Number style"
+  },
+  "style": {
+    "default": "Default",
+    "background": "Background",
+    "custom_background": "Custom background",
+    "upload_background": "Upload",
+    "upload_background_fail": "Upload failed: ",
+    "delete_background": "Delete background",
+    "delete_background_confirm": "Delete this custom background?",
+    "delete_background_fail": "Delete failed",
+    "normal_number": "Normal",
+    "number_style": "Number style"
+  },
+  "detail_menu": {
+    "edit": "Edit",
+    "save_image": "Save image",
+    "share": "Share",
+    "delete": "Delete"
+  },
+  "share": {
+    "title": "Share to",
+    "failed": "Share failed",
+    "wechat": "WeChat",
+    "wechat_timeline": "Moments",
+    "xiaohongshu": "RedNote",
+    "wechat_not_installed": "WeChat not installed, opened system share",
+    "timeline_hint": "Choose WeChat Moments in share sheet",
+    "xhs_not_installed": "RedNote not installed, opened system share",
+    "card_title": "Hakimi Countdown · "
+  },
+  "promotion": {
+    "app_name": "Hakimi Countdown",
+    "intro": "Try Hakimi Countdown — an all-in-one memorial app with your own digital pet, here for every day worth remembering."
+  },
+  "reminder": {
+    "channel_name": "Memorial reminders",
+    "channel_desc": "Memorial day notifications",
+    "birthday_prefix": "Today is ",
+    "birthday_suffix": ". Send your wishes!",
+    "default_prefix": "Today is ",
+    "default_suffix": ". Don't forget!"
+  },
+  "router": {
+    "not_found": "Memorial not found"
+  }
+}

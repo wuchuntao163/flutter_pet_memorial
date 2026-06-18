@@ -1,0 +1,292 @@
+{
+  "common": {
+    "cancel": "取消",
+    "confirm": "确定",
+    "delete": "删除",
+    "back": "返回",
+    "save": "保存",
+    "edit": "编辑",
+    "share": "分享",
+    "unit_day": "天",
+    "unit_week": "周",
+    "unit_month": "月",
+    "unit_year": "年"
+  },
+  "app": {
+    "title": "哈基米倒数日",
+    "adoption_success": "领养成功！欢迎新成员~"
+  },
+  "nav": {
+    "日子": "日子",
+    "我的": "我的"
+  },
+  "language": {
+    "title": "切换语言",
+    "empty_list": "暂无语言列表",
+    "switch_success": "切换成功",
+    "switch_failed": "切换失败："
+  },
+  "permissions": {
+    "gallery_denied": "需要相册访问权限才能选择照片，请在设置中开启",
+    "camera_denied": "需要相机权限才能拍照，请在设置中开启",
+    "album_save_denied": "需要相册写入权限才能保存图片，请在设置中开启",
+    "open_settings": "前往设置"
+  },
+  "desktop_pet": {
+    "android_only": "iOS 暂不支持桌面悬浮宠物\n您可以添加主屏幕小组件查看宠物状态",
+    "permission_required": "请授予「显示在其他应用上层」权限",
+    "enable_failed": "开启桌面悬浮失败，请检查权限",
+    "enabled_tip": "已开启桌面悬浮，返回桌面即可看到宠物；点击通知栏消息可管理「在其他应用上层显示」权限",
+    "overlay_title": "哈基米倒数日",
+    "overlay_content": "点击通知管理「在其他应用上层显示」权限"
+  },
+  "profile": {
+    "reselect_pet": "重新选择宠物",
+    "desktop_pet": "桌面悬浮宠物",
+    "switch_language": "切换语言",
+    "cloud_sync": "云端同步",
+    "share_app": "推荐给大家",
+    "rate_us": "给我们评分",
+    "contact_service": "联系客服",
+    "contact_service_unavailable": "暂未配置客服入口",
+    "logout": "退出登录",
+    "share_failed": "分享失败：",
+    "cannot_open_store": "暂时无法打开应用商店",
+    "open_failed": "打开失败：",
+    "bind_phone": "绑定手机号"
+  },
+  "banner": {
+    "open_wechat_title": "提示",
+    "open_wechat_content": "此操作即将打开【微信】用于【打开小程序】，您确定是否打开？",
+    "mini_program_unsupported": "当前环境不支持打开微信小程序"
+  },
+  "logout": {
+    "title": "退出登录",
+    "message": "确定要退出登录吗？退出后将关闭云端同步。"
+  },
+  "reselect": {
+    "title": "重新选择宠物",
+    "message": "确定要重新选择宠物吗？这将清除当前宠物的所有数据。"
+  },
+  "pet_type": {
+    "title": "哈基米倒数日",
+    "subtitle": "选择一只陪伴你的宠物吧",
+    "generate_ai": "生成宠物AI形象",
+    "regenerate_ai": "重新生成形象",
+    "hint": "选择了就不要抛弃哦~"
+  },
+  "pet_naming": {
+    "title": "给你的宠物取个名字吧",
+    "subtitle": "它会陪伴你记录每一个重要日子",
+    "hint_dog": "默认名字：小狗狗",
+    "hint_cat": "默认名字：小猫咪",
+    "hint_other": "默认名字：小萌宠",
+    "default_name_dog": "小狗狗",
+    "default_name_cat": "小猫咪",
+    "default_name_other": "小萌宠",
+    "custom_pet_label": "AI萌宠",
+    "name_limit": "0/10",
+    "name_tip": "最多10个字符，留空则使用默认名字",
+    "back": "返回重选",
+    "creating": "创建中...",
+    "confirm": "确定",
+    "generate_ai_first": "请先生成宠物AI形象",
+    "image_not_loaded": "宠物图片未加载",
+    "create_failed": "创建失败："
+  },
+  "memorial": {
+    "add_title": "添加纪念日",
+    "edit_title": "编辑纪念日",
+    "save": "保存修改",
+    "add": "添加纪念日",
+    "back": "返回",
+    "name_label": "纪念日名称",
+    "name_hint": "例如：毛毛的生日",
+    "date_label": "日期",
+    "date_label_full": "日期（可设置未来的倒数日）",
+    "date_hint": "可设置未来的倒数日",
+    "date_placeholder": "年 / 月 / 日",
+    "date_picker_help": "选择日期",
+    "solar": "公历",
+    "lunar": "农历",
+    "type_label": "类型",
+    "repeat_label": "重复频率",
+    "pin_title": "置顶显示",
+    "pin_subtitle": "开启后，此纪念日将在首页最顶部显示",
+    "reminder_title": "开启提醒",
+    "reminder_subtitle": "开启后，将在纪念日当天收到提醒通知",
+    "delete_title": "删除纪念日",
+    "delete_prefix": "确定删除「",
+    "delete_suffix": "」吗？",
+    "empty_list": "记录每个值得纪念的日子",
+    "add_new": "添加新日子",
+    "days_prefix": "已陪伴 ",
+    "days_suffix": " 天",
+    "summon_pet": "召唤宠物",
+    "recall_pet": "召回宠物",
+    "section_title": "纪念事项",
+    "name_required": "请输入纪念日名称",
+    "date_required": "请选择日期",
+    "type_required": "请选择类型",
+    "add_success": "添加成功",
+    "edit_success": "编辑成功",
+    "delete_success": "删除成功",
+    "create_pet_first": "请先创建宠物档案",
+    "not_found": "纪念日不存在"
+  },
+  "repeat": {
+    "none": "不重复",
+    "daily": "每天重复",
+    "weekly": "每周重复",
+    "monthly": "每月重复",
+    "yearly": "每年重复",
+    "picker_title": "选择事件重复频率"
+  },
+  "memorial_type": {
+    "birthday": "生日",
+    "event": "事件",
+    "festival": "节日",
+    "work": "工作",
+    "life": "生活",
+    "custom": "自定义",
+    "birth_section": "出生日",
+    "festival_section": "节日",
+    "event_section": "事件日",
+    "default_section": "纪念日"
+  },
+  "memorial_status": {
+    "past": "已过",
+    "upcoming": "还有",
+    "past_long": "已经",
+    "upcoming_long": "还有",
+    "past_grid": "已经",
+    "upcoming_grid": "还有"
+  },
+  "weekday": {
+    "mon": "周一",
+    "tue": "周二",
+    "wed": "周三",
+    "thu": "周四",
+    "fri": "周五",
+    "sat": "周六",
+    "sun": "周日"
+  },
+  "dialogs": {
+    "lunar_picker_title": "选择农历日期",
+    "solar_picker_title": "选择公历日期",
+    "select_from_album": "从相册选择",
+    "take_photo": "拍照上传",
+    "type_name_required": "请输入类型名称",
+    "delete_type_title": "删除类型",
+    "delete_type_prefix": "确定删除「",
+    "delete_type_suffix": "」吗？",
+    "add_type_title": "添加类型",
+    "edit_type_title": "编辑类型",
+    "type_name_hint": "类型名称，如：旅行",
+    "type_theme_color": "主题颜色",
+    "type_icon": "类型图标",
+    "type_icon_required": "请选择类型图标",
+    "type_icon_empty": "暂无可用图标",
+    "background_picker": "选择背景样式",
+    "number_picker": "选择数字样式"
+  },
+  "avatar": {
+    "regenerate": "重新生成形象",
+    "generate": "生成宠物形象",
+    "photo_fail": "拍照失败：",
+    "uploading": "正在上传照片...",
+    "upload_fail": "图片上传失败：",
+    "generating": "正在生成宠物图片，请稍候...",
+    "matting": "正在抠图，请稍候...",
+    "generate_fail": "生成失败：",
+    "generate_first": "请先生成宠物形象",
+    "dialog_title": "生成宠物虚拟形象",
+    "upload_hint": "上传萌宠照片生成宠物虚拟形象",
+    "feature_label": "描述你的宠物特征",
+    "use_avatar": "使用此形象",
+    "upload_title": "上传萌宠照片",
+    "upload_subtitle": "点击从相册或拍照上传",
+    "reupload": "重新上传",
+    "feature_hint": "例如：橘色毛发、蓝色眼睛、短腿...",
+    "tap_preview": "点击查看",
+    "style_title": "选择生成风格",
+    "style_subtitle": "选择你喜欢的风格",
+    "style_hint": "不限宠物物种",
+    "style_next": "下一步",
+    "style_empty": "暂无可用风格"
+  },
+  "bind_phone": {
+    "title": "绑定手机号",
+    "phone_hint": "请输入手机号",
+    "code_hint": "请输入验证码",
+    "get_code": "获取验证码",
+    "binding": "绑定中...",
+    "confirm": "确认绑定",
+    "code_sent": "验证码已发送",
+    "bind_success": "绑定成功",
+    "invalid_phone": "请输入正确的手机号",
+    "invalid_code": "请输入验证码"
+  },
+  "birthday": {
+    "saved_to_album": "已保存到相册",
+    "save_failed": "保存失败：",
+    "share": "分享",
+    "save": "保存",
+    "back": "返回",
+    "no_data": "暂无纪念日数据",
+    "blur_section": "模糊图片",
+    "color_section": "字体颜色",
+    "font_section": "字体样式",
+    "blur_label": "模糊",
+    "clear_label": "清晰",
+    "color_white": "白",
+    "color_black": "黑",
+    "color_auto": "自动",
+    "bg_style": "背景样式",
+    "num_style": "数字样式"
+  },
+  "style": {
+    "default": "默认",
+    "background": "背景",
+    "custom_background": "自定义背景",
+    "upload_background": "上传背景",
+    "upload_background_fail": "上传背景失败：",
+    "delete_background": "删除背景",
+    "delete_background_confirm": "确定删除该自定义背景吗？",
+    "delete_background_fail": "删除背景失败",
+    "normal_number": "普通数字",
+    "number_style": "数字样式"
+  },
+  "detail_menu": {
+    "edit": "编辑",
+    "save_image": "存为图片",
+    "share": "分享",
+    "delete": "删除"
+  },
+  "share": {
+    "title": "分享到",
+    "failed": "分享失败",
+    "wechat": "微信",
+    "wechat_timeline": "微信朋友圈",
+    "xiaohongshu": "小红书",
+    "wechat_not_installed": "未安装微信，已打开系统分享",
+    "timeline_hint": "请在分享面板中选择微信朋友圈",
+    "xhs_not_installed": "未安装小红书，已打开系统分享",
+    "card_title": "哈基米倒数日 · "
+  },
+  "promotion": {
+    "app_name": "哈基米倒数日",
+    "intro": "推荐一款全能纪念日 App「哈基米倒数日」，专属电子宠物，陪你记录每个值得纪念的日子"
+  },
+  "reminder": {
+    "channel_name": "纪念日提醒",
+    "channel_desc": "纪念日提醒通知",
+    "birthday_prefix": "今天是",
+    "birthday_suffix": "，记得送上祝福～",
+    "default_prefix": "今天是",
+    "default_suffix": "，别忘了看看哦～"
+  },
+  "router": {
+    "not_found": "纪念日不存在"
+  }
+}
