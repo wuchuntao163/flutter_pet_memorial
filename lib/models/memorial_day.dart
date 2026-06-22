@@ -474,7 +474,9 @@ class MemorialDay {
     final typeId = _asInt(json['type_id']);
     var typeMap = json['type'] is Map
         ? Map<String, dynamic>.from(json['type'] as Map)
-        : null;
+        : json['types'] is Map
+            ? Map<String, dynamic>.from(json['types'] as Map)
+            : null;
     if (typeMap == null && types != null && typeId != null) {
       for (final t in types) {
         if (_asInt(t['id']) == typeId) {

@@ -1,10 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../api/api.dart';
 import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../data/app_cache_store.dart';
-import '../../data/memorial_store.dart';
 import '../../data/pet_avatar_store.dart';
 import '../../router/app_routes.dart';
 import '../../services/app_launch.dart';
@@ -13,7 +13,6 @@ import '../../services/user_service.dart';
 import '../../l10n/tr.dart';
 import '../../utils/center_tip_util.dart';
 import '../../widgets/common/gradient_tap_button.dart';
-import '../../widgets/common/app_logo.dart';
 import '../../widgets/common/pet_avatar_image.dart';
 
 const _formWidth = 275.0;
@@ -153,10 +152,11 @@ class _PetNamingScreenState extends State<PetNamingScreen> {
             'image': createdImage,
           });
           await PlatformPetSync.afterProfileUpdate();
-          MemorialStore.instance.markListPending();
-          await MemorialStore.instance.fetchTypes();
-          await MemorialStore.instance.fetchList();
-        } catch (_) {}
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('[PetNaming] post-create sync failed: $e');
+          }
+        }
       }
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -185,32 +185,29 @@ class _PetNamingScreenState extends State<PetNamingScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
                   child: Column(
                     children: [
-                      const SizedBox(height: 36),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: AppLogo(size: 40),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                tr('pet_naming.title'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.accentDark,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                tr('pet_naming.subtitle'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 28),
-              Stack(
+                      const SizedBox(
+                        height: AppLayout.petOnboardingTitleTopInset,
+                      ),
+                      Text(
+                        tr('pet_naming.title'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 23,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.accentDark,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        tr('pet_naming.subtitle'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Stack(
                 clipBehavior: Clip.none,
                 alignment: Alignment.center,
                 children: [

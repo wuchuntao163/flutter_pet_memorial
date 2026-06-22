@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../api/api.dart';
 import '../../config/colors.dart';
 import '../../l10n/tr.dart';
+import '../../router/app_routes.dart';
 import '../../utils/center_tip_util.dart';
 import '../../widgets/common/action_button.dart';
 
@@ -20,6 +21,7 @@ class _BindPhoneScreenState extends State<BindPhoneScreen> {
 
   bool _submitting = false;
   bool _sendingCode = false;
+  bool _agreedPrivacy = false;
   int _countdown = 0;
 
   @override
@@ -34,6 +36,10 @@ class _BindPhoneScreenState extends State<BindPhoneScreen> {
 
   Future<void> _sendCode() async {
     if (!_phoneValid || _countdown > 0 || _sendingCode) return;
+    if (!_agreedPrivacy) {
+      showCenterTip(context, tr('bind_phone.privacy_required'));
+      return;
+    }
 
     setState(() => _sendingCode = true);
     try {
@@ -75,6 +81,10 @@ class _BindPhoneScreenState extends State<BindPhoneScreen> {
       showCenterTip(context, tr('bind_phone.invalid_code'));
       return;
     }
+    if (!_agreedPrivacy) {
+      showCenterTip(context, tr('bind_phone.privacy_required'));
+      return;
+    }
 
     setState(() => _submitting = true);
     try {
@@ -82,7 +92,10 @@ class _BindPhoneScreenState extends State<BindPhoneScreen> {
         ApiPaths.bindPhone,
         data: {'phone': phone, 'code': code, 'type': 1},
       );
-      await AuthSessionStore.instance.updatePhone(phone);
+      await AuthSessionStore.instance.applyBindPhoneResult(
+        phone: phone,
+        data: res.data,
+      );
       if (!mounted) return;
       setState(() => _submitting = false);
       await showCenterTip(
@@ -175,17 +188,68 @@ class _BindPhoneScreenState extends State<BindPhoneScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              _buildPrivacyAgreement(),
               const Spacer(),
               ActionButton(
                 text: _submitting
                     ? tr('bind_phone.binding')
                     : tr('bind_phone.confirm'),
-                onTap: _submitting ? null : _bindPhone,
+                onTap: _submitting || !_agreedPrivacy ? null : _bindPhone,
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPrivacyAgreement() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Checkbox(
+            value: _agreedPrivacy,
+            onChanged: (value) =>
+                setState(() => _agreedPrivacy = value ?? false),
+            activeColor: AppColors.orange,
+            side: const BorderSide(color: AppColors.borderLight),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 4,
+            children: [
+              Text(
+                tr('bind_phone.privacy_prefix'),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => context.push(AppRoutes.privacyPolicy),
+                child: Text(
+                  tr('bind_phone.privacy_link'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.accentDarker,
+                    height: 1.4,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

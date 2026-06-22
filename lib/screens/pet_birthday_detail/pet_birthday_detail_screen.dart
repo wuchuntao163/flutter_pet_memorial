@@ -109,11 +109,21 @@ class _MemorialDayDetailScreenState extends State<MemorialDayDetailScreen> {
     );
     if (confirmed == true) {
       try {
-        final msg =
-            await MemorialStore.instance.deleteAnniversary(_day.id);
+        final store = MemorialStore.instance;
+        final msg = await store.deleteAnniversary(
+          _day.id,
+          updateLocal: false,
+        );
         if (!mounted) return;
-        showCenterTip(context, msg);
-        context.pop();
+        await showCenterTip(
+          context,
+          msg,
+          onVisible: () {
+            store.applyDeleteLocally(_day.id);
+          },
+        );
+        if (!mounted) return;
+        context.go(AppRoutes.home);
       } on ApiException catch (e) {
         if (!mounted) return;
         showCenterTip(context, e.message);
@@ -231,9 +241,13 @@ class _MemorialDayDetailScreenState extends State<MemorialDayDetailScreen> {
       child: Stack(
         children: [
           Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppLayout.memorialCountdownContentInsetH,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 Text(
                   day.statusLabel,
                   style: TextStyle(
@@ -250,18 +264,24 @@ class _MemorialDayDetailScreenState extends State<MemorialDayDetailScreen> {
                       ? _cycleDayCountMode
                       : null,
                   behavior: HitTestBehavior.opaque,
-                  child: MemorialDayCountDisplay(
-                    memorialDay: day,
-                    textStyle: MemorialDayCountStyle.textStyle().copyWith(
-                      fontSize: AppLayout.memorialDetailCountdownFontSize,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: MemorialDayCountDisplay(
+                      memorialDay: day,
+                      scaleToFit: true,
+                      textStyle: MemorialDayCountStyle.textStyle().copyWith(
+                        fontSize: AppLayout.memorialDetailCountdownFontSize,
+                      ),
+                      digitHeight: AppLayout.memorialDetailCountdownDigitHeight,
+                      unitFontSize:
+                          AppLayout.memorialDetailCountdownUnitFontSize,
                     ),
-                    digitHeight: AppLayout.memorialDetailCountdownDigitHeight,
-                    unitFontSize: AppLayout.memorialDetailCountdownUnitFontSize,
                   ),
                 ),
               ],
             ),
           ),
+        ),
         ],
       ),
     );

@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../api/api.dart';
+import '../../config/app_info.dart';
 import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../data/banner_store.dart';
@@ -11,6 +14,7 @@ import '../../router/app_routes.dart';
 import '../../services/app_launch.dart';
 import '../../services/desktop_pet_overlay_service.dart';
 import '../../utils/app_promotion_util.dart';
+import '../../utils/app_update_util.dart';
 import '../../utils/center_tip_util.dart';
 import '../../widgets/common/action_button.dart';
 import '../../widgets/common/profile_banner.dart';
@@ -22,6 +26,7 @@ import '../../widgets/dialogs/language_picker_dialog.dart';
 import '../../l10n/tr.dart';
 import '../../services/language_service.dart';
 import '../../services/pet_image_cache.dart';
+import '../../services/user_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -37,8 +42,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const _iconShare = 'assets/images/image_84.png';
   static const _iconRate = 'assets/images/image_85.png';
   static const _iconContactService = 'assets/images/image_86.png';
+  static const _iconPrivacy = 'assets/images/privacy.png';
+  static const _iconVersion = 'assets/images/update.png';
 
   bool _showFloatingPet = false;
+  String _appVersion = AppInfo.version;
   GoRouter? _router;
   VoidCallback? _routeListener;
   String? _lastRoutePath;
@@ -57,6 +65,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _precachePetAvatar();
     });
     _loadDesktopPetSetting();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    final version = await AppUpdateUtil.currentVersion();
+    if (mounted) setState(() => _appVersion = version);
   }
 
   void _precachePetAvatar() {
@@ -161,94 +175,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, _) => Scaffold(
         backgroundColor: AppColors.bgPrimary,
         body: SafeArea(
-          child: Builder(
-            builder: (context) {
-              final bottomInset =
-                  AppLayout.bottomNavBarInset + MediaQuery.paddingOf(context).bottom;
-
-              return SingleChildScrollView(
-                physics: const ClampingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  AppLayout.homeTopPadding,
-                  16,
-                  12 + bottomInset,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              16,
+              AppLayout.homeTopPadding,
+              16,
+              0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ListenableBuilder(
+                  listenable: AppCacheStore.instance,
+                  builder: (context, _) => _buildProfileCard(),
                 ),
-                child: Column(
-                  children: [
-                    ListenableBuilder(
-                      listenable: AppCacheStore.instance,
-                      builder: (context, _) => _buildProfileCard(),
+                const SizedBox(height: 10),
+                ActionButton(
+                  text: tr('profile.reselect_pet'),
+                  icon: const Icon(
+                    Icons.pets,
+                    size: 16,
+                    color: AppColors.accentDarker,
+                  ),
+                  textColor: AppColors.accentDarker,
+                  borderRadius: 12,
+                  onTap: () => _onReselectPetTap(context),
+                ),
+                const SizedBox(height: 10),
+                _buildBannerSection(),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.only(
+                      bottom: 12 + AppLayout.bottomNavBarInset,
                     ),
-                    const SizedBox(height: 10),
-                    ActionButton(
-                      text: tr('profile.reselect_pet'),
-                      icon: const Icon(
-                        Icons.pets,
-                        size: 16,
-                        color: AppColors.accentDarker,
+                    children: [
+                      SwitchSettingsItem(
+                        iconAsset: _iconDesktopPet,
+                        title: tr('profile.desktop_pet'),
+                        value: _showFloatingPet,
+                        onChanged: _onDesktopPetChanged,
                       ),
-                      textColor: AppColors.accentDarker,
-                      borderRadius: 12,
-                      onTap: () => _onReselectPetTap(context),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildBannerSection(),
-                    const SizedBox(height: 10),
-                    SwitchSettingsItem(
-                      iconAsset: _iconDesktopPet,
-                      title: tr('profile.desktop_pet'),
-                      value: _showFloatingPet,
-                      onChanged: _onDesktopPetChanged,
-                    ),
-                    const SizedBox(height: 8),
-                    SettingsItem(
-                      iconAsset: _iconLanguage,
-                      title: tr('profile.switch_language'),
-                      showArrow: true,
-                      onTap: () => LanguagePickerDialog.show(context),
-                    ),
-                    const SizedBox(height: 8),
-                    SwitchSettingsItem(
-                      iconAsset: _iconCloudSync,
-                      title: tr('profile.cloud_sync'),
-                      value: cloudSync,
-                      onChanged: _onCloudSyncChanged,
-                    ),
-                    const SizedBox(height: 8),
-                    SettingsItem(
-                      iconAsset: _iconShare,
-                      title: tr('profile.share_app'),
-                      showArrow: true,
-                      onTap: () => _onShareRecommend(context),
-                    ),
-                    const SizedBox(height: 8),
-                    SettingsItem(
-                      iconAsset: _iconRate,
-                      title: tr('profile.rate_us'),
-                      showArrow: true,
-                      onTap: () => _onRateApp(context),
-                    ),
-                    const SizedBox(height: 8),
-                    SettingsItem(
-                      iconAsset: _iconContactService,
-                      title: tr('profile.contact_service'),
-                      showArrow: true,
-                      onTap: () => _onContactService(context),
-                    ),
-                    if (cloudSync) ...[
                       const SizedBox(height: 8),
                       SettingsItem(
-                        icon: Icons.logout,
-                        title: tr('profile.logout'),
+                        iconAsset: _iconLanguage,
+                        title: tr('profile.switch_language'),
                         showArrow: true,
-                        onTap: _onLogoutTap,
+                        onTap: () => LanguagePickerDialog.show(context),
                       ),
+                      const SizedBox(height: 8),
+                      SwitchSettingsItem(
+                        iconAsset: _iconCloudSync,
+                        title: tr('profile.cloud_sync'),
+                        value: cloudSync,
+                        onChanged: _onCloudSyncChanged,
+                      ),
+                      const SizedBox(height: 8),
+                      SettingsItem(
+                        iconAsset: _iconShare,
+                        title: tr('profile.share_app'),
+                        showArrow: true,
+                        onTap: () => _onShareRecommend(context),
+                      ),
+                      const SizedBox(height: 8),
+                      if (!Platform.isIOS) ...[
+                        SettingsItem(
+                          iconAsset: _iconRate,
+                          title: tr('profile.rate_us'),
+                          showArrow: true,
+                          onTap: () => _onRateApp(context),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      SettingsItem(
+                        iconAsset: _iconContactService,
+                        title: tr('profile.contact_service'),
+                        showArrow: true,
+                        onTap: () => _onContactService(context),
+                      ),
+                      const SizedBox(height: 8),
+                      SettingsItem(
+                        iconAsset: _iconPrivacy,
+                        title: tr('profile.privacy_policy'),
+                        showArrow: true,
+                        onTap: () => context.push(AppRoutes.privacyPolicy),
+                      ),
+                      const SizedBox(height: 8),
+                      SettingsItem(
+                        iconAsset: _iconVersion,
+                        title: tr('profile.version'),
+                        trailing: Text(
+                          'v$_appVersion',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                        showArrow: true,
+                        onTap: () => AppUpdateUtil.checkOnVersionTap(context),
+                      ),
+                      if (cloudSync) ...[
+                        const SizedBox(height: 8),
+                        SettingsItem(
+                          icon: Icons.logout,
+                          title: tr('profile.logout'),
+                          showArrow: true,
+                          onTap: _onLogoutTap,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              );
-            },
+              ],
+            ),
           ),
         ),
       ),
@@ -329,11 +368,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     context.go(AppRoutes.petType);
   }
 
+  Future<void> _syncCloudMemorialData() async {
+    await UserService.refreshUserInfo();
+    await MemorialStore.instance.ensureMemorialsLoaded(force: true);
+    await AppLaunch.instance.fetchPetProfile(force: true);
+  }
+
   Future<void> _openBindPhone() async {
     final ok = await context.push<bool>(AppRoutes.bindPhone);
     if (ok == true && mounted) {
       await AuthSessionStore.instance.setCloudSync(true);
-      setState(() {});
+      await _syncCloudMemorialData();
+      if (mounted) setState(() {});
     }
   }
 
@@ -355,7 +401,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _openBindPhone();
         return;
       }
-      AuthSessionStore.instance.setCloudSync(true).then((_) {
+      AuthSessionStore.instance.setCloudSync(true).then((_) async {
+        await _syncCloudMemorialData();
         if (mounted) setState(() {});
       });
       return;

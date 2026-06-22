@@ -53,7 +53,9 @@
     "share_failed": "分享失败：",
     "cannot_open_store": "暂时无法打开应用商店",
     "open_failed": "打开失败：",
-    "bind_phone": "绑定手机号"
+    "bind_phone": "绑定手机号",
+    "privacy_policy": "隐私政策",
+    "version": "版本号"
   },
   "banner": {
     "open_wechat_title": "提示",
@@ -225,7 +227,10 @@
     "code_sent": "验证码已发送",
     "bind_success": "绑定成功",
     "invalid_phone": "请输入正确的手机号",
-    "invalid_code": "请输入验证码"
+    "invalid_code": "请输入验证码",
+    "privacy_prefix": "我已阅读并同意",
+    "privacy_link": "《隐私政策》",
+    "privacy_required": "请先阅读并同意隐私政策"
   },
   "birthday": {
     "saved_to_album": "已保存到相册",
@@ -277,6 +282,13 @@
   "promotion": {
     "app_name": "哈基米倒数日",
     "intro": "推荐一款全能纪念日 App「哈基米倒数日」，专属电子宠物，陪你记录每个值得纪念的日子"
+  },
+  "update": {
+    "title": "版本更新",
+    "confirm": "立即更新",
+    "cancel": "稍后再说",
+    "already_latest": "当前已是最新版本",
+    "default_tips": "发现新版本，建议立即更新以获得更好体验。"
   },
   "reminder": {
     "channel_name": "纪念日提醒",

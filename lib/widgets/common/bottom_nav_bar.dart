@@ -7,8 +7,6 @@ import '../../data/app_cache_store.dart';
 import '../../l10n/tr.dart';
 import '../../router/app_routes.dart';
 import '../../services/language_service.dart';
-import '../../services/pet_image_service.dart';
-import '../../widgets/common/app_logo.dart';
 
 /// 底部导航（数据来自 getNav type=2）
 class BottomNavBar extends StatelessWidget {
@@ -105,8 +103,8 @@ class BottomNavBar extends StatelessWidget {
     final branchIndex = url.isEmpty ? listIndex : branchIndexForUrl(url);
     final active = currentIndex == branchIndex;
     final icon = map['icon']?.toString() ?? '';
-    final iconUrl = icon.isEmpty ? '' : PetImageService.resolveUrl(icon);
     final textColor = AppColors.accentDark;
+    final fallback = branchIndex == 0 ? Icons.star_rounded : Icons.cloud;
 
     return GestureDetector(
       onTap: url.isEmpty
@@ -126,15 +124,27 @@ class BottomNavBar extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (iconUrl.isNotEmpty)
+            if (icon.isNotEmpty)
               Image.network(
-                iconUrl,
+                icon,
                 width: 28,
                 height: 28,
-                errorBuilder: (_, _, _) => const AppLogo(size: 28),
+                errorBuilder: (_, _, _) => Icon(
+                  fallback,
+                  size: 26,
+                  color: branchIndex == 0
+                      ? AppColors.blue
+                      : const Color(0xFFB8A0D9),
+                ),
               )
             else
-              const AppLogo(size: 28),
+              Icon(
+                fallback,
+                size: 26,
+                color: branchIndex == 0
+                    ? AppColors.blue
+                    : const Color(0xFFB8A0D9),
+              ),
             const SizedBox(height: 0),
             Text(
               name,

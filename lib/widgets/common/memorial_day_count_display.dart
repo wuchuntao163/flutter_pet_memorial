@@ -37,6 +37,7 @@ class MemorialDayCountDisplay extends StatelessWidget {
   final TextStyle? textStyle;
   final double digitHeight;
   final double? unitFontSize;
+  final bool scaleToFit;
 
   const MemorialDayCountDisplay({
     super.key,
@@ -44,10 +45,36 @@ class MemorialDayCountDisplay extends StatelessWidget {
     this.textStyle,
     this.digitHeight = MemorialDayCountStyle.digitHeight,
     this.unitFontSize,
+    this.scaleToFit = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    return _wrapScaleToFit(context, _buildContent());
+  }
+
+  Widget _wrapScaleToFit(BuildContext context, Widget child) {
+    if (!scaleToFit) return child;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth.isFinite && constraints.maxWidth > 0
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width - 32;
+
+        return SizedBox(
+          width: maxWidth,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildContent() {
     final baseStyle = textStyle ?? MemorialDayCountStyle.textStyle();
     final unitStyle = MemorialDayCountStyle.unitStyle(baseStyle).copyWith(
       fontSize: unitFontSize ?? MemorialDayCountStyle.suffixFontSize,

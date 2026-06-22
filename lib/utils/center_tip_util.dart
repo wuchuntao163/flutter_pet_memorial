@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 
-Future<void> showCenterTip(BuildContext context, String message) {
+Future<void> showCenterTip(
+  BuildContext context,
+  String message, {
+  VoidCallback? onVisible,
+}) {
   return showDialog<void>(
     context: context,
     barrierColor: Colors.transparent,
     barrierDismissible: false,
     builder: (ctx) {
+      if (onVisible != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => onVisible());
+      }
       Future.delayed(const Duration(seconds: 2), () {
         if (ctx.mounted) Navigator.of(ctx).pop();
       });

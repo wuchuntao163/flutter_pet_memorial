@@ -6,7 +6,6 @@ import '../../data/pet_avatar_store.dart';
 import '../../config/layout.dart';
 import '../../l10n/tr.dart';
 import '../../widgets/common/gradient_tap_button.dart';
-import '../../widgets/common/app_logo.dart';
 import '../../router/app_routes.dart';
 import '../../widgets/common/pet_avatar_image.dart';
 
@@ -63,9 +62,9 @@ class _PetTypeSelectionScreenState extends State<PetTypeSelectionScreen> {
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // 与取名页一致：24 + logo + 8
-                            const AppLogo(size: 72),
-                            const SizedBox(height: 8),
+                            const SizedBox(
+                              height: AppLayout.petOnboardingTitleTopInset,
+                            ),
                             Text(
                               tr('pet_type.title'),
                               textAlign: TextAlign.center,

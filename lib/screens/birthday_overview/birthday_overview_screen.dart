@@ -208,20 +208,28 @@ class _BirthdayOverviewScreenState extends State<BirthdayOverviewScreen> {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  16,
-                  AppLayout.memorialDetailTopPadding,
-                  16,
-                  12,
-                ),
-                child: Column(
-                  children: [
-                    _buildPreviewCard(),
-                    const SizedBox(height: 12),
-                    _buildSettingsCard(),
-                  ],
-                ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      16,
+                      AppLayout.memorialDetailTopPadding,
+                      16,
+                      0,
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: _buildPreviewCard(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: _buildSettingsCard(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -373,20 +381,36 @@ class _BirthdayOverviewScreenState extends State<BirthdayOverviewScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-            ClipRect(
-              child: InteractiveViewer(
-                transformationController: _previewTransformController,
-                minScale: 1,
-                maxScale: 4,
-                clipBehavior: Clip.hardEdge,
-                child: SizedBox.expand(child: background),
-              ),
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return ClipRect(
+                  child: InteractiveViewer(
+                    transformationController: _previewTransformController,
+                    minScale: 1,
+                    maxScale: 4,
+                    clipBehavior: Clip.hardEdge,
+                    boundaryMargin: EdgeInsets.zero,
+                    panEnabled: true,
+                    scaleEnabled: true,
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight,
+                      child: background,
+                    ),
+                  ),
+                );
+              },
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: IgnorePointer(
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppLayout.memorialCountdownContentInsetH,
+                ),
                 child: Column(
-                children: [
+                  children: [
                   const SizedBox(height: AppLayout.memorialSaveImageVerticalInset),
                   Text(
                     day.title,
@@ -416,12 +440,23 @@ class _BirthdayOverviewScreenState extends State<BirthdayOverviewScreen> {
                           const SizedBox(
                             height: AppLayout.memorialSaveImageStatusGap,
                           ),
-                          MemorialDayCountDisplay(
-                            memorialDay: day.copyWith(
-                              fontStyleId: _previewFontStyleId,
-                            ),
-                            textStyle: MemorialDayCountStyle.textStyle(
-                              color: _previewTextColor,
+                          SizedBox(
+                            width: double.infinity,
+                            child: MemorialDayCountDisplay(
+                              memorialDay: day.copyWith(
+                                fontStyleId: _previewFontStyleId,
+                              ),
+                              scaleToFit: true,
+                              textStyle: MemorialDayCountStyle.textStyle(
+                                color: _previewTextColor,
+                              ).copyWith(
+                                fontSize:
+                                    AppLayout.memorialDetailCountdownFontSize,
+                              ),
+                              digitHeight:
+                                  AppLayout.memorialDetailCountdownDigitHeight,
+                              unitFontSize:
+                                  AppLayout.memorialDetailCountdownUnitFontSize,
                             ),
                           ),
                         ],
@@ -437,11 +472,12 @@ class _BirthdayOverviewScreenState extends State<BirthdayOverviewScreen> {
                   ),
                   const SizedBox(height: AppLayout.memorialSaveImageVerticalInset),
                 ],
-                ),
               ),
             ),
-          ],
-        ),
+          ),
+          ),
+        ],
+      ),
     );
   }
 

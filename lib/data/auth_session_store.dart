@@ -58,6 +58,32 @@ class AuthSessionStore extends ChangeNotifier {
     await saveData(map);
   }
 
+  /// 绑定手机号成功后写入返回的 user_id（无则忽略）
+  Future<void> applyBindPhoneResult({
+    required String phone,
+    dynamic data,
+  }) async {
+    await init();
+    final map = _data is Map
+        ? Map<String, dynamic>.from(_data as Map)
+        : <String, dynamic>{};
+    map['phone'] = maskPhone(phone);
+
+    final userId = _parseUserId(data is Map ? data['user_id'] ?? data['id'] : null);
+    if (userId != null) {
+      map['id'] = userId;
+    }
+
+    await saveData(map);
+  }
+
+  static int? _parseUserId(dynamic raw) {
+    if (raw == null) return null;
+    final parsed = raw is int ? raw : int.tryParse('$raw');
+    if (parsed == null || parsed <= 0) return null;
+    return parsed;
+  }
+
   /// 合并用户信息字段（保留 token 等已有数据）
   Future<void> mergeUserInfo(Map<String, dynamic> info) async {
     await init();
@@ -112,6 +138,13 @@ class AuthSessionStore extends ChangeNotifier {
     final uuid = _createUuid();
     await _prefs?.setString(_keyUuid, uuid);
     return uuid;
+  }
+
+  /// 本地是否已有设备 UUID（有则无需再次 loginByUuid）
+  Future<bool> hasStoredUuid() async {
+    await init();
+    final cached = _prefs?.getString(_keyUuid);
+    return cached != null && cached.isNotEmpty;
   }
 
   Future<void> saveData(dynamic data, {bool notify = true}) async {

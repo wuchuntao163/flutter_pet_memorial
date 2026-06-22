@@ -21,6 +21,9 @@ class MemorialStore extends ChangeNotifier {
   bool isLoadingList = false;
   bool listLoaded = false;
   bool typeIconsLoading = false;
+  Future<void>? _fetchListFuture;
+  Future<void>? _ensureMemorialsFuture;
+  int? _loadedPetId;
 
   List<MemorialDay> get items {
     final sorted = List<MemorialDay>.from(_items);
@@ -37,7 +40,52 @@ class MemorialStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchList() async {
+  Future<void> fetchList({bool silent = false}) {
+    if (_fetchListFuture != null) return _fetchListFuture!;
+    final future = _fetchList(silent: silent);
+    _fetchListFuture = future;
+    return future.whenComplete(() => _fetchListFuture = null);
+  }
+
+  /// 拉取纪念日类型 + 列表；同一宠物只请求一次，并发调用会合并。
+  /// [force] 为 true 时强制刷新（如绑定手机号后云同步）。
+  Future<void> ensureMemorialsLoaded({bool force = false}) {
+    final petId = AppCacheStore.instance.petId;
+    if (petId == null) {
+      _loadedPetId = null;
+      return Future.value();
+    }
+
+    if (force) {
+      _loadedPetId = null;
+    } else if (_loadedPetId == petId && listLoaded) {
+      return Future.value();
+    }
+
+    if (_ensureMemorialsFuture != null) {
+      return _ensureMemorialsFuture!;
+    }
+
+    final future = _ensureMemorialsForPet(petId);
+    _ensureMemorialsFuture = future;
+    return future.whenComplete(() {
+      if (identical(_ensureMemorialsFuture, future)) {
+        _ensureMemorialsFuture = null;
+      }
+    });
+  }
+
+  Future<void> _ensureMemorialsForPet(int petId) async {
+    if (AppCacheStore.instance.petId != petId) return;
+    await fetchTypes();
+    if (AppCacheStore.instance.petId != petId) return;
+    await fetchList();
+    if (AppCacheStore.instance.petId == petId) {
+      _loadedPetId = petId;
+    }
+  }
+
+  Future<void> _fetchList({bool silent = false}) async {
     final petId = AppCacheStore.instance.petId;
     if (petId == null) {
       _items.clear();
@@ -46,8 +94,10 @@ class MemorialStore extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    isLoadingList = true;
-    notifyListeners();
+    if (!silent) {
+      isLoadingList = true;
+      notifyListeners();
+    }
     try {
       final res = await Api.get(
         ApiPaths.getAnniversaryList,
@@ -56,18 +106,29 @@ class MemorialStore extends ChangeNotifier {
       final data = res.data;
       final list = data is Map ? data['list'] : data;
       final previous = {for (final d in _items) d.id: d};
+      final parsed = <MemorialDay>[];
+      for (final raw in (list is List ? list : [])) {
+        if (raw is! Map) continue;
+        if (raw['is_show'] == 0) continue;
+        try {
+          parsed.add(
+            MemorialDay.fromApi(
+              Map<String, dynamic>.from(raw),
+              types: typeList,
+            ),
+          );
+        } catch (e, st) {
+          if (kDebugMode) {
+            debugPrint('[MemorialStore] skip invalid item: $e\n$st');
+          }
+        }
+      }
+      if (kDebugMode) {
+        debugPrint('[MemorialStore] getAnniversaryList parsed: ${parsed.length}');
+      }
       _items
         ..clear()
-        ..addAll(
-          (list is List ? list : [])
-              .whereType<Map>()
-              .map(
-                (e) => MemorialDay.fromApi(
-                  Map<String, dynamic>.from(e),
-                  types: typeList,
-                ),
-              ),
-        );
+        ..addAll(parsed);
       for (var i = 0; i < _items.length; i++) {
         final old = previous[_items[i].id];
         if (old != null) {
@@ -383,7 +444,7 @@ class MemorialStore extends ChangeNotifier {
         'is_remind': isRemind,
       },
     );
-    await fetchList();
+    await fetchList(silent: true);
     if (dateType == 2) {
       final newId = res.data is Map ? '${(res.data as Map)['id']}' : null;
       if (newId != null && newId != 'null') {
@@ -408,7 +469,7 @@ class MemorialStore extends ChangeNotifier {
     final petId = AppCacheStore.instance.petId;
     final data = {
       'anniversary_id': _asInt(anniversaryId) ?? anniversaryId,
-      'pet_id': ?petId,
+      'pet_id': petId,
       'name': name,
       'date': _formatDate(date),
       'type_id': typeId,
@@ -424,7 +485,7 @@ class MemorialStore extends ChangeNotifier {
     if (kDebugMode) {
       // debugPrint('[MemorialStore] editAnniversary ok: code=${res.code} msg=${res.msg} data=${res.data}');
     }
-    await fetchList();
+    await fetchList(silent: true);
     if (dateType == 2) {
       _patchLunarLeap(anniversaryId, isLunarLeapMonth);
       await _syncReminders();
@@ -439,17 +500,32 @@ class MemorialStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String> deleteAnniversary(String anniversaryId) async {
+  Future<String> deleteAnniversary(
+    String anniversaryId, {
+    bool updateLocal = true,
+  }) async {
     final res = await Api.post(
       ApiPaths.deleteAnniversary,
       data: {
         'anniversary_id': _asInt(anniversaryId) ?? anniversaryId,
       },
     );
-    await ReminderService.instance.cancelMemorial(anniversaryId);
-    remove(anniversaryId);
-    await _syncReminders();
+    try {
+      await ReminderService.instance.cancelMemorial(anniversaryId);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[MemorialStore] cancelMemorial failed: $e');
+      }
+    }
+    if (updateLocal) {
+      await applyDeleteLocally(anniversaryId);
+    }
     return res.msg.isNotEmpty ? res.msg : tr('memorial.delete_success');
+  }
+
+  Future<void> applyDeleteLocally(String anniversaryId) async {
+    remove(anniversaryId);
+    await fetchList(silent: true);
   }
 
   void update(MemorialDay day) {
@@ -460,7 +536,8 @@ class MemorialStore extends ChangeNotifier {
   }
 
   void remove(String id) {
-    _items.removeWhere((e) => e.id == id);
+    final normalized = id.trim();
+    _items.removeWhere((e) => e.id.trim() == normalized);
     notifyListeners();
   }
 
@@ -469,6 +546,8 @@ class MemorialStore extends ChangeNotifier {
     typeList = [];
     isLoadingList = false;
     listLoaded = false;
+    _loadedPetId = null;
+    _ensureMemorialsFuture = null;
     notifyListeners();
   }
 

@@ -53,7 +53,9 @@
     "share_failed": "Share failed: ",
     "cannot_open_store": "Cannot open app store",
     "open_failed": "Open failed: ",
-    "bind_phone": "Bind Phone"
+    "bind_phone": "Bind Phone",
+    "privacy_policy": "Privacy Policy",
+    "version": "Version"
   },
   "banner": {
     "open_wechat_title": "Notice",
@@ -224,7 +226,10 @@
     "code_sent": "Code sent",
     "bind_success": "Bound successfully",
     "invalid_phone": "Please enter a valid phone number",
-    "invalid_code": "Please enter verification code"
+    "invalid_code": "Please enter verification code",
+    "privacy_prefix": "I have read and agree to the ",
+    "privacy_link": "Privacy Policy",
+    "privacy_required": "Please read and agree to the Privacy Policy first"
   },
   "birthday": {
     "saved_to_album": "Saved to album",
@@ -276,6 +281,13 @@
   "promotion": {
     "app_name": "Hakimi Countdown",
     "intro": "Try Hakimi Countdown — an all-in-one memorial app with your own digital pet, here for every day worth remembering."
+  },
+  "update": {
+    "title": "Update Available",
+    "confirm": "Update Now",
+    "cancel": "Later",
+    "already_latest": "You're on the latest version",
+    "default_tips": "A new version is available. Update now for the best experience."
   },
   "reminder": {
     "channel_name": "Memorial reminders",

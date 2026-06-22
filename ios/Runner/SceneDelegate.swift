@@ -2,7 +2,7 @@ import Flutter
 import UIKit
 import WidgetKit
 
-private let appGroupId = "group.com.example.flutterPetMemorial"
+private let appGroupId = "group.com.gjl.PetMemorialDay"
 private let petImageFileName = "pet_avatar.jpg"
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
@@ -17,7 +17,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     GeneratedPluginRegistrant.register(with: flutterViewController)
 
     let widgetChannel = FlutterMethodChannel(
-      name: "com.example.flutterPetMemorial/widget",
+      name: "com.gjl.PetMemorialDay/widget",
       binaryMessenger: flutterViewController.binaryMessenger
     )
     widgetChannel.setMethodCallHandler { [weak self] (call, result) in

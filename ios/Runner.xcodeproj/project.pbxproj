@@ -437,7 +437,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin\n\nWIDGET_SRC=\"${TARGET_BUILD_DIR}/PetWidget.appex\"\nWIDGET_DST=\"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/PlugIns/PetWidget.appex\"\nif [ -d \"$WIDGET_SRC\" ]; then\n    mkdir -p \"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/PlugIns\"\n    rm -rf \"$WIDGET_DST\"\n    cp -R \"$WIDGET_SRC\" \"$WIDGET_DST\"\n    echo \"Synced signed PetWidget.appex to PlugIns\"\nfi\n\nif [ -d \"$WIDGET_DST\" ]; then\n    ENTITLEMENTS=$(codesign -d --entitlements - \"$WIDGET_DST\" 2>/dev/null || true)\n    if ! echo \"$ENTITLEMENTS\" | grep -q \"group.com.lzm.petmemorial\"; then\n        echo \"error: PetWidget missing App Groups entitlement. Enable group.com.lzm.petmemorial for PetWidget target in Xcode.\"\n        exit 1\n    fi\n    echo \"PetWidget App Groups entitlement OK\"\nfi";
+			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin\n\nWIDGET_SRC=\"${TARGET_BUILD_DIR}/PetWidget.appex\"\nWIDGET_DST=\"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/PlugIns/PetWidget.appex\"\nif [ -d \"$WIDGET_SRC\" ]; then\n    mkdir -p \"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/PlugIns\"\n    rm -rf \"$WIDGET_DST\"\n    cp -R \"$WIDGET_SRC\" \"$WIDGET_DST\"\n    echo \"Synced signed PetWidget.appex to PlugIns\"\nfi\n\nif [ -d \"$WIDGET_DST\" ]; then\n    ENTITLEMENTS=$(codesign -d --entitlements - \"$WIDGET_DST\" 2>/dev/null || true)\n    if ! echo \"$ENTITLEMENTS\" | grep -q \"group.com.gjl.PetMemorialDay\"; then\n        echo \"error: PetWidget missing App Groups entitlement. Enable group.com.gjl.PetMemorialDay for PetWidget target in Xcode.\"\n        exit 1\n    fi\n    echo \"PetWidget App Groups entitlement OK\"\nfi";
 		};
 		9740EEB61CF901F6004384FC /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -586,7 +586,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.lzm.petmemorial;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -603,7 +603,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.lzm.petmemorial.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -621,7 +621,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.lzm.petmemorial.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -637,7 +637,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.lzm.petmemorial.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -771,7 +771,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.lzm.petmemorial;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -796,7 +796,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.lzm.petmemorial;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -806,6 +806,7 @@
 		};
 		AABB00131234567890ABCDEF /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
 			buildSettings = {
 				CFBundleName = PetWidget;
 				CLANG_ENABLE_MODULES = YES;
@@ -822,7 +823,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.lzm.petmemorial.PetWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.PetWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -832,6 +833,7 @@
 		};
 		AABB00141234567890ABCDEF /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = PetWidget/PetWidget.entitlements;
@@ -847,7 +849,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.lzm.petmemorial.PetWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.PetWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -857,6 +859,7 @@
 		};
 		AABB00151234567890ABCDEF /* Profile */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = PetWidget/PetWidget.entitlements;
@@ -872,7 +875,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.lzm.petmemorial.PetWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.PetWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;

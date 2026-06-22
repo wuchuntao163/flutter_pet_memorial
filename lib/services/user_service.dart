@@ -16,12 +16,30 @@ class UserService {
   /// 从服务端拉取用户信息并合并写入本地缓存
   static Future<void> refreshUserInfo() async {
     try {
-      final res = await Api.get(ApiPaths.getUserInfo);
+      final userId = AuthSessionStore.instance.userId;
+      final query = <String, dynamic>{};
+      if (userId != null) query['user_id'] = userId;
+
+      if (kDebugMode) {
+        final params = <String, dynamic>{
+          'app_id': ApiConfig.appId,
+          'source': ApiConfig.source,
+          ...query,
+        };
+        debugPrint(
+          '[UserService] getUserInfo ${ApiPaths.getUserInfo} params: $params',
+        );
+      }
+
+      final res = await Api.get(ApiPaths.getUserInfo, query: query);
       final info = res.data;
       if (info is Map) {
         await AuthSessionStore.instance.mergeUserInfo(
           Map<String, dynamic>.from(info),
         );
+      }
+      if (kDebugMode) {
+        debugPrint('[UserService] getUserInfo response data: $info');
       }
     } on ApiException catch (e) {
       if (kDebugMode) {

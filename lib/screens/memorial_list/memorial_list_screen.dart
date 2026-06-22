@@ -13,6 +13,7 @@ import '../../widgets/common/memorial_card.dart';
 import '../../widgets/common/memorial_grid_card.dart';
 import '../../l10n/tr.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/app_update_util.dart';
 import '../../services/day_tick_service.dart';
 import '../../services/language_service.dart';
 import '../../services/pet_image_cache.dart';
@@ -29,17 +30,19 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
   final _petCardKey = GlobalKey();
   bool _isGridView = false;
 
+  late final Listenable _rebuildListenable = Listenable.merge([
+    LanguageService.instance,
+    MemorialStore.instance,
+    DayTickService.instance,
+  ]);
+
   @override
   void initState() {
     super.initState();
-    MemorialStore.instance.addListener(_onStoreChanged);
-    DayTickService.instance.addListener(_onStoreChanged);
+    AppCacheStore.instance.addListener(_onPetChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final petId = AppCacheStore.instance.petId;
-      final store = MemorialStore.instance;
-      if (petId != null && !store.listLoaded && !store.isLoadingList) {
-        store.fetchList();
-      }
+      _onPetChanged();
+      AppUpdateUtil.checkOnHomeLaunch(context);
       if (mounted) {
         final image = AppCacheStore.instance.petProfile?['image']?.toString();
         PetImageCache.instance.precache(context, image);
@@ -49,13 +52,13 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
 
   @override
   void dispose() {
-    MemorialStore.instance.removeListener(_onStoreChanged);
-    DayTickService.instance.removeListener(_onStoreChanged);
+    AppCacheStore.instance.removeListener(_onPetChanged);
     super.dispose();
   }
 
-  void _onStoreChanged() {
-    if (mounted) setState(() {});
+  void _onPetChanged() {
+    if (!mounted) return;
+    MemorialStore.instance.ensureMemorialsLoaded();
   }
 
   void _openDayDetail(MemorialDay day) {
@@ -91,9 +94,19 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
     );
     if (confirmed == true) {
       try {
-        final msg = await MemorialStore.instance.deleteAnniversary(day.id);
+        final store = MemorialStore.instance;
+        final msg = await store.deleteAnniversary(
+          day.id,
+          updateLocal: false,
+        );
         if (!mounted) return;
-        showCenterTip(context, msg);
+        await showCenterTip(
+          context,
+          msg,
+          onVisible: () {
+            store.applyDeleteLocally(day.id);
+          },
+        );
       } on ApiException catch (e) {
         if (!mounted) return;
         showCenterTip(context, e.message);
@@ -119,63 +132,64 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isPetVisible = MainShellScope.of(context).isPetVisible;
-    final store = MemorialStore.instance;
-    final memorialDays = store.items;
-    final petId = AppCacheStore.instance.petId;
-    final isLoading =
-        store.isLoadingList || (petId != null && !store.listLoaded);
-
     return ListenableBuilder(
-      listenable: LanguageService.instance,
-      builder: (context, _) => Scaffold(
-        backgroundColor: AppColors.bgPrimary,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              AppLayout.homeTopPadding,
-              16,
-              12,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ListenableBuilder(
-                  listenable: AppCacheStore.instance,
-                  builder: (context, _) => _buildPetCard(isPetVisible),
-                ),
-                const SizedBox(height: 17),
-                _buildSectionHeader(context),
-                SizedBox(
-                  height: _isGridView
-                      ? AppLayout.memorialSectionListGap
-                      : 12,
-                ),
-                Expanded(
-                  child: Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      _buildMemorialList(
-                        memorialDays,
-                        isLoading,
-                        _isGridView,
-                      ),
-                      if (!isLoading)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 8 + AppLayout.bottomNavBarInset,
-                          child: Center(child: _buildAddButton(context)),
-                        ),
-                    ],
+      listenable: _rebuildListenable,
+      builder: (context, _) {
+        final isPetVisible = MainShellScope.of(context).isPetVisible;
+        final store = MemorialStore.instance;
+        final memorialDays = store.items;
+        final isLoading =
+            store.isLoadingList && memorialDays.isEmpty;
+
+        return Scaffold(
+          backgroundColor: AppColors.bgPrimary,
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                16,
+                AppLayout.homeTopPadding,
+                16,
+                12,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListenableBuilder(
+                    listenable: AppCacheStore.instance,
+                    builder: (context, _) => _buildPetCard(isPetVisible),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 17),
+                  _buildSectionHeader(context),
+                  SizedBox(
+                    height: _isGridView
+                        ? AppLayout.memorialSectionListGap
+                        : 12,
+                  ),
+                  Expanded(
+                    child: Stack(
+                      alignment: Alignment.bottomCenter,
+                      children: [
+                        _buildMemorialList(
+                          memorialDays,
+                          isLoading,
+                          _isGridView,
+                        ),
+                        if (!isLoading)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 8 + AppLayout.bottomNavBarInset,
+                            child: Center(child: _buildAddButton(context)),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -185,20 +199,36 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
     bool isGridView,
   ) {
     if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: AppColors.accent,
+      return const Positioned.fill(
+        child: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.accent,
+          ),
         ),
       );
     }
 
     if (memorialDays.isEmpty) {
-      return Center(
-        child: Text(
-          tr('memorial.empty_list'),
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
+      return Positioned.fill(
+        child: Padding(
+          padding: EdgeInsets.only(bottom: AppLayout.memorialListBottomInset),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: Text(
+                  tr('memorial.empty_list'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       );
     }
@@ -208,45 +238,49 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
         : AppLayout.memorialListBottomInset;
 
     if (isGridView) {
-      return GridView.builder(
-        padding: EdgeInsets.fromLTRB(
-          AppLayout.memorialGridListHorizontalInset,
-          AppLayout.memorialGridPinTopInset,
-          AppLayout.memorialGridListHorizontalInset,
-          listBottomPadding,
+      return Positioned.fill(
+        child: GridView.builder(
+          padding: EdgeInsets.fromLTRB(
+            AppLayout.memorialGridListHorizontalInset,
+            AppLayout.memorialGridPinTopInset,
+            AppLayout.memorialGridListHorizontalInset,
+            listBottomPadding,
+          ),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: AppLayout.memorialGridMainAxisSpacing,
+            crossAxisSpacing: AppLayout.memorialGridCrossAxisSpacing,
+            childAspectRatio: AppLayout.memorialGridChildAspectRatio,
+          ),
+          itemCount: memorialDays.length,
+          itemBuilder: (context, index) {
+            final day = memorialDays[index];
+            return MemorialGridCard(
+              key: ValueKey('grid-${day.id}'),
+              memorialDay: day,
+              onTap: () => _openDayDetail(day),
+            );
+          },
         ),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: AppLayout.memorialGridMainAxisSpacing,
-          crossAxisSpacing: AppLayout.memorialGridCrossAxisSpacing,
-          childAspectRatio: AppLayout.memorialGridChildAspectRatio,
-        ),
-        itemCount: memorialDays.length,
-        itemBuilder: (context, index) {
-          final day = memorialDays[index];
-          return MemorialGridCard(
-            key: ValueKey('grid-${day.id}'),
-            memorialDay: day,
-            onTap: () => _openDayDetail(day),
-          );
-        },
       );
     }
 
-    return ListView.separated(
-      padding: EdgeInsets.only(bottom: listBottomPadding),
-      itemCount: memorialDays.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final day = memorialDays[index];
-        return MemorialCard(
-          key: ValueKey(day.id),
-          memorialDay: day,
-          onTap: () => _openDayDetail(day),
-          onEdit: () => _openEditor(day),
-          onDelete: () => _confirmDelete(day),
-        );
-      },
+    return Positioned.fill(
+      child: ListView.separated(
+        padding: EdgeInsets.only(bottom: listBottomPadding),
+        itemCount: memorialDays.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final day = memorialDays[index];
+          return MemorialCard(
+            key: ValueKey(day.id),
+            memorialDay: day,
+            onTap: () => _openDayDetail(day),
+            onEdit: () => _openEditor(day),
+            onDelete: () => _confirmDelete(day),
+          );
+        },
+      ),
     );
   }
 

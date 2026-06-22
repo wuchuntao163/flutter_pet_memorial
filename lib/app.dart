@@ -14,6 +14,7 @@ import 'services/language_service.dart';
 import 'l10n/tr.dart';
 import 'services/app_launcher_channel.dart';
 import 'services/platform_pet_sync.dart';
+import 'widgets/common/splash_screen.dart';
 import 'widgets/dialogs/number_style_dialog.dart';
 
 class PetMemorialApp extends StatefulWidget {
@@ -23,8 +24,11 @@ class PetMemorialApp extends StatefulWidget {
   State<PetMemorialApp> createState() => _PetMemorialAppState();
 }
 
-class _PetMemorialAppState extends State<PetMemorialApp> with WidgetsBindingObserver {
-  static const _navChannel = MethodChannel('com.example.flutter_pet_memorial/navigation');
+class _PetMemorialAppState extends State<PetMemorialApp>
+    with WidgetsBindingObserver {
+  static const _navChannel = MethodChannel(
+    'com.example.flutter_pet_memorial/navigation',
+  );
 
   @override
   void initState() {
@@ -32,9 +36,6 @@ class _PetMemorialAppState extends State<PetMemorialApp> with WidgetsBindingObse
     WidgetsBinding.instance.addObserver(this);
     DayTickService.instance.start();
     _setupAndroidChannels();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      AppLaunch.instance.onLaunch();
-    });
   }
 
   @override
@@ -90,13 +91,22 @@ class _PetMemorialAppState extends State<PetMemorialApp> with WidgetsBindingObse
   Widget build(BuildContext context) {
     final lang = LanguageService.instance;
     return ListenableBuilder(
-      listenable: lang,
+      listenable: Listenable.merge([lang, AppLaunch.instance]),
       builder: (context, _) {
         return MaterialApp.router(
           title: tr('app.title'),
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,
           routerConfig: appRouter,
+          builder: (context, child) {
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                ?child,
+                if (!AppLaunch.instance.isRouteReady) const SplashScreen(),
+              ],
+            );
+          },
           locale: lang.fontName == 'en'
               ? const Locale('en', 'US')
               : const Locale('zh', 'CN'),
@@ -105,10 +115,7 @@ class _PetMemorialAppState extends State<PetMemorialApp> with WidgetsBindingObse
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: const [
-            Locale('zh', 'CN'),
-            Locale('en', 'US'),
-          ],
+          supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
         );
       },
     );

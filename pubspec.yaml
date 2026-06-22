@@ -1,7 +1,7 @@
 name: flutter_pet_memorial
 description: "哈基米倒数日 - 宠物纪念日记录"
 publish_to: 'none'
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ^3.8.0
@@ -30,6 +30,14 @@ dependencies:
   url_launcher: ^6.3.2
   wechat_assets_picker: 10.0.0
   photo_manager: 3.5.0
+  webview_flutter: 4.7.0
+  package_info_plus: ^9.0.1
+  flutter_html: ^3.0.0
+  connectivity_plus: 6.1.4
+
+dependency_overrides:
+  # Xcode 14.2 无法编译 wkwebview 3.18+ 中带泛型特化的 HTTPCookieProxyAPIDelegate
+  webview_flutter_wkwebview: 3.13.1
 
 dev_dependencies:
   flutter_test:
@@ -60,3 +68,4 @@ flutter:
     - assets/images/
     - assets/images/action_menu/
     - assets/images/bg_style/
+    - assets/privacy/

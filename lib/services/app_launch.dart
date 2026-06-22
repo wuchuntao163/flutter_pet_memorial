@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,9 +12,10 @@ import '../data/banner_store.dart';
 import '../data/background_store.dart';
 import '../data/font_style_store.dart';
 import '../data/memorial_store.dart';
-import '../services/reminder_service.dart';
 import '../services/platform_pet_sync.dart';
+import '../services/reminder_service.dart';
 import '../services/language_service.dart';
+import '../utils/app_update_util.dart';
 
 import '../router/app_routes.dart';
 
@@ -35,9 +37,17 @@ class AppLaunch extends ChangeNotifier {
 
   bool _guideOnce = false;
 
-  /// 由 [PetMemorialApp] 首帧回调触发，勿在 main 里 await
+  bool get isRouteReady => _routeReady;
 
-  Future<void> onLaunch() async {
+  /// 由开屏页触发，勿在 main 里 await
+
+  Future<void>? _launchFuture;
+
+  Future<void> onLaunch() {
+    return _launchFuture ??= _doLaunch();
+  }
+
+  Future<void> _doLaunch() async {
     await Api.init();
     await ReminderService.instance.init();
     await _cache.init();
@@ -45,15 +55,19 @@ class AppLaunch extends ChangeNotifier {
     // 先请求通知权限，避免网络权限弹窗阻塞
     await ReminderService.instance.requestPermission();
 
-    await Future.wait([_cache.fetchConfig(), _loginByUuid()]);
+    // 先登录再拉配置，确保 getConfig 带上 user_id；开屏页等待本段完成后再进入选宠页
+    await _loginByUuid();
+    await _cache.fetchConfig();
+    if (!_cache.configLoaded) {
+      await _cache.fetchConfig(force: true);
+    }
 
     await _checkFirstOpen();
 
     if (_cache.petId != null) {
       MemorialStore.instance.markListPending();
       await fetchPetProfile();
-      await MemorialStore.instance.fetchTypes();
-      await MemorialStore.instance.fetchList();
+      await MemorialStore.instance.ensureMemorialsLoaded();
       await PlatformPetSync.afterProfileUpdate();
     }
 
@@ -68,6 +82,14 @@ class AppLaunch extends ChangeNotifier {
     await BackgroundStore.instance.selectFirstCategory();
     await FontStyleStore.instance.fetchList();
     await BannerStore.instance.fetchList();
+
+    _scheduleAppUpdateCheck();
+  }
+
+  void _scheduleAppUpdateCheck() {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      unawaited(AppUpdateUtil.checkOnHomeLaunch());
+    });
   }
 
   Future<void> _checkFirstOpen() async {
@@ -119,14 +141,19 @@ class AppLaunch extends ChangeNotifier {
 
   Future<void> _loginByUuid() async {
     try {
-      final uuid = await AuthSessionStore.instance.getOrCreateUuid();
+      final session = AuthSessionStore.instance;
+      if (await session.hasStoredUuid()) {
+        if (kDebugMode) {
+          debugPrint('[onLaunch] loginByUuid skipped: uuid already exists');
+        }
+        return;
+      }
 
+      final uuid = await session.getOrCreateUuid();
       final res = await Api.post(ApiPaths.loginByUuid, data: {'uuid': uuid});
-
       final data = res.data;
-
       if (data != null) {
-        await AuthSessionStore.instance.saveData(data);
+        await session.saveData(data);
       }
 
       if (kDebugMode) {

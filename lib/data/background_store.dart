@@ -441,7 +441,7 @@ class BackgroundStore extends ChangeNotifier {
 
   static bool _looksLikeBackgroundItem(Map<String, dynamic> map) {
     final image = map['image'] ?? map['img'] ?? map['url'];
-    return image != null && '${image}'.isNotEmpty;
+    return image != null && '$image'.isNotEmpty;
   }
 
   static void _addBackgroundItem(

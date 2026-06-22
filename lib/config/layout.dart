@@ -93,6 +93,9 @@ class AppLayout {
   /// 首页列表卡片编辑/删除按钮宽度（英文 Delete 单行）
   static const double memorialCardActionButtonWidth = 50;
 
+  /// 启动选宠 / 取名页：标题上方留白（配合 SafeArea 内 top: 24）
+  static const double petOnboardingTitleTopInset = 84;
+
   /// 启动页（选宠）列表头像尺寸
   static const double petTypeSelectionAvatarSize = 70;
 
@@ -113,6 +116,9 @@ class AppLayout {
 
   /// 倒数日详情页天数卡片高度
   static const double memorialDetailCountdownHeight = 290;
+
+  /// 详情 / 存为图片 倒计时卡片内容区左右内边距
+  static const double memorialCountdownContentInsetH = 16;
 
   /// 倒数日详情页天数卡片状态文字字号
   static const double memorialDetailCountdownStatusFontSize = 16;

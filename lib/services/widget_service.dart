@@ -16,9 +16,7 @@ class WidgetService {
 
   static final WidgetService instance = WidgetService._();
 
-  static const _channel = MethodChannel(
-    'com.lzm.petmemorial/widget',
-  );
+  static const _channel = MethodChannel('com.gjl.PetMemorialDay/widget');
 
   /// 更新小组件数据
   Future<void> updateWidget() async {
@@ -29,14 +27,17 @@ class WidgetService {
       final profile = cache.petProfile;
       final memorials = MemorialStore.instance.items;
 
-      final petName = profile?['nickname']?.toString().trim() ??
+      final petName =
+          profile?['nickname']?.toString().trim() ??
           profile?['name']?.toString().trim() ??
           '';
-      final petType = profile?['type']?.toString() ??
+      final petType =
+          profile?['type']?.toString() ??
           profile?['pet_type']?.toString() ??
           '';
       final petAge = '${cache.accompanyDays}';
-      final rawImageUrl = profile?['image']?.toString().trim() ??
+      final rawImageUrl =
+          profile?['image']?.toString().trim() ??
           profile?['animated_image']?.toString().trim() ??
           PetAvatarStore.customAvatarUrl?.trim() ??
           '';

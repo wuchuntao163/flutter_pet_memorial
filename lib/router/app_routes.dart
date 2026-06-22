@@ -4,6 +4,7 @@ abstract final class AppRoutes {
   static const home = '/page/home';
   static const profile = '/page/profile';
   static const bindPhone = '/bind-phone';
+  static const privacyPolicy = '/privacy-policy';
 
   // ── 宠物引导 ──
   static const petType = '/pet-type';

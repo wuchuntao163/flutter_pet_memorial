@@ -9,7 +9,6 @@ import '../../l10n/tr.dart';
 import '../../utils/center_tip_util.dart';
 import '../../router/app_routes.dart';
 import '../../widgets/common/gradient_tap_button.dart';
-import '../../widgets/common/app_logo.dart';
 import '../../widgets/dialogs/avatar_generation_dialog.dart';
 import '../../widgets/dialogs/avatar_style_picker_dialog.dart';
 
@@ -118,7 +117,6 @@ class _AvatarStyleSelectionScreenState extends State<AvatarStyleSelectionScreen>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Center(child: AppLogo(size: 56)),
                     SizedBox(
                       height: AppLayout.memorialAddTitleHeight,
                       child: Align(
