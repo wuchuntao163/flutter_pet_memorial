@@ -18,7 +18,6 @@
 		AABB00011234567890ABCDEF /* PetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00021234567890ABCDEF /* PetWidget.swift */; };
 		AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00041234567890ABCDEF /* PetWidgetBundle.swift */; };
 		AABB00071234567890ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AABB00081234567890ABCDEF /* Assets.xcassets */; };
-		AABB00161234567890ABCDEF /* PetWidget.appex in Embed Widget Extensions */ = {isa = PBXBuildFile; fileRef = AABB000C1234567890ABCDEF /* PetWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		BBAACC011234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
 		BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
 		E386036260F4EACA864DBB9A /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E87997C20F6B559F261E4F8D /* Pods_RunnerTests.framework */; };
@@ -50,17 +49,6 @@
 			files = (
 			);
 			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AABB000B1234567890ABCDEF /* Embed Widget Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				AABB00161234567890ABCDEF /* PetWidget.appex in Embed Widget Extensions */,
-			);
-			name = "Embed Widget Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -262,8 +250,8 @@
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				144954E8A61F7E04E5937A56 /* [CP] Embed Pods Frameworks */,
-				AABB000B1234567890ABCDEF /* Embed Widget Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
+				AABB00191234567890ABCDEF /* Embed PetWidget (Archive) */,
 			);
 			buildRules = (
 			);
@@ -450,6 +438,21 @@
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/sh \"${SRCROOT}/scripts/embed_widget.sh\"\n";
+		};
+		AABB00191234567890ABCDEF /* Embed PetWidget (Archive) */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Embed PetWidget (Archive)";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"${SRCROOT}/scripts/embed_widget.sh\"\n";
 		};
