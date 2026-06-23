@@ -16,7 +16,7 @@ class WidgetService {
 
   static final WidgetService instance = WidgetService._();
 
-  static const _channel = MethodChannel('com.gjl.PetMemorialDay/widget');
+  static const _channel = MethodChannel('com.example.flutterPetMemorial/widget');
 
   /// 更新小组件数据
   Future<void> updateWidget() async {

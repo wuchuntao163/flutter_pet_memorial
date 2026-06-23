@@ -18,7 +18,9 @@
 		AABB00011234567890ABCDEF /* PetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00021234567890ABCDEF /* PetWidget.swift */; };
 		AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00041234567890ABCDEF /* PetWidgetBundle.swift */; };
 		AABB00071234567890ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AABB00081234567890ABCDEF /* Assets.xcassets */; };
-		AABB00161234567890ABCDEF /* PetWidget.appex in Embed Widget Extensions */ = {isa = PBXBuildFile; fileRef = AABB000C1234567890ABCDEF /* PetWidget.appex */; };
+		AABB00161234567890ABCDEF /* PetWidget.appex in Embed Widget Extensions */ = {isa = PBXBuildFile; fileRef = AABB000C1234567890ABCDEF /* PetWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		BBAACC011234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
+		BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
 		E386036260F4EACA864DBB9A /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E87997C20F6B559F261E4F8D /* Pods_RunnerTests.framework */; };
 /* End PBXBuildFile section */
 
@@ -54,7 +56,7 @@
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
-			dstSubfolderSpec = 17;
+			dstSubfolderSpec = 13;
 			files = (
 				AABB00161234567890ABCDEF /* PetWidget.appex in Embed Widget Extensions */,
 			);
@@ -66,6 +68,7 @@
 /* Begin PBXFileReference section */
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		257AA6102FEA2C7900252C79 /* PetWidgetDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PetWidgetDebug.entitlements; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
@@ -92,6 +95,7 @@
 		AABB00171234567890ABCDEF /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		AABB00181234567890ABCDEF /* PetWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PetWidget.entitlements; sourceTree = "<group>"; };
 		AAD38DD99A61494B723D42B7 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
+		BBAACC001234567890ABCDEF /* AppGroupConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupConfig.swift; sourceTree = "<group>"; };
 		C6295B647994C34585FEA7D0 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		E87997C20F6B559F261E4F8D /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -165,6 +169,7 @@
 				93446CCB08CC810A4C933AF9 /* Pods */,
 				FE3061379B262E7B28673AB7 /* Frameworks */,
 				AABB000E1234567890ABCDEF /* PetWidget */,
+				BBAACC021234567890ABCDEF /* Shared */,
 			);
 			sourceTree = "<group>";
 		};
@@ -197,6 +202,7 @@
 		AABB000E1234567890ABCDEF /* PetWidget */ = {
 			isa = PBXGroup;
 			children = (
+				257AA6102FEA2C7900252C79 /* PetWidgetDebug.entitlements */,
 				AABB00021234567890ABCDEF /* PetWidget.swift */,
 				AABB00041234567890ABCDEF /* PetWidgetBundle.swift */,
 				AABB00061234567890ABCDEF /* Info.plist */,
@@ -204,6 +210,14 @@
 				AABB00181234567890ABCDEF /* PetWidget.entitlements */,
 			);
 			path = PetWidget;
+			sourceTree = "<group>";
+		};
+		BBAACC021234567890ABCDEF /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				BBAACC001234567890ABCDEF /* AppGroupConfig.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		FE3061379B262E7B28673AB7 /* Frameworks */ = {
@@ -247,9 +261,9 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
-				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				144954E8A61F7E04E5937A56 /* [CP] Embed Pods Frameworks */,
 				AABB000B1234567890ABCDEF /* Embed Widget Extensions */,
+				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 			);
 			buildRules = (
 			);
@@ -437,7 +451,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin\n\nWIDGET_SRC=\"${TARGET_BUILD_DIR}/PetWidget.appex\"\nWIDGET_DST=\"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/PlugIns/PetWidget.appex\"\nif [ -d \"$WIDGET_SRC\" ]; then\n    mkdir -p \"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/PlugIns\"\n    rm -rf \"$WIDGET_DST\"\n    cp -R \"$WIDGET_SRC\" \"$WIDGET_DST\"\n    echo \"Synced signed PetWidget.appex to PlugIns\"\nfi\n\nif [ -d \"$WIDGET_DST\" ]; then\n    ENTITLEMENTS=$(codesign -d --entitlements - \"$WIDGET_DST\" 2>/dev/null || true)\n    if ! echo \"$ENTITLEMENTS\" | grep -q \"group.com.gjl.PetMemorialDay\"; then\n        echo \"error: PetWidget missing App Groups entitlement. Enable group.com.gjl.PetMemorialDay for PetWidget target in Xcode.\"\n        exit 1\n    fi\n    echo \"PetWidget App Groups entitlement OK\"\nfi";
+			shellScript = "/bin/sh \"${SRCROOT}/scripts/embed_widget.sh\"\n";
 		};
 		9740EEB61CF901F6004384FC /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -470,6 +484,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
+				BBAACC011234567890ABCDEF /* AppGroupConfig.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -480,6 +495,7 @@
 			files = (
 				AABB00011234567890ABCDEF /* PetWidget.swift in Sources */,
 				AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */,
+				BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -561,7 +577,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -579,14 +595,14 @@
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = 6F6CQ97L3K;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(RUNNER_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -601,9 +617,10 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(RUNNER_BUNDLE_ID).RunnerTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -619,9 +636,10 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(RUNNER_BUNDLE_ID).RunnerTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -635,9 +653,10 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(RUNNER_BUNDLE_ID).RunnerTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -693,7 +712,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -744,7 +763,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -764,14 +783,14 @@
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = 6F6CQ97L3K;
+				DEVELOPMENT_TEAM = KRAA4XPHNJ;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(RUNNER_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -789,15 +808,16 @@
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = 6F6CQ97L3K;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(RUNNER_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -810,10 +830,10 @@
 			buildSettings = {
 				CFBundleName = PetWidget;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = PetWidget/PetWidget.entitlements;
+				CODE_SIGN_ENTITLEMENTS = PetWidget/PetWidgetDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = 6F6CQ97L3K;
+				DEVELOPMENT_TEAM = KRAA4XPHNJ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PetWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -823,7 +843,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.PetWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -839,7 +859,7 @@
 				CODE_SIGN_ENTITLEMENTS = PetWidget/PetWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = 6F6CQ97L3K;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PetWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -849,7 +869,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.PetWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -865,7 +885,7 @@
 				CODE_SIGN_ENTITLEMENTS = PetWidget/PetWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = 6F6CQ97L3K;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PetWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -875,7 +895,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.gjl.PetMemorialDay.PetWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;

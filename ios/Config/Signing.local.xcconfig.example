@@ -1,0 +1,5 @@
+// 参考用，与 Signing.xcconfig 本地段一致。
+
+// APP_GROUP_ID = group.com.lzm.petmemorial
+// BUNDLE_ID_PREFIX = com.lzm.petmemorial
+// DEVELOPMENT_TEAM = KRAA4XPHNJ

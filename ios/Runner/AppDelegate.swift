@@ -4,7 +4,7 @@ import WidgetKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
-  private static let appGroupId = "group.com.gjl.PetMemorialDay"
+  private static let appGroupId = AppGroupConfig.id
   private static let widgetDataKey = "petWidgetData"
   private static let widgetDataFileName = "petWidgetData.json"
   private static let widgetImageName = "petWidgetImage.png"
@@ -39,7 +39,7 @@ import WidgetKit
     widgetChannelRegistered = true
 
     let channel = FlutterMethodChannel(
-      name: "com.gjl.PetMemorialDay/widget",
+      name: "com.example.flutterPetMemorial/widget",
       binaryMessenger: controller.binaryMessenger
     )
 

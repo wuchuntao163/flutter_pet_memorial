@@ -2,7 +2,7 @@ import WidgetKit
 import SwiftUI
 
 private enum WidgetShared {
-    static let appGroupId = "group.com.gjl.PetMemorialDay"
+    static let appGroupId = AppGroupConfig.id
     static let widgetDataKey = "petWidgetData"
     static let widgetDataFileName = "petWidgetData.json"
     static let widgetImageName = "petWidgetImage.png"

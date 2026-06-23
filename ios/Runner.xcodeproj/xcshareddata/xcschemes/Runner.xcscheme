@@ -3,23 +3,9 @@
    LastUpgradeVersion = "1510"
    version = "1.3">
    <BuildAction
-      parallelizeBuildables = "YES"
+      parallelizeBuildables = "NO"
       buildImplicitDependencies = "YES">
       <BuildActionEntries>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "AABB000A1234567890ABCDEF"
-               BuildableName = "PetWidget.appex"
-               BlueprintName = "PetWidget"
-               ReferencedContainer = "container:Runner.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
             buildForRunning = "YES"
@@ -31,6 +17,20 @@
                BlueprintIdentifier = "97C146ED1CF9000F007C117D"
                BuildableName = "Runner.app"
                BlueprintName = "Runner"
+               ReferencedContainer = "container:Runner.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "AABB000A1234567890ABCDEF"
+               BuildableName = "PetWidget.appex"
+               BlueprintName = "PetWidget"
                ReferencedContainer = "container:Runner.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>

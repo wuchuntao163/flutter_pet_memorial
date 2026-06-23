@@ -1,0 +1,17 @@
+// =============================================================================
+// 只改本文件即可。远程 / 本地二选一：启用一套，另一套全部加 //
+// =============================================================================
+
+// ----- 远程（Miao Huang，com.example.flutterPetMemorial）-----
+APP_GROUP_ID = group.com.example.flutterPetMemorial
+BUNDLE_ID_PREFIX = com.example.flutterPetMemorial
+RUNNER_BUNDLE_ID = $(BUNDLE_ID_PREFIX)
+WIDGET_BUNDLE_ID = com.example.flutterPetMemorial.widget
+DEVELOPMENT_TEAM = KRAA4XPHNJ
+
+// ----- 本地（com.lzm.petmemorial）-----
+// APP_GROUP_ID = group.com.lzm.petmemorial
+// BUNDLE_ID_PREFIX = com.lzm.petmemorial
+// RUNNER_BUNDLE_ID = $(BUNDLE_ID_PREFIX)
+// WIDGET_BUNDLE_ID = $(BUNDLE_ID_PREFIX).PetWidget
+// DEVELOPMENT_TEAM = KRAA4XPHNJ
