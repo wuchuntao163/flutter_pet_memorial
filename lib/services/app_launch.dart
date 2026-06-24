@@ -64,9 +64,11 @@ class AppLaunch extends ChangeNotifier {
 
     await _checkFirstOpen();
 
+    if (_cache.petId != null || AuthSessionStore.instance.userId != null) {
+      await fetchPetProfile(force: true);
+    }
     if (_cache.petId != null) {
       MemorialStore.instance.markListPending();
-      await fetchPetProfile();
       await MemorialStore.instance.ensureMemorialsLoaded();
       await PlatformPetSync.afterProfileUpdate();
     }
@@ -167,9 +169,6 @@ class AppLaunch extends ChangeNotifier {
   }
 
   Future<void> fetchPetProfile({bool force = false}) async {
-    final petId = _cache.petId;
-    if (petId == null) return;
-
     if (!force) {
       final last = _lastPetProfileFetchAt;
       if (last != null &&
@@ -190,15 +189,10 @@ class AppLaunch extends ChangeNotifier {
   }
 
   Future<void> _doFetchPetProfile() async {
-    final petId = _cache.petId;
-    if (petId == null) return;
     _lastPetProfileFetchAt = DateTime.now();
     try {
-      final res = await Api.get(
-        ApiPaths.getPetProfileInfo,
-        query: {'pet_id': petId},
-      );
-      _cache.setPetInfo(res.data);
+      final res = await Api.get(ApiPaths.getPetProfileInfo);
+      await _cache.applyPetProfileResponse(res.data);
       await PlatformPetSync.afterProfileUpdate();
     } on ApiException catch (e) {
       if (kDebugMode) {

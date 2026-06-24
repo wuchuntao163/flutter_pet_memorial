@@ -171,12 +171,7 @@ class AppCacheStore extends ChangeNotifier {
   }
 
   void setPetInfo(dynamic data) {
-    Map<String, dynamic>? next;
-    if (data is Map && data['info'] != null) {
-      next = Map<String, dynamic>.from(data['info'] as Map);
-    } else if (data is Map) {
-      next = Map<String, dynamic>.from(data);
-    }
+    final next = _extractPetProfileMap(data);
     if (next == null) return;
 
     final prev = petProfile;
@@ -198,6 +193,41 @@ class AppCacheStore extends ChangeNotifier {
 
     petInfo = next;
     notifyListeners();
+  }
+
+  /// 写入档案，并用返回的 id 覆盖本地 petId
+  Future<void> applyPetProfileResponse(dynamic data) async {
+    setPetInfo(data);
+    final id = _parsePetId(petProfile?['id'] ?? petProfile?['pet_id']);
+    if (id != null) {
+      await setPetId(id);
+    }
+  }
+
+  static Map<String, dynamic>? _extractPetProfileMap(dynamic data) {
+    if (data is! Map) return null;
+    final info = data['info'];
+    if (info is Map) {
+      return Map<String, dynamic>.from(info);
+    }
+    if (info is List) {
+      for (final item in info) {
+        if (item is Map &&
+            (item['is_default'] == 1 || item['is_default'] == true)) {
+          return Map<String, dynamic>.from(item);
+        }
+      }
+      if (info.isNotEmpty && info.first is Map) {
+        return Map<String, dynamic>.from(info.first as Map);
+      }
+    }
+    return null;
+  }
+
+  static int? _parsePetId(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is int) return raw > 0 ? raw : null;
+    return int.tryParse('$raw');
   }
 
   Future<void> setConfig(

@@ -123,7 +123,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final image =
             AppCacheStore.instance.petProfile?['image']?.toString() ?? '';
         if (image.isEmpty) {
-          AppLaunch.instance.fetchPetProfile();
+          AppLaunch.instance.fetchPetProfile(force: true);
         }
       }
       _lastRoutePath = path;
@@ -134,7 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final image =
           AppCacheStore.instance.petProfile?['image']?.toString() ?? '';
       if (image.isEmpty) {
-        AppLaunch.instance.fetchPetProfile();
+        AppLaunch.instance.fetchPetProfile(force: true);
       }
     }
   }
@@ -370,8 +370,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _syncCloudMemorialData() async {
     await UserService.refreshUserInfo();
-    await MemorialStore.instance.ensureMemorialsLoaded(force: true);
     await AppLaunch.instance.fetchPetProfile(force: true);
+    await MemorialStore.instance.ensureMemorialsLoaded(force: true);
   }
 
   Future<void> _openBindPhone() async {
