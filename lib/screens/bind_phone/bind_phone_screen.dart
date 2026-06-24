@@ -73,6 +73,10 @@ class _BindPhoneScreenState extends State<BindPhoneScreen> {
   Future<void> _bindPhone() async {
     final phone = _phoneController.text.trim();
     final code = _codeController.text.trim();
+    if (phone.isEmpty) {
+      showCenterTip(context, tr('bind_phone.empty_phone'));
+      return;
+    }
     if (!_phoneValid) {
       showCenterTip(context, tr('bind_phone.invalid_phone'));
       return;
@@ -195,7 +199,7 @@ class _BindPhoneScreenState extends State<BindPhoneScreen> {
                 text: _submitting
                     ? tr('bind_phone.binding')
                     : tr('bind_phone.confirm'),
-                onTap: _submitting || !_agreedPrivacy ? null : _bindPhone,
+                onTap: _submitting ? null : _bindPhone,
               ),
             ],
           ),
@@ -206,18 +210,31 @@ class _BindPhoneScreenState extends State<BindPhoneScreen> {
 
   Widget _buildPrivacyAgreement() {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          width: 24,
-          height: 24,
+          width: 22,
+          height: 22,
           child: Checkbox(
             value: _agreedPrivacy,
             onChanged: (value) =>
                 setState(() => _agreedPrivacy = value ?? false),
-            activeColor: AppColors.orange,
-            side: const BorderSide(color: AppColors.borderLight),
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
+            side: const BorderSide(
+              color: AppColors.accentDarker,
+              width: 1.5,
+            ),
+            fillColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return AppColors.orange;
+              }
+              return AppColors.bgWhite;
+            }),
+            checkColor: Colors.white,
           ),
         ),
         const SizedBox(width: 8),
@@ -226,12 +243,15 @@ class _BindPhoneScreenState extends State<BindPhoneScreen> {
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: 4,
             children: [
-              Text(
-                tr('bind_phone.privacy_prefix'),
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
+              GestureDetector(
+                onTap: () => setState(() => _agreedPrivacy = !_agreedPrivacy),
+                child: Text(
+                  tr('bind_phone.privacy_prefix'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
               ),
               GestureDetector(

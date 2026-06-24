@@ -1,15 +1,8 @@
-import 'dart:io' show Platform;
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// 应用字体：iOS 使用系统字体，其他平台使用内嵌 NotoSansSC。
+/// 应用字体：各平台使用系统默认字体。
 abstract final class AppFonts {
-  static String? get family {
-    if (kIsWeb) return 'NotoSansSC';
-    if (Platform.isIOS) return null;
-    return 'NotoSansSC';
-  }
+  static String? get family => null;
 
   static TextStyle get pickerItem => TextStyle(
         fontFamily: family,

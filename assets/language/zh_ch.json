@@ -227,6 +227,7 @@
     "code_sent": "验证码已发送",
     "bind_success": "绑定成功",
     "invalid_phone": "请输入正确的手机号",
+    "empty_phone": "请输入手机号",
     "invalid_code": "请输入验证码",
     "privacy_prefix": "我已阅读并同意",
     "privacy_link": "《隐私政策》",

@@ -226,6 +226,7 @@
     "code_sent": "Code sent",
     "bind_success": "Bound successfully",
     "invalid_phone": "Please enter a valid phone number",
+    "empty_phone": "Please enter phone number",
     "invalid_code": "Please enter verification code",
     "privacy_prefix": "I have read and agree to the ",
     "privacy_link": "Privacy Policy",

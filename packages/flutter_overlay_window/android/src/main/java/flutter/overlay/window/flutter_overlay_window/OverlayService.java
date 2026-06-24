@@ -282,6 +282,10 @@ public class OverlayService extends Service implements View.OnTouchListener {
                 boolean enableDrag = call.argument("enableDrag");
                 resizeOverlay(width, height, enableDrag, result);
             } else if (call.method.equals("setAutoWalk")) {
+                // 自动游走已暂时关闭
+                stopAutoWalk();
+                result.success(true);
+                /*
                 boolean enabled = Boolean.TRUE.equals(call.argument("enabled"));
                 double screenW = call.argument("screenW") != null
                         ? ((Number) call.argument("screenW")).doubleValue() : 400d;
@@ -293,6 +297,7 @@ public class OverlayService extends Service implements View.OnTouchListener {
                     stopAutoWalk();
                 }
                 result.success(true);
+                */
             }
         });
         overlayMessageChannel.setMessageHandler((message, reply) -> {

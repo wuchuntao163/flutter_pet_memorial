@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+// import 'package:flutter/scheduler.dart';
 
 import '../common/pet_avatar_image.dart';
 import 'restarting_asset_gif.dart';
 
-/// 悬浮宠物：有 GIF 时先加载完成，再停 0.5s 后水平自动游走，始终可拖动
+/// 悬浮宠物：始终可拖动（自动游走已暂时关闭）
 class DraggableFloatingPet extends StatefulWidget {
   final Offset position;
   final double size;
@@ -32,24 +32,23 @@ class DraggableFloatingPet extends StatefulWidget {
   State<DraggableFloatingPet> createState() => _DraggableFloatingPetState();
 }
 
-class _DraggableFloatingPetState extends State<DraggableFloatingPet>
-    with SingleTickerProviderStateMixin {
-  static const _summonDelay = Duration(milliseconds: 500);
-  static const _walkSpeed = 15.0;
+class _DraggableFloatingPetState extends State<DraggableFloatingPet> {
+  // static const _summonDelay = Duration(milliseconds: 500);
+  // static const _walkSpeed = 15.0;
 
   late Offset _position;
-  late Ticker _ticker;
+  // late Ticker _ticker;
 
-  late double _laneY;
-  late double _rightX;
-  late double _leftX;
+  // late double _laneY;
+  // late double _rightX;
+  // late double _leftX;
 
-  bool _isDragging = false;
-  bool _gifLoading = false;
+  // bool _isDragging = false;
+  // bool _gifLoading = false;
   bool _walkingToLeft = true;
-  bool _summonDelayActive = false;
-  DateTime? _summonDelayStartedAt;
-  DateTime? _lastMoveAt;
+  // bool _summonDelayActive = false;
+  // DateTime? _summonDelayStartedAt;
+  // DateTime? _lastMoveAt;
 
   Rect? _moveBounds;
 
@@ -62,19 +61,19 @@ class _DraggableFloatingPetState extends State<DraggableFloatingPet>
     super.initState();
     _position = widget.position;
     _walkingToLeft = true;
-    _gifLoading = _hasGif;
-    _ticker = createTicker(_onTick);
+    // _gifLoading = _hasGif;
+    // _ticker = createTicker(_onTick);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _syncWalkLane();
-      if (_hasGif) _startSummonDelay();
+      // _syncWalkLane();
+      // if (_hasGif) _startSummonDelay();
     });
   }
 
   @override
   void dispose() {
-    _ticker.dispose();
+    // _ticker.dispose();
     super.dispose();
   }
 
@@ -84,22 +83,23 @@ class _DraggableFloatingPetState extends State<DraggableFloatingPet>
     if (widget.animationEpoch != oldWidget.animationEpoch) {
       _position = widget.position;
       _walkingToLeft = true;
-      _gifLoading = _hasGif;
-      _syncWalkLane();
-      if (_hasGif) {
-        _startSummonDelay();
-      } else {
-        _summonDelayActive = false;
-        if (_ticker.isActive) _ticker.stop();
-      }
-    } else if (oldWidget.animatedImage != widget.animatedImage) {
-      _gifLoading = _hasGif;
-      if (_hasGif) {
-        _startSummonDelay();
-      } else if (_ticker.isActive) {
-        _ticker.stop();
-      }
+      // _gifLoading = _hasGif;
+      // _syncWalkLane();
+      // if (_hasGif) {
+      //   _startSummonDelay();
+      // } else {
+      //   _summonDelayActive = false;
+      //   if (_ticker.isActive) _ticker.stop();
+      // }
     }
+    // else if (oldWidget.animatedImage != widget.animatedImage) {
+    //   _gifLoading = _hasGif;
+    //   if (_hasGif) {
+    //     _startSummonDelay();
+    //   } else if (_ticker.isActive) {
+    //     _ticker.stop();
+    //   }
+    // }
   }
 
   Rect _boundsFor(Size screenSize, EdgeInsets padding) {
@@ -111,19 +111,19 @@ class _DraggableFloatingPetState extends State<DraggableFloatingPet>
     );
   }
 
-  void _syncWalkLane() {
-    final bounds = _moveBounds;
-    if (bounds == null) return;
-    _leftX = bounds.left;
-    _rightX = bounds.right;
-    _laneY = _position.dy.clamp(bounds.top, bounds.bottom);
-  }
+  // void _syncWalkLane() {
+  //   final bounds = _moveBounds;
+  //   if (bounds == null) return;
+  //   _leftX = bounds.left;
+  //   _rightX = bounds.right;
+  //   _laneY = _position.dy.clamp(bounds.top, bounds.bottom);
+  // }
 
-  double get _currentLaneY {
-    final bounds = _moveBounds;
-    if (bounds == null) return _laneY;
-    return _position.dy.clamp(bounds.top, bounds.bottom);
-  }
+  // double get _currentLaneY {
+  //   final bounds = _moveBounds;
+  //   if (bounds == null) return _laneY;
+  //   return _position.dy.clamp(bounds.top, bounds.bottom);
+  // }
 
   void _clampPosition() {
     final bounds = _moveBounds;
@@ -135,89 +135,87 @@ class _DraggableFloatingPetState extends State<DraggableFloatingPet>
     widget.onPositionChanged?.call(_position);
   }
 
-  void _startSummonDelay() {
-    _summonDelayActive = true;
-    _lastMoveAt = null;
-    // GIF 已缓存秒开时，从当前时刻开始计 0.5s
-    _summonDelayStartedAt = _gifLoading ? null : DateTime.now();
-    if (!_ticker.isActive) _ticker.start();
-  }
+  // void _startSummonDelay() {
+  //   _summonDelayActive = true;
+  //   _lastMoveAt = null;
+  //   _summonDelayStartedAt = _gifLoading ? null : DateTime.now();
+  //   if (!_ticker.isActive) _ticker.start();
+  // }
 
   void _onGifLoadingChanged(bool loading) {
-    if (!_hasGif || _gifLoading == loading) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_hasGif || _gifLoading == loading) return;
-      setState(() {
-        _gifLoading = loading;
-        if (loading) {
-          _lastMoveAt = null;
-          if (_summonDelayActive) _summonDelayStartedAt = null;
-        } else if (_summonDelayActive && _summonDelayStartedAt == null) {
-          // GIF 显示后再开始 0.5s 停顿
-          _summonDelayStartedAt = DateTime.now();
-        }
-      });
-    });
+    if (!_hasGif) return;
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   if (!mounted || !_hasGif || _gifLoading == loading) return;
+    //   setState(() {
+    //     _gifLoading = loading;
+    //     if (loading) {
+    //       _lastMoveAt = null;
+    //       if (_summonDelayActive) _summonDelayStartedAt = null;
+    //     } else if (_summonDelayActive && _summonDelayStartedAt == null) {
+    //       _summonDelayStartedAt = DateTime.now();
+    //     }
+    //   });
+    // });
   }
 
-  void _onTick(Duration _) {
-    if (!mounted || !_hasGif || _isDragging) return;
+  // void _onTick(Duration _) {
+  //   if (!mounted || !_hasGif || _isDragging) return;
+  //
+  //   if (_summonDelayActive) {
+  //     final started = _summonDelayStartedAt;
+  //     if (started == null) return;
+  //     if (DateTime.now().difference(started) < _summonDelay) return;
+  //     _summonDelayActive = false;
+  //     _lastMoveAt = null;
+  //   }
+  //
+  //   if (_gifLoading) return;
+  //
+  //   final now = DateTime.now();
+  //   if (_lastMoveAt != null) {
+  //     final dtSeconds = now.difference(_lastMoveAt!).inMicroseconds / 1000000.0;
+  //     _stepWalk(dtSeconds);
+  //   }
+  //   _lastMoveAt = now;
+  // }
 
-    if (_summonDelayActive) {
-      final started = _summonDelayStartedAt;
-      if (started == null) return;
-      if (DateTime.now().difference(started) < _summonDelay) return;
-      _summonDelayActive = false;
-      _lastMoveAt = null;
-    }
-
-    if (_gifLoading) return;
-
-    final now = DateTime.now();
-    if (_lastMoveAt != null) {
-      final dtSeconds = now.difference(_lastMoveAt!).inMicroseconds / 1000000.0;
-      _stepWalk(dtSeconds);
-    }
-    _lastMoveAt = now;
-  }
-
-  void _stepWalk(double dtSeconds) {
-    if (dtSeconds <= 0) return;
-
-    final y = _currentLaneY;
-    final dx = _walkingToLeft ? -_walkSpeed * dtSeconds : _walkSpeed * dtSeconds;
-    var newX = _position.dx + dx;
-    var newFacingLeft = _walkingToLeft;
-
-    if (newX <= _leftX) {
-      newX = _leftX;
-      newFacingLeft = false;
-    } else if (newX >= _rightX) {
-      newX = _rightX;
-      newFacingLeft = true;
-    }
-
-    final changed = newX != _position.dx || newFacingLeft != _walkingToLeft;
-    if (!changed) return;
-
-    setState(() {
-      _position = Offset(newX, y);
-      _walkingToLeft = newFacingLeft;
-      _laneY = y;
-    });
-    widget.onPositionChanged?.call(_position);
-  }
+  // void _stepWalk(double dtSeconds) {
+  //   if (dtSeconds <= 0) return;
+  //
+  //   final y = _currentLaneY;
+  //   final dx = _walkingToLeft ? -_walkSpeed * dtSeconds : _walkSpeed * dtSeconds;
+  //   var newX = _position.dx + dx;
+  //   var newFacingLeft = _walkingToLeft;
+  //
+  //   if (newX <= _leftX) {
+  //     newX = _leftX;
+  //     newFacingLeft = false;
+  //   } else if (newX >= _rightX) {
+  //     newX = _rightX;
+  //     newFacingLeft = true;
+  //   }
+  //
+  //   final changed = newX != _position.dx || newFacingLeft != _walkingToLeft;
+  //   if (!changed) return;
+  //
+  //   setState(() {
+  //     _position = Offset(newX, y);
+  //     _walkingToLeft = newFacingLeft;
+  //     _laneY = y;
+  //   });
+  //   widget.onPositionChanged?.call(_position);
+  // }
 
   void _beginDrag() {
-    _isDragging = true;
-    _lastMoveAt = null;
+    // _isDragging = true;
+    // _lastMoveAt = null;
   }
 
   void _endDrag() {
-    _isDragging = false;
+    // _isDragging = false;
     _clampPosition();
-    _syncWalkLane();
-    _lastMoveAt = null;
+    // _syncWalkLane();
+    // _lastMoveAt = null;
   }
 
   Widget _buildPetBody() {
@@ -247,7 +245,7 @@ class _DraggableFloatingPetState extends State<DraggableFloatingPet>
     final media = MediaQuery.of(context);
     final padding = media.padding;
     _moveBounds = _boundsFor(media.size, padding);
-    _syncWalkLane();
+    // _syncWalkLane();
 
     final petBody = _hasGif
         ? Transform(

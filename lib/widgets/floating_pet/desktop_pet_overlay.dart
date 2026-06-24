@@ -9,7 +9,7 @@ import '../../services/desktop_pet_overlay_service.dart';
 import 'restarting_asset_gif.dart';
 
 /// 桌面悬浮窗内的宠物 UI（独立 Flutter 引擎入口）
-/// 自动游走由原生实现；拖动时原生暂停游走，避免弹回
+/// 自动游走已暂时关闭；拖动由原生实现
 class DesktopPetOverlay extends StatefulWidget {
   const DesktopPetOverlay({super.key});
 
@@ -25,7 +25,7 @@ class _DesktopPetOverlayState extends State<DesktopPetOverlay> {
   int _epoch = 0;
   StreamSubscription<dynamic>? _subscription;
 
-  double _screenW = 400;
+  // double _screenW = 400;
 
   bool _gifLoading = false;
   bool _walkingToLeft = true;
@@ -41,11 +41,11 @@ class _DesktopPetOverlayState extends State<DesktopPetOverlay> {
 
   @override
   void dispose() {
-    FlutterOverlayWindow.setAutoWalk(
-      enabled: false,
-      screenW: _screenW,
-      petW: _size,
-    );
+    // FlutterOverlayWindow.setAutoWalk(
+    //   enabled: false,
+    //   screenW: _screenW,
+    //   petW: _size,
+    // );
     _subscription?.cancel();
     super.dispose();
   }
@@ -56,13 +56,14 @@ class _DesktopPetOverlayState extends State<DesktopPetOverlay> {
       final map = jsonDecode(event) as Map<String, dynamic>;
       final type = map['event']?.toString();
 
-      if (type == 'walk_dir') {
-        final left = map['left'];
-        if (left is bool && mounted) {
-          setState(() => _walkingToLeft = left);
-        }
-        return;
-      }
+      // if (type == 'walk_dir') {
+      //   final left = map['left'];
+      //   if (left is bool && mounted) {
+      //     setState(() => _walkingToLeft = left);
+      //   }
+      //   return;
+      // }
+      if (type == 'walk_dir') return;
 
       if (type == 'touch_down' || type == 'touch_up') return;
 
@@ -74,26 +75,26 @@ class _DesktopPetOverlayState extends State<DesktopPetOverlay> {
         _epoch++;
         _gifLoading = _hasGif;
       }
-      if (map['screenW'] is num) _screenW = (map['screenW'] as num).toDouble();
-      _updateAutoWalk();
+      // if (map['screenW'] is num) _screenW = (map['screenW'] as num).toDouble();
+      // _updateAutoWalk();
       if (mounted) setState(() {});
     } catch (_) {}
   }
 
-  Future<void> _updateAutoWalk() async {
-    await FlutterOverlayWindow.setAutoWalk(
-      enabled: _hasGif && !_gifLoading,
-      screenW: _screenW,
-      petW: _size,
-    );
-  }
+  // Future<void> _updateAutoWalk() async {
+  //   await FlutterOverlayWindow.setAutoWalk(
+  //     enabled: _hasGif && !_gifLoading,
+  //     screenW: _screenW,
+  //     petW: _size,
+  //   );
+  // }
 
   void _onGifLoadingChanged(bool loading) {
     if (!_hasGif || _gifLoading == loading) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_hasGif || _gifLoading == loading) return;
       setState(() => _gifLoading = loading);
-      _updateAutoWalk();
+      // _updateAutoWalk();
     });
   }
 
