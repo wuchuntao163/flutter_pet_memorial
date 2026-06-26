@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'config/theme.dart';
+import 'data/memorial_store.dart';
 import 'models/font_style_config.dart';
 import 'models/memorial_day.dart';
 import 'router/app_router.dart';
@@ -49,6 +50,7 @@ class _PetMemorialAppState extends State<PetMemorialApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       PlatformPetSync.afterProfileUpdate();
+      MemorialStore.instance.resyncReminders();
     }
   }
 

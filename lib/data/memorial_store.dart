@@ -159,6 +159,12 @@ class MemorialStore extends ChangeNotifier {
     }
   }
 
+  /// App 回到前台时重新注册本地提醒（避免绑定/换宠后漏注册）
+  Future<void> resyncReminders() async {
+    if (!listLoaded || _items.isEmpty) return;
+    await _syncReminders();
+  }
+
   MemorialDay _mergeLocalOnly(MemorialDay api, MemorialDay local) {
     return api.copyWith(
       fontStyleId: local.fontStyleId,

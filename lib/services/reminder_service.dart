@@ -57,10 +57,7 @@ class ReminderService {
       ),
     );
 
-    final androidPlugin = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
+    final androidPlugin = _androidPlugin;
     await androidPlugin?.createNotificationChannel(
       AndroidNotificationChannel(
         _channelId,
@@ -73,13 +70,15 @@ class ReminderService {
     _initialized = true;
   }
 
+  AndroidFlutterLocalNotificationsPlugin? get _androidPlugin => _plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
+
   Future<void> requestPermission() async {
     await init();
 
-    final androidPlugin = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
+    final androidPlugin = _androidPlugin;
     await androidPlugin?.requestNotificationsPermission();
 
     final iosPlugin = _plugin
@@ -113,7 +112,14 @@ class ReminderService {
 
   Future<void> _schedule(MemorialDay day) async {
     final next = MemorialReminderSchedule.nextTrigger(day);
-    if (next == null) return;
+    if (next == null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[ReminderService] skip ${day.id} "${day.title}": no upcoming trigger',
+        );
+      }
+      return;
+    }
 
     await _plugin.zonedSchedule(
       _notificationId(day.id),
@@ -127,6 +133,13 @@ class ReminderService {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
     );
+
+    if (kDebugMode) {
+      debugPrint(
+        '[ReminderService] scheduled ${day.id} "${day.title}" at $next '
+        '(inexact, repeat=${day.repeatFrequency})',
+      );
+    }
   }
 
   static int _notificationId(String memorialId) =>

@@ -28,7 +28,7 @@ class _DesktopPetOverlayState extends State<DesktopPetOverlay> {
   // double _screenW = 400;
 
   bool _gifLoading = false;
-  bool _walkingToLeft = true;
+  final bool _walkingToLeft = true;
 
   bool get _hasGif => _gifUrl?.isNotEmpty == true;
 
