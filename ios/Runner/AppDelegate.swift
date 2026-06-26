@@ -4,11 +4,6 @@ import WidgetKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
-  private static let appGroupId = AppGroupConfig.id
-  private static let widgetDataKey = "petWidgetData"
-  private static let widgetDataFileName = "petWidgetData.json"
-  private static let widgetImageName = "petWidgetImage.png"
-
   private var widgetChannelRegistered = false
 
   override func application(
@@ -61,22 +56,8 @@ import WidgetKit
       return
     }
 
-    let petName = arguments["petName"] as? String ?? ""
-    let petType = arguments["petType"] as? String ?? ""
-    let petAge = arguments["petAge"] as? String ?? ""
-    let petImageUrl = arguments["petImageUrl"] as? String ?? ""
-    let memorialsJson = arguments["memorials"] as? String ?? ""
-
-    let widgetData: [String: Any] = [
-      "petName": petName,
-      "petType": petType,
-      "petAge": petAge,
-      "petImageUrl": petImageUrl,
-      "memorials": memorialsJson,
-    ]
-
-    guard let sharedDefaults = UserDefaults(suiteName: Self.appGroupId) else {
-      NSLog("[PetWidget] App Group unavailable: \(Self.appGroupId)")
+    guard WidgetSync.appGroupContainer() != nil else {
+      NSLog("[PetWidget] App Group unavailable: \(AppGroupConfig.id)")
       result(
         FlutterError(
           code: "APP_GROUP_UNAVAILABLE",
@@ -87,98 +68,116 @@ import WidgetKit
       return
     }
 
-    sharedDefaults.set(widgetData, forKey: Self.widgetDataKey)
-    sharedDefaults.synchronize()
-    saveWidgetDataFile(widgetData)
+    let petName = arguments["petName"] as? String ?? ""
+    let petImageUrl = arguments["petImageUrl"] as? String ?? ""
+    let widgetData: [String: Any] = [
+      "petName": petName,
+      "petType": arguments["petType"] as? String ?? "",
+      "petAge": arguments["petAge"] as? String ?? "",
+      "petImageUrl": petImageUrl,
+      "memorials": arguments["memorials"] as? String ?? "[]",
+    ]
+
+    guard WidgetSync.saveWidgetData(widgetData) else {
+      result(
+        FlutterError(
+          code: "WRITE_FAILED",
+          message: "小组件数据写入失败",
+          details: nil
+        )
+      )
+      return
+    }
+
     NSLog("[PetWidget] saved widget data for \(petName)")
 
+    let finish: () -> Void = {
+      WidgetSync.reloadTimelines()
+      result(nil)
+    }
+
     if let imageData = arguments["petImageBytes"] as? FlutterStandardTypedData {
-      savePetImageToAppGroup(imageData.data)
-    } else {
-      cachePetImage(from: petImageUrl)
-    }
-
-    if #available(iOS 14.0, *) {
-      WidgetCenter.shared.reloadAllTimelines()
-    }
-
-    result(nil)
-  }
-
-  private func appGroupContainer() -> URL? {
-    FileManager.default.containerURL(
-      forSecurityApplicationGroupIdentifier: Self.appGroupId
-    )
-  }
-
-  private func saveWidgetDataFile(_ widgetData: [String: Any]) {
-    guard let container = appGroupContainer() else { return }
-    let destination = container.appendingPathComponent(Self.widgetDataFileName)
-    guard let data = try? JSONSerialization.data(withJSONObject: widgetData) else {
-      return
-    }
-    do {
-      try data.write(to: destination)
-      NSLog("[PetWidget] saved widget json to \(destination.path)")
-    } catch {
-      NSLog("[PetWidget] write widget json failed: \(error)")
-    }
-  }
-
-  private func savePetImageToAppGroup(_ data: Data) {
-    guard let container = appGroupContainer() else {
-      NSLog("[PetWidget] app group container unavailable for image write")
-      return
-    }
-
-    let destination = container.appendingPathComponent(Self.widgetImageName)
-
-    guard let image = UIImage(data: data), let pngData = Self.renderImageWithAlpha(image).pngData() else {
-      NSLog("[PetWidget] failed to decode widget image bytes")
-      return
-    }
-
-    do {
-      try pngData.write(to: destination)
-      NSLog("[PetWidget] saved widget image to \(destination.path)")
-      if #available(iOS 14.0, *) {
-        WidgetCenter.shared.reloadAllTimelines()
+      if savePetImageToAppGroup(imageData.data) {
+        finish()
+      } else {
+        WidgetSync.removeWidgetImage()
+        finish()
       }
+      return
+    }
+
+    if petImageUrl.isEmpty {
+      WidgetSync.removeWidgetImage()
+      finish()
+      return
+    }
+
+    cachePetImage(from: petImageUrl) { success in
+      DispatchQueue.main.async {
+        if !success {
+          WidgetSync.removeWidgetImage()
+        }
+        finish()
+      }
+    }
+  }
+
+  private func savePetImageToAppGroup(_ data: Data) -> Bool {
+    guard let container = WidgetSync.appGroupContainer() else {
+      NSLog("[PetWidget] app group container unavailable for image write")
+      return false
+    }
+
+    let destination = container.appendingPathComponent(WidgetSync.imageFileName)
+
+    guard let image = UIImage(data: data),
+          let pngData = Self.renderImageWithAlpha(image).pngData() else {
+      NSLog("[PetWidget] failed to decode widget image bytes")
+      return false
+    }
+
+    do {
+      try pngData.write(to: destination, options: .atomic)
+      NSLog("[PetWidget] saved widget image to \(destination.path)")
+      return true
     } catch {
       NSLog("[PetWidget] write widget image failed: \(error)")
+      return false
     }
   }
 
-  private func cachePetImage(from urlString: String) {
-    guard !urlString.isEmpty,
-          let url = URL(string: urlString),
-          let container = appGroupContainer() else {
+  private func cachePetImage(from urlString: String, completion: @escaping (Bool) -> Void) {
+    guard let url = URL(string: urlString),
+          let container = WidgetSync.appGroupContainer() else {
+      completion(false)
       return
     }
 
-    let destination = container.appendingPathComponent(Self.widgetImageName)
+    let destination = container.appendingPathComponent(WidgetSync.imageFileName)
 
     URLSession.shared.dataTask(with: url) { data, _, error in
       if let error = error {
         NSLog("[PetWidget] download image failed: \(error.localizedDescription)")
+        completion(false)
         return
       }
       guard let data = data, let image = UIImage(data: data) else {
         NSLog("[PetWidget] download image decode failed")
+        completion(false)
         return
       }
       let rendered = Self.renderImageWithAlpha(image)
       guard let pngData = rendered.pngData() else {
+        completion(false)
         return
       }
       do {
-        try pngData.write(to: destination)
+        try pngData.write(to: destination, options: .atomic)
         NSLog("[PetWidget] cached remote widget image")
-        if #available(iOS 14.0, *) {
-          WidgetCenter.shared.reloadAllTimelines()
-        }
+        completion(true)
       } catch {
         NSLog("[PetWidget] write cached image failed: \(error)")
+        completion(false)
       }
     }.resume()
   }

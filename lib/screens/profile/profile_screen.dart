@@ -26,6 +26,7 @@ import '../../widgets/dialogs/language_picker_dialog.dart';
 import '../../l10n/tr.dart';
 import '../../services/language_service.dart';
 import '../../services/pet_image_cache.dart';
+import '../../services/platform_pet_sync.dart';
 import '../../services/user_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -360,6 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     MemorialStore.instance.clearAll();
     PetAvatarStore.clear();
+    await PlatformPetSync.afterProfileUpdate();
     await DesktopPetOverlayService.setEnabled(false);
     if (mounted) setState(() => _showFloatingPet = false);
     await AppLaunch.instance.clearOnboarding();

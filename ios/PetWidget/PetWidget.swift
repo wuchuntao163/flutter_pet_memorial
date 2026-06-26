@@ -3,7 +3,6 @@ import SwiftUI
 
 private enum WidgetShared {
     static let appGroupId = AppGroupConfig.id
-    static let widgetDataKey = "petWidgetData"
     static let widgetDataFileName = "petWidgetData.json"
     static let widgetImageName = "petWidgetImage.png"
 }
@@ -45,7 +44,7 @@ struct Provider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
         let data = loadWidgetData() ?? PetWidgetData.empty
         let currentDate = Date()
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate)!
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 5, to: currentDate)!
 
         let entry = SimpleEntry(date: currentDate, data: data)
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
@@ -53,10 +52,7 @@ struct Provider: TimelineProvider {
     }
 
     private func loadWidgetData() -> PetWidgetData? {
-        if let data = loadWidgetDataFromFile() {
-            return data
-        }
-        return loadWidgetDataFromUserDefaults()
+        loadWidgetDataFromFile()
     }
 
     private func loadWidgetDataFromFile() -> PetWidgetData? {
@@ -69,17 +65,6 @@ struct Provider: TimelineProvider {
         let url = container.appendingPathComponent(WidgetShared.widgetDataFileName)
         guard let raw = try? Data(contentsOf: url),
               let dict = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
-            return nil
-        }
-
-        return parseWidgetData(dict)
-    }
-
-    private func loadWidgetDataFromUserDefaults() -> PetWidgetData? {
-        guard let sharedDefaults = UserDefaults(suiteName: WidgetShared.appGroupId) else {
-            return nil
-        }
-        guard let dict = sharedDefaults.dictionary(forKey: WidgetShared.widgetDataKey) else {
             return nil
         }
 
