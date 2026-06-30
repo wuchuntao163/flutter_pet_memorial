@@ -360,7 +360,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     MemorialStore.instance.clearAll();
-    PetAvatarStore.clear();
+    await PetAvatarStore.clear();
     await PlatformPetSync.afterProfileUpdate();
     await DesktopPetOverlayService.setEnabled(false);
     if (mounted) setState(() => _showFloatingPet = false);

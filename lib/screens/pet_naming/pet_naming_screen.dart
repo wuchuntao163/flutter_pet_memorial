@@ -134,6 +134,12 @@ class _PetNamingScreenState extends State<PetNamingScreen> {
         'image': image,
         'type': widget.petType,
       });
+      if (widget.petType == 'custom') {
+        await PetAvatarStore.setAvatar(
+          url: image,
+          description: PetAvatarStore.customAvatarDescription,
+        );
+      }
       await PlatformPetSync.afterProfileUpdate();
       await UserService.refreshUserInfo();
 

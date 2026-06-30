@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api.dart';
+import '../data/pet_avatar_store.dart';
 import '../services/pet_image_service.dart';
 
 /// 启动接口数据缓存
@@ -81,6 +82,7 @@ class AppCacheStore extends ChangeNotifier {
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
     petId = _prefs!.getInt(_keyPetId);
+    await PetAvatarStore.loadFromPrefs();
     _loadLocalPetList();
     final cached = _prefs!.getString(_keyCachedConfig);
     if (cached != null && cached.isNotEmpty) {

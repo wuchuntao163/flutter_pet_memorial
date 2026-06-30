@@ -70,6 +70,7 @@ import WidgetKit
 
     let petName = arguments["petName"] as? String ?? ""
     let petImageUrl = arguments["petImageUrl"] as? String ?? ""
+    let authToken = arguments["authToken"] as? String ?? ""
     let widgetData: [String: Any] = [
       "petName": petName,
       "petType": arguments["petType"] as? String ?? "",
@@ -100,32 +101,24 @@ import WidgetKit
       if savePetImageToAppGroup(imageData.data) {
         finish()
       } else if !petImageUrl.isEmpty {
-        cachePetImage(from: petImageUrl) { success in
+        cachePetImage(from: petImageUrl, authToken: authToken) { _ in
           DispatchQueue.main.async {
-            if !success {
-              WidgetSync.removeWidgetImage()
-            }
             finish()
           }
         }
       } else {
-        WidgetSync.removeWidgetImage()
         finish()
       }
       return
     }
 
     if petImageUrl.isEmpty {
-      WidgetSync.removeWidgetImage()
       finish()
       return
     }
 
-    cachePetImage(from: petImageUrl) { success in
+    cachePetImage(from: petImageUrl, authToken: authToken) { _ in
       DispatchQueue.main.async {
-        if !success {
-          WidgetSync.removeWidgetImage()
-        }
         finish()
       }
     }
@@ -145,7 +138,8 @@ import WidgetKit
     }
 
     let processed = Self.prepareWidgetImage(image)
-    guard let pngData = processed.pngData() else {
+    let pngData = processed.pngData() ?? Self.renderImageWithAlpha(image).pngData()
+    guard let pngData else {
       NSLog("[PetWidget] failed to encode widget image png")
       return false
     }
@@ -160,7 +154,11 @@ import WidgetKit
     }
   }
 
-  private func cachePetImage(from urlString: String, completion: @escaping (Bool) -> Void) {
+  private func cachePetImage(
+    from urlString: String,
+    authToken: String,
+    completion: @escaping (Bool) -> Void
+  ) {
     guard let url = URL(string: urlString),
           let container = WidgetSync.appGroupContainer() else {
       completion(false)
@@ -168,8 +166,14 @@ import WidgetKit
     }
 
     let destination = container.appendingPathComponent(WidgetSync.imageFileName)
+    var request = URLRequest(url: url)
+    let token = authToken.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !token.isEmpty {
+      let value = token.hasPrefix("Bearer ") ? token : "Bearer \(token)"
+      request.setValue(value, forHTTPHeaderField: "Authorization")
+    }
 
-    URLSession.shared.dataTask(with: url) { data, _, error in
+    URLSession.shared.dataTask(with: request) { data, _, error in
       if let error = error {
         NSLog("[PetWidget] download image failed: \(error.localizedDescription)")
         completion(false)
@@ -181,7 +185,8 @@ import WidgetKit
         return
       }
       let processed = Self.prepareWidgetImage(image)
-      guard let pngData = processed.pngData() else {
+      let pngData = processed.pngData() ?? Self.renderImageWithAlpha(image).pngData()
+      guard let pngData else {
         completion(false)
         return
       }
@@ -197,7 +202,12 @@ import WidgetKit
   }
 
   private static func prepareWidgetImage(_ image: UIImage) -> UIImage {
-    trimTransparentEdges(renderImageWithAlpha(image))
+    let normalized = renderImageWithAlpha(image)
+    let trimmed = trimTransparentEdges(normalized)
+    if trimmed.size.width > 1, trimmed.size.height > 1 {
+      return trimmed
+    }
+    return normalized
   }
 
   private static func renderImageWithAlpha(_ image: UIImage) -> UIImage {

@@ -88,15 +88,26 @@ struct SimpleEntry: TimelineEntry {
 }
 
 struct PetWidgetEntryView: View {
+    @Environment(\.widgetFamily) private var family
     var entry: Provider.Entry
 
     var body: some View {
         petContent
             .scaleEffect(petDisplayScale)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(widgetPadding)
     }
 
-    /// 补偿 AI 抠图透明留白；iOS 17+ 使用系统内容边距，不再额外 padding
+    private var widgetPadding: EdgeInsets {
+        switch family {
+        case .systemMedium:
+            return EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
+        default:
+            return EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
+        }
+    }
+
+    /// 补偿 AI 抠图透明留白
     private var petDisplayScale: CGFloat {
         if #available(iOS 18.0, *) {
             return 1.42
@@ -188,6 +199,7 @@ struct PetWidget: Widget {
             .configurationDisplayName("萌宠")
             .description("在桌面展示你的宠物")
             .supportedFamilies([.systemSmall, .systemMedium])
+            .contentMarginsDisabled()
         } else {
             return StaticConfiguration(kind: kind, provider: Provider()) { entry in
                 PetWidgetEntryView(entry: entry)

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -286,7 +287,9 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
     }
 
     final description = _descriptionController.text.trim();
-    PetAvatarStore.setAvatar(url: url, description: description);
+    unawaited(
+      PetAvatarStore.setAvatar(url: url, description: description),
+    );
     Navigator.of(
       context,
     ).pop(AvatarGenerationResult(imageUrl: url, description: description));
