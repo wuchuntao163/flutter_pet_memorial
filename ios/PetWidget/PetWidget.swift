@@ -93,7 +93,6 @@ struct PetWidgetEntryView: View {
 
     var body: some View {
         petContent
-            .scaleEffect(petDisplayScale)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(widgetPadding)
     }
@@ -101,21 +100,10 @@ struct PetWidgetEntryView: View {
     private var widgetPadding: EdgeInsets {
         switch family {
         case .systemMedium:
-            return EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
+            return EdgeInsets(top: 14, leading: 18, bottom: 14, trailing: 18)
         default:
-            return EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
+            return EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
         }
-    }
-
-    /// 补偿 AI 抠图透明留白
-    private var petDisplayScale: CGFloat {
-        if #available(iOS 18.0, *) {
-            return 1.42
-        }
-        if #available(iOS 17.0, *) {
-            return 1.28
-        }
-        return 1.08
     }
 
     @ViewBuilder
@@ -149,6 +137,7 @@ struct PetWidgetEntryView: View {
         image
             .resizable()
             .scaledToFit()
+            .scaleEffect(0.78)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

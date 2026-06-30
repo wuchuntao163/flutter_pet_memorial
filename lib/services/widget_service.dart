@@ -1,17 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/app_cache_store.dart';
 import '../data/auth_session_store.dart';
 import '../data/memorial_store.dart';
-import '../data/pet_avatar_store.dart';
-import 'pet_image_service.dart';
+import '../utils/pet_display_image.dart';
 
 /// iOS 主屏幕小组件服务
 class WidgetService {
@@ -20,7 +19,6 @@ class WidgetService {
   static final WidgetService instance = WidgetService._();
 
   static const _channel = MethodChannel('com.example.flutterPetMemorial/widget');
-  static const _keyWidgetImageUrlPrefix = 'widget_pet_image_url_';
 
   /// 更新小组件数据
   Future<void> updateWidget() async {
@@ -41,8 +39,9 @@ class WidgetService {
           '';
       final petAge = '${cache.accompanyDays}';
 
-      final imageCandidates = await _collectImageCandidates();
-      final petImageUrl = imageCandidates.isNotEmpty ? imageCandidates.first : '';
+      final imageCandidates = PetDisplayImage.downloadCandidates();
+      final petImageUrl =
+          imageCandidates.isNotEmpty ? imageCandidates.first : '';
       final petImageBytes = await _loadPetImageBytes(imageCandidates);
 
       final memorialPayload = memorials
@@ -74,14 +73,10 @@ class WidgetService {
 
       await _channel.invokeMethod<void>('updateWidget', payload);
 
-      if (petImageUrl.isNotEmpty) {
-        await _persistWidgetImageUrl(petImageUrl);
-      }
-
       if (kDebugMode) {
         debugPrint(
           '[WidgetService] updateWidget ok: name=$petName '
-          'candidates=${imageCandidates.length} '
+          'displayRaw=${PetDisplayImage.resolveRaw() ?? '-'} '
           'url=${petImageUrl.isEmpty ? '-' : petImageUrl} '
           'bytes=${petImageBytes?.length ?? 0}',
         );
@@ -100,69 +95,42 @@ class WidgetService {
     }
   }
 
-  static bool _isCustomPet(Map? profile) {
-    final type = profile?['type']?.toString() ?? profile?['pet_type']?.toString();
-    return type == '3' || type == 'custom';
-  }
-
-  Future<List<String>> _collectImageCandidates() async {
-    final profile = AppCacheStore.instance.petProfile;
-    final urls = <String>[];
-    final seen = <String>{};
-
-    void add(String? raw) {
-      if (raw == null) return;
-      final value = raw.trim();
-      if (value.isEmpty) return;
-      final resolved = PetImageService.resolveUrl(value);
-      for (final candidate in [resolved, value]) {
-        if (candidate.isEmpty || seen.contains(candidate)) continue;
-        seen.add(candidate);
-        urls.add(candidate);
-      }
-    }
-
-    add(profile?['image']?.toString());
-    if (_isCustomPet(profile)) {
-      add(PetAvatarStore.customAvatarUrl);
-      add(await _loadPersistedWidgetImageUrl());
-    }
-    add(profile?['animated_image']?.toString());
-
-    return urls;
-  }
-
-  Future<String?> _loadPersistedWidgetImageUrl() async {
-    final petId = AppCacheStore.instance.petId;
-    if (petId == null) return null;
-    final prefs = await SharedPreferences.getInstance();
-    final url = prefs.getString('$_keyWidgetImageUrlPrefix$petId')?.trim();
-    if (url == null || url.isEmpty) return null;
-    return url;
-  }
-
-  Future<void> _persistWidgetImageUrl(String url) async {
-    final petId = AppCacheStore.instance.petId;
-    if (petId == null || url.trim().isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('$_keyWidgetImageUrlPrefix$petId', url.trim());
-  }
-
   Future<Uint8List?> _loadPetImageBytes(List<String> candidates) async {
     for (final candidate in candidates) {
       final local = await _readLocalImageBytes(candidate);
-      if (local != null && local.isNotEmpty) return local;
+      if (local != null && local.isNotEmpty) {
+        return _normalizeToPng(local);
+      }
     }
 
     for (final candidate in candidates) {
-      if (!candidate.startsWith('http://') && !candidate.startsWith('https://')) {
+      if (!candidate.startsWith('http://') &&
+          !candidate.startsWith('https://')) {
         continue;
       }
       final bytes = await _downloadBytes(candidate);
-      if (bytes != null && bytes.isNotEmpty) return bytes;
+      if (bytes != null && bytes.isNotEmpty) {
+        return _normalizeToPng(bytes);
+      }
     }
 
     return null;
+  }
+
+  Future<Uint8List?> _normalizeToPng(Uint8List bytes) async {
+    try {
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+      frame.image.dispose();
+      final png = data?.buffer.asUint8List();
+      if (png != null && png.isNotEmpty) return png;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[WidgetService] normalize png failed: $e');
+      }
+    }
+    return bytes;
   }
 
   Future<Uint8List?> _downloadBytes(String url) async {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -28,6 +29,7 @@ import '../../services/language_service.dart';
 import '../../services/pet_image_cache.dart';
 import '../../services/platform_pet_sync.dart';
 import '../../services/user_service.dart';
+import '../../utils/pet_display_image.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -64,6 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _watchRoute();
       _precachePetAvatar();
+      PlatformPetSync.afterProfileUpdate();
     });
     _loadDesktopPetSetting();
     _loadAppVersion();
@@ -76,7 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _precachePetAvatar() {
     if (!mounted) return;
-    PetImageCache.instance.precache(context, _petAvatarUrl());
+    PetImageCache.instance.precache(context, PetDisplayImage.resolveRaw());
   }
 
   Future<void> _loadDesktopPetSetting() async {
@@ -121,10 +124,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       final path = _router!.routerDelegate.currentConfiguration.uri.path;
       if (path == AppRoutes.profile && _lastRoutePath != AppRoutes.profile) {
+        unawaited(PlatformPetSync.afterProfileUpdate());
         final image =
             AppCacheStore.instance.petProfile?['image']?.toString() ?? '';
         if (image.isEmpty) {
-          AppLaunch.instance.fetchPetProfile(force: true);
+          AppLaunch.instance.fetchPetProfile(force: true).then((_) {
+            PlatformPetSync.afterProfileUpdate();
+          });
         }
       }
       _lastRoutePath = path;
@@ -158,13 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) setState(() {});
   }
 
-  String? _petAvatarUrl() {
-    final fromProfile = AppCacheStore.instance.petProfile?['image']?.toString();
-    if (fromProfile != null && fromProfile.isNotEmpty) return fromProfile;
-    final custom = PetAvatarStore.customAvatarUrl;
-    if (custom != null && custom.isNotEmpty) return custom;
-    return null;
-  }
+  String? _petAvatarUrl() => PetDisplayImage.resolveRaw();
 
   @override
   Widget build(BuildContext context) {
@@ -374,6 +374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await UserService.refreshUserInfo();
     await AppLaunch.instance.fetchPetProfile(force: true);
     await MemorialStore.instance.ensureMemorialsLoaded(force: true);
+    await PlatformPetSync.afterProfileUpdate();
   }
 
   Future<void> _openBindPhone() async {
