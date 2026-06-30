@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../data/app_cache_store.dart';
+import '../data/auth_session_store.dart';
 import '../data/memorial_store.dart';
 import '../data/pet_avatar_store.dart';
 import 'pet_image_service.dart';
@@ -36,13 +38,9 @@ class WidgetService {
           profile?['pet_type']?.toString() ??
           '';
       final petAge = '${cache.accompanyDays}';
-      final rawImageUrl =
-          profile?['image']?.toString().trim() ??
-          profile?['animated_image']?.toString().trim() ??
-          PetAvatarStore.customAvatarUrl?.trim() ??
-          '';
+      final rawImageUrl = _resolvePetImageRaw() ?? '';
       final petImageUrl = PetImageService.resolveUrl(rawImageUrl);
-      final petImageBytes = await _loadPetImageBytes(petImageUrl);
+      final petImageBytes = await _loadPetImageBytes(petImageUrl, rawImageUrl);
 
       final memorialPayload = memorials
           .take(10)
@@ -90,31 +88,51 @@ class WidgetService {
     }
   }
 
-  Future<Uint8List?> _loadPetImageBytes(String url) async {
-    if (url.isEmpty) return null;
+  /// 与 App 内展示逻辑一致：档案图 → AI 生成图 → 动图
+  static String? _resolvePetImageRaw() {
+    final profile = AppCacheStore.instance.petProfile;
+    final fromProfile = profile?['image']?.toString().trim();
+    if (fromProfile != null && fromProfile.isNotEmpty) return fromProfile;
 
-    if (url.startsWith('file://')) {
-      final file = File(url.replaceFirst('file://', ''));
-      if (await file.exists()) {
-        return file.readAsBytes();
-      }
-      return null;
+    final custom = PetAvatarStore.customAvatarUrl?.trim();
+    if (custom != null && custom.isNotEmpty) return custom;
+
+    final animated = profile?['animated_image']?.toString().trim();
+    if (animated != null && animated.isNotEmpty) return animated;
+
+    return null;
+  }
+
+  Future<Uint8List?> _loadPetImageBytes(
+    String resolvedUrl,
+    String rawUrl,
+  ) async {
+    for (final candidate in <String>{rawUrl, resolvedUrl}) {
+      if (candidate.isEmpty) continue;
+      final local = await _readLocalImageBytes(candidate);
+      if (local != null && local.isNotEmpty) return local;
     }
 
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      final file = File(url);
-      if (await file.exists()) {
-        return file.readAsBytes();
-      }
+    if (resolvedUrl.isEmpty ||
+        (!resolvedUrl.startsWith('http://') &&
+            !resolvedUrl.startsWith('https://'))) {
       return null;
     }
 
     try {
+      final token = AuthSessionStore.instance.token;
+      final headers = <String, dynamic>{};
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] =
+            token.startsWith('Bearer ') ? token : 'Bearer $token';
+      }
+
       final response = await Dio().get<List<int>>(
-        url,
+        resolvedUrl,
         options: Options(
           responseType: ResponseType.bytes,
           receiveTimeout: const Duration(seconds: 30),
+          headers: headers,
         ),
       );
       final data = response.data;
@@ -126,5 +144,26 @@ class WidgetService {
       }
       return null;
     }
+  }
+
+  Future<Uint8List?> _readLocalImageBytes(String path) async {
+    if (path.isEmpty) return null;
+
+    if (path.startsWith('file://')) {
+      final file = File(path.replaceFirst('file://', ''));
+      if (await file.exists()) {
+        return file.readAsBytes();
+      }
+      return null;
+    }
+
+    if (!path.startsWith('http://') && !path.startsWith('https://')) {
+      final file = File(path);
+      if (await file.exists()) {
+        return file.readAsBytes();
+      }
+    }
+
+    return null;
   }
 }

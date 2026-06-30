@@ -88,22 +88,23 @@ struct SimpleEntry: TimelineEntry {
 }
 
 struct PetWidgetEntryView: View {
-    @Environment(\.widgetFamily) private var family
     var entry: Provider.Entry
 
     var body: some View {
         petContent
+            .scaleEffect(petDisplayScale)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(widgetPadding)
     }
 
-    private var widgetPadding: EdgeInsets {
-        switch family {
-        case .systemMedium:
-            return EdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 14)
-        default:
-            return EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
+    /// 补偿 AI 抠图透明留白；iOS 17+ 使用系统内容边距，不再额外 padding
+    private var petDisplayScale: CGFloat {
+        if #available(iOS 18.0, *) {
+            return 1.42
         }
+        if #available(iOS 17.0, *) {
+            return 1.28
+        }
+        return 1.08
     }
 
     @ViewBuilder
@@ -158,7 +159,7 @@ struct PetWidgetEntryView: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .padding(12)
+        .padding(8)
     }
 
     private func loadCachedPetImage() -> UIImage? {
@@ -177,12 +178,24 @@ struct PetWidget: Widget {
     let kind: String = "PetWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: Provider()) { entry in
-            PetWidgetEntryView(entry: entry)
+        if #available(iOS 17.0, *) {
+            return StaticConfiguration(kind: kind, provider: Provider()) { entry in
+                PetWidgetEntryView(entry: entry)
+                    .containerBackground(for: .widget) {
+                        Color.clear
+                    }
+            }
+            .configurationDisplayName("萌宠")
+            .description("在桌面展示你的宠物")
+            .supportedFamilies([.systemSmall, .systemMedium])
+        } else {
+            return StaticConfiguration(kind: kind, provider: Provider()) { entry in
+                PetWidgetEntryView(entry: entry)
+            }
+            .configurationDisplayName("萌宠")
+            .description("在桌面展示你的宠物")
+            .supportedFamilies([.systemSmall, .systemMedium])
         }
-        .configurationDisplayName("萌宠")
-        .description("在桌面展示你的宠物")
-        .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 
