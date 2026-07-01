@@ -110,7 +110,13 @@ enum WidgetSync {
       return
     }
 
-    var request = URLRequest(url: url)
+    var request = URLRequest(
+      url: url,
+      cachePolicy: .reloadIgnoringLocalAndRemoteCacheData,
+      timeoutInterval: 30
+    )
+    request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+    request.setValue("no-cache", forHTTPHeaderField: "Pragma")
     let token = authToken.trimmingCharacters(in: .whitespacesAndNewlines)
     if !token.isEmpty {
       let value = token.hasPrefix("Bearer ") ? token : "Bearer \(token)"

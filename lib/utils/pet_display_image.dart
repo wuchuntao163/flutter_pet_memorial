@@ -39,8 +39,9 @@ class PetDisplayImage {
   /// 异步读取（含按 petId 持久化的 AI 图，绑定手机号后用）
   static Future<String?> resolveRaw() async {
     final profile = AppCacheStore.instance.petProfile;
-    final storedCustom =
-        await PetAvatarStore.urlForPet(AppCacheStore.instance.petId);
+    final storedCustom = await PetAvatarStore.urlForPet(
+      AppCacheStore.instance.petId,
+    );
     final image = profile?['image']?.toString().trim();
 
     if (isCustomPet(profile) || storedCustom != null) {
@@ -72,6 +73,10 @@ class PetDisplayImage {
       if (raw == null) return;
       final value = raw.trim();
       if (value.isEmpty) return;
+      if (_isLocalPath(value)) {
+        if (seen.add(value)) out.add(value);
+        return;
+      }
       final resolved = PetImageService.resolveUrl(value);
       for (final candidate in [resolved, value]) {
         if (candidate.isEmpty || seen.contains(candidate)) continue;
@@ -89,5 +94,11 @@ class PetDisplayImage {
     addRaw(profile?['animated_image']?.toString());
 
     return out;
+  }
+
+  static bool _isLocalPath(String value) {
+    if (value.startsWith('file://')) return true;
+    if (value.startsWith('/')) return true;
+    return RegExp(r'^[A-Za-z]:[\\/]').hasMatch(value);
   }
 }

@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../data/app_cache_store.dart';
 import '../data/auth_session_store.dart';
@@ -19,7 +19,9 @@ class WidgetService {
 
   static final WidgetService instance = WidgetService._();
 
-  static const _channel = MethodChannel('com.example.flutterPetMemorial/widget');
+  static const _channel = MethodChannel(
+    'com.example.flutterPetMemorial/widget',
+  );
 
   Future<void>? _syncChain;
 
@@ -72,18 +74,16 @@ class WidgetService {
         profile?['name']?.toString().trim() ??
         '';
     final petType =
-        profile?['type']?.toString() ??
-        profile?['pet_type']?.toString() ??
-        '';
+        profile?['type']?.toString() ?? profile?['pet_type']?.toString() ?? '';
     final petAge = '${cache.accompanyDays}';
 
     final imageCandidates = await PetDisplayImage.downloadCandidates();
-    final petImageUrl =
-        imageCandidates.isNotEmpty ? imageCandidates.first : '';
+    final petImageUrl = imageCandidates.isNotEmpty ? imageCandidates.first : '';
 
-    final localImagePath =
-        PetAvatarStore.localPathForPetSync(petId) ??
-        _firstLocalPath(imageCandidates);
+    final localImagePath = await _prepareWidgetImagePath(
+      imageCandidates,
+      petId: petId,
+    );
 
     final imageBytes = localImagePath == null
         ? await _loadRemoteImageBytes(imageCandidates)
@@ -105,23 +105,21 @@ class WidgetService {
         .toList();
 
     final token = AuthSessionStore.instance.token;
-    final result = await _channel.invokeMethod<Map<Object?, Object?>>(
-      'syncWidget',
-      {
-        'petId': '${petId ?? ''}',
-        'petName': petName,
-        'petType': petType,
-        'petAge': petAge,
-        'petImageUrl': petImageUrl,
-        'memorials': jsonEncode(memorialPayload),
-        'localImagePath': localImagePath ?? '',
-        'imageBase64':
-            localImagePath == null && imageBase64.length <= 4 * 1024 * 1024
-            ? imageBase64
-            : '',
-        'authToken': token ?? '',
-      },
-    );
+    final result = await _channel
+        .invokeMethod<Map<Object?, Object?>>('syncWidget', {
+          'petId': '${petId ?? ''}',
+          'petName': petName,
+          'petType': petType,
+          'petAge': petAge,
+          'petImageUrl': petImageUrl,
+          'memorials': jsonEncode(memorialPayload),
+          'localImagePath': localImagePath ?? '',
+          'imageBase64':
+              localImagePath == null && imageBase64.length <= 4 * 1024 * 1024
+              ? imageBase64
+              : '',
+          'authToken': token ?? '',
+        });
 
     final imageWritten = result?['imageWritten'] == true;
     final jsonWritten = result?['jsonWritten'] == true;
@@ -170,6 +168,51 @@ class WidgetService {
     return null;
   }
 
+  Future<String?> _prepareWidgetImagePath(
+    List<String> candidates, {
+    required int? petId,
+  }) async {
+    for (final candidate in candidates) {
+      final bytes = await _readCandidateBytes(candidate);
+      if (bytes == null || bytes.isEmpty) continue;
+
+      final png = await _normalizeToPng(bytes);
+      if (png == null || png.isEmpty) continue;
+
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final suffix = petId?.toString() ?? 'current';
+        final target = File('${dir.path}/pet_widget_normalized_$suffix.png');
+        await target.writeAsBytes(png, flush: true);
+        return target.path;
+      } catch (e) {
+        debugPrint('[WidgetService] write normalized png failed: $e');
+      }
+    }
+    return _firstLocalPath(candidates);
+  }
+
+  Future<Uint8List?> _readCandidateBytes(String candidate) async {
+    if (candidate.isEmpty) return null;
+    if (candidate.startsWith('http://') || candidate.startsWith('https://')) {
+      return _downloadBytes(candidate);
+    }
+
+    var path = candidate;
+    if (path.startsWith('file://')) {
+      path =
+          Uri.tryParse(path)?.toFilePath() ?? path.replaceFirst('file://', '');
+    }
+    final file = File(path);
+    if (!file.existsSync()) return null;
+    try {
+      return await file.readAsBytes();
+    } catch (e) {
+      debugPrint('[WidgetService] read local image failed ($path): $e');
+      return null;
+    }
+  }
+
   Future<Uint8List?> _loadRemoteImageBytes(List<String> candidates) async {
     for (final candidate in candidates) {
       if (!candidate.startsWith('http://') &&
@@ -204,8 +247,9 @@ class WidgetService {
       final token = AuthSessionStore.instance.token;
       final headers = <String, dynamic>{};
       if (token != null && token.isNotEmpty) {
-        headers['Authorization'] =
-            token.startsWith('Bearer ') ? token : 'Bearer $token';
+        headers['Authorization'] = token.startsWith('Bearer ')
+            ? token
+            : 'Bearer $token';
       }
 
       final response = await Dio().get<List<int>>(
