@@ -205,8 +205,10 @@ class AppCacheStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// AI 宠：若档案 image 为空或与本地 AI 图不一致，用本地 AI 图补全
+  /// AI 宠：未开启云同步时，用本地 AI 图补全档案（云同步以手机号账号档案为准）
   void repairLocalPetImage() {
+    if (AuthSessionStore.instance.cloudSync) return;
+
     final map = petProfile;
     if (map == null) return;
 
@@ -234,9 +236,13 @@ class AppCacheStore extends ChangeNotifier {
       await setPetId(id);
       final custom = PetAvatarStore.urlForPetSync(id)?.trim();
       final profileImage = petProfile?['image']?.toString().trim();
-      final avatarUrl = (custom != null && custom.isNotEmpty)
-          ? custom
-          : profileImage;
+      final cloudSync = AuthSessionStore.instance.cloudSync;
+      // 绑定手机号后：以云端档案 image 为准，供首页与桌面组件同步
+      final avatarUrl = cloudSync
+          ? ((profileImage != null && profileImage.isNotEmpty)
+              ? profileImage
+              : custom)
+          : ((custom != null && custom.isNotEmpty) ? custom : profileImage);
       if (avatarUrl != null && avatarUrl.isNotEmpty) {
         await PetAvatarStore.setAvatar(
           url: avatarUrl,
@@ -258,7 +264,7 @@ class AppCacheStore extends ChangeNotifier {
       return Map<String, dynamic>.from(info);
     }
     if (info is List) {
-      return _pickPetProfileFromList(info);
+      return _pickPetProfileFromList(info, cloudSync: AuthSessionStore.instance.cloudSync);
     }
     // 本地直接写入（取名页等）
     if (map.containsKey('nickname') ||
@@ -270,14 +276,48 @@ class AppCacheStore extends ChangeNotifier {
     return null;
   }
 
-  /// 绑定手机号后接口可能返回多宠列表，优先按本地 petId 匹配，避免误选默认猫狗
-  Map<String, dynamic>? _pickPetProfileFromList(List info) {
+  /// 多宠列表选取：云同步走手机号账号档案；未绑定时优先本地 petId / AI 图
+  Map<String, dynamic>? _pickPetProfileFromList(
+    List info, {
+    required bool cloudSync,
+  }) {
     final items = info
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
     if (items.isEmpty) return null;
 
+    if (cloudSync) {
+      return _pickCloudPetProfileFromList(items);
+    }
+    return _pickLocalPetProfileFromList(items);
+  }
+
+  /// 绑定手机号后：以 getPetProfileInfo 云端列表为准
+  Map<String, dynamic> _pickCloudPetProfileFromList(
+    List<Map<String, dynamic>> items,
+  ) {
+    final currentId = petId;
+    if (currentId != null) {
+      for (final item in items) {
+        final id = _parsePetId(item['id'] ?? item['pet_id']);
+        if (id == currentId) return item;
+      }
+    }
+
+    for (final item in items) {
+      if (PetDisplayImage.isCustomPet(item)) return item;
+    }
+    for (final item in items) {
+      if (item['is_default'] == 1 || item['is_default'] == true) return item;
+    }
+    return items.first;
+  }
+
+  /// 未云同步：优先本地 petId / AI 图，避免小组件误用默认猫狗
+  Map<String, dynamic>? _pickLocalPetProfileFromList(
+    List<Map<String, dynamic>> items,
+  ) {
     final currentId = petId;
     if (currentId != null) {
       for (final item in items) {
