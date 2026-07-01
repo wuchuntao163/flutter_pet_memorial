@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -17,7 +16,6 @@ class AppCacheStore extends ChangeNotifier {
   static final AppCacheStore instance = AppCacheStore._();
   static const _keyPetId = 'pet_id';
   static const _keyCachedConfig = 'cached_get_config';
-  static const _keyCachedPetProfile = 'cached_pet_profile';
 
   SharedPreferences? _prefs;
   dynamic _config;
@@ -87,7 +85,6 @@ class AppCacheStore extends ChangeNotifier {
     _prefs ??= await SharedPreferences.getInstance();
     petId = _prefs!.getInt(_keyPetId);
     await PetAvatarStore.loadFromPrefs();
-    _restoreCachedPetProfile();
     _loadLocalPetList();
     final cached = _prefs!.getString(_keyCachedConfig);
     if (cached != null && cached.isNotEmpty) {
@@ -173,7 +170,6 @@ class AppCacheStore extends ChangeNotifier {
       await _prefs!.setInt(_keyPetId, id);
     } else {
       await _prefs!.remove(_keyPetId);
-      await _prefs!.remove(_keyCachedPetProfile);
     }
     notifyListeners();
   }
@@ -206,7 +202,6 @@ class AppCacheStore extends ChangeNotifier {
 
     petInfo = next;
     repairLocalPetImage();
-    _persistPetProfile();
     notifyListeners();
   }
 
@@ -232,13 +227,9 @@ class AppCacheStore extends ChangeNotifier {
 
   /// 写入档案，并用返回的 id 覆盖本地 petId
   Future<void> applyPetProfileResponse(dynamic data) async {
-    final previousId = petId;
-
     setPetInfo(data);
     repairLocalPetImage();
-
-    final id = _parsePetId(petProfile?['id'] ?? petProfile?['pet_id']) ??
-        previousId;
+    final id = _parsePetId(petProfile?['id'] ?? petProfile?['pet_id']);
     if (id != null) {
       await setPetId(id);
       final custom = PetAvatarStore.urlForPetSync(id)?.trim();
@@ -251,14 +242,11 @@ class AppCacheStore extends ChangeNotifier {
           url: avatarUrl,
           description: PetAvatarStore.customAvatarDescription,
           petId: id,
-          localPath: PetAvatarStore.localPathForPetSync(id) ??
-              PetAvatarStore.localPathForPetSync(previousId),
           scheduleSync: false,
         );
         repairLocalPetImage();
       }
     }
-    _persistPetProfile();
     scheduleWidgetSync();
   }
 
@@ -267,7 +255,7 @@ class AppCacheStore extends ChangeNotifier {
     final map = Map<String, dynamic>.from(data);
     final info = map['info'];
     if (info is Map) {
-      return _resolveIncomingProfile(Map<String, dynamic>.from(info));
+      return Map<String, dynamic>.from(info);
     }
     if (info is List) {
       return _pickPetProfileFromList(info);
@@ -282,7 +270,7 @@ class AppCacheStore extends ChangeNotifier {
     return null;
   }
 
-  /// 绑定手机号后接口可能返回多宠列表，优先保留本地已建立的宠物档案
+  /// 绑定手机号后接口可能返回多宠列表，优先按本地 petId 匹配，避免误选默认猫狗
   Map<String, dynamic>? _pickPetProfileFromList(List info) {
     final items = info
         .whereType<Map>()
@@ -290,9 +278,7 @@ class AppCacheStore extends ChangeNotifier {
         .toList();
     if (items.isEmpty) return null;
 
-    final local = _localEstablishedProfile();
-
-    final currentId = petId ?? _parsePetId(local?['id'] ?? local?['pet_id']);
+    final currentId = petId;
     if (currentId != null) {
       for (final item in items) {
         final id = _parsePetId(item['id'] ?? item['pet_id']);
@@ -300,121 +286,20 @@ class AppCacheStore extends ChangeNotifier {
       }
     }
 
-    if (local != null) {
-      final localImage = local['image']?.toString().trim();
-      if (localImage != null && localImage.isNotEmpty) {
-        for (final item in items) {
-          if (_imageMatches(item['image'], localImage)) return item;
-        }
-      }
-
+    final storedCustom = PetAvatarStore.customAvatarUrl?.trim();
+    if (storedCustom != null && storedCustom.isNotEmpty) {
       for (final item in items) {
-        if (_profileIdentityMatches(item, local)) return item;
+        if (_imageMatches(item['image'], storedCustom)) return item;
       }
-
-      final storedCustom = PetAvatarStore.customAvatarUrl?.trim();
-      if (storedCustom != null && storedCustom.isNotEmpty) {
-        for (final item in items) {
-          if (_imageMatches(item['image'], storedCustom)) return item;
-        }
-        for (final item in items) {
-          if (PetDisplayImage.isCustomPet(item)) return item;
-        }
+      for (final item in items) {
+        if (PetDisplayImage.isCustomPet(item)) return item;
       }
-
-      // 云端列表无匹配项：保留绑定前的本地宠物档案，避免退回默认猫狗
-      return Map<String, dynamic>.from(local);
     }
 
     for (final item in items) {
       if (item['is_default'] == 1 || item['is_default'] == true) return item;
     }
     return items.first;
-  }
-
-  /// 单条档案返回时，若与本地已建立档案不一致则保留本地
-  Map<String, dynamic> _resolveIncomingProfile(Map<String, dynamic> incoming) {
-    final local = _localEstablishedProfile();
-    if (local == null) return incoming;
-
-    final incomingId = _parsePetId(incoming['id'] ?? incoming['pet_id']);
-    final localId = _parsePetId(local['id'] ?? local['pet_id']);
-    if (incomingId != null && localId != null && incomingId == localId) {
-      return incoming;
-    }
-    if (_imageMatches(incoming['image'], local['image'])) return incoming;
-    if (_profileIdentityMatches(incoming, local)) return incoming;
-
-    return Map<String, dynamic>.from(local);
-  }
-
-  Map<String, dynamic>? _localEstablishedProfile() {
-    final current = petProfile;
-    if (current != null && _hasEstablishedPet(current)) {
-      return Map<String, dynamic>.from(current);
-    }
-    return _loadCachedPetProfile();
-  }
-
-  static bool _hasEstablishedPet(Map profile) {
-    final image = profile['image']?.toString().trim();
-    if (image != null && image.isNotEmpty) return true;
-    final nickname = profile['nickname']?.toString().trim();
-    return nickname != null && nickname.isNotEmpty;
-  }
-
-  static bool _profileIdentityMatches(Map a, Map b) {
-    final nickA = a['nickname']?.toString().trim() ?? '';
-    final nickB = b['nickname']?.toString().trim() ?? '';
-    if (nickA.isEmpty || nickB.isEmpty || nickA != nickB) return false;
-    final typeA = _normalizePetType(a);
-    final typeB = _normalizePetType(b);
-    return typeA != null && typeA == typeB;
-  }
-
-  static int? _normalizePetType(Map profile) {
-    final raw = profile['pet_type'] ?? profile['type'];
-    if (raw == null) return null;
-    final value = raw.toString().trim().toLowerCase();
-    if (value == 'cat' || value == '2') return 2;
-    if (value == 'dog' || value == '1') return 1;
-    if (value == 'custom' || value == '3') return 3;
-    return int.tryParse(value);
-  }
-
-  void _restoreCachedPetProfile() {
-    final cached = _loadCachedPetProfile();
-    if (cached == null) return;
-    petInfo = cached;
-    repairLocalPetImage();
-  }
-
-  Map<String, dynamic>? _loadCachedPetProfile() {
-    final raw = _prefs?.getString(_keyCachedPetProfile);
-    if (raw == null || raw.isEmpty) return null;
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map) {
-        final profile = Map<String, dynamic>.from(decoded);
-        if (_hasEstablishedPet(profile)) return profile;
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  void _persistPetProfile() {
-    final profile = petProfile;
-    if (profile == null || !_hasEstablishedPet(profile)) return;
-
-    final prefs = _prefs;
-    if (prefs == null) return;
-
-    final payload = Map<String, dynamic>.from(profile);
-    if (petId != null) {
-      payload['id'] ??= petId;
-      payload['pet_id'] ??= petId;
-    }
-    unawaited(prefs.setString(_keyCachedPetProfile, jsonEncode(payload)));
   }
 
   static bool _imageMatches(dynamic raw, String target) {
@@ -511,7 +396,6 @@ class AppCacheStore extends ChangeNotifier {
     _configFuture = null;
     _prefs?.remove(_keyPetId);
     _prefs?.remove(_keyCachedConfig);
-    _prefs?.remove(_keyCachedPetProfile);
     notifyListeners();
   }
 
