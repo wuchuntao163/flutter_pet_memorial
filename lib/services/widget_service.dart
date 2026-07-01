@@ -23,7 +23,11 @@ class WidgetService {
     'com.example.flutterPetMemorial/widget',
   );
 
+  static const _widgetImageMaxSide = 512;
+
   Future<void>? _syncChain;
+  int? _lastSyncedPetId;
+  String? _lastSyncedImageUrl;
 
   Future<void> updateWidget({int retries = 5}) {
     _syncChain = (_syncChain ?? Future<void>.value()).then(
@@ -79,6 +83,8 @@ class WidgetService {
 
     final imageCandidates = await PetDisplayImage.downloadCandidates();
     final petImageUrl = imageCandidates.isNotEmpty ? imageCandidates.first : '';
+    final imageChanged =
+        petId != _lastSyncedPetId || petImageUrl != _lastSyncedImageUrl;
 
     final localImagePath = await _prepareWidgetImagePath(
       imageCandidates,
@@ -119,6 +125,7 @@ class WidgetService {
               ? imageBase64
               : '',
           'authToken': token ?? '',
+          'clearImage': imageChanged,
         });
 
     final imageWritten = result?['imageWritten'] == true;
@@ -127,6 +134,11 @@ class WidgetService {
     if (jsonWritten != true) {
       debugPrint('[WidgetService] native json write failed');
       return false;
+    }
+
+    if (imageWritten) {
+      _lastSyncedPetId = petId;
+      _lastSyncedImageUrl = petImageUrl;
     }
 
     debugPrint(
@@ -232,8 +244,39 @@ class WidgetService {
     try {
       final codec = await ui.instantiateImageCodec(bytes);
       final frame = await codec.getNextFrame();
-      final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
-      frame.image.dispose();
+      final image = frame.image;
+      final width = image.width;
+      final height = image.height;
+      final maxSide = width > height ? width : height;
+
+      ui.Image output = image;
+      if (maxSide > _widgetImageMaxSide) {
+        final scale = _widgetImageMaxSide / maxSide;
+        final targetWidth = (width * scale).round().clamp(1, _widgetImageMaxSide);
+        final targetHeight =
+            (height * scale).round().clamp(1, _widgetImageMaxSide);
+        final recorder = ui.PictureRecorder();
+        final canvas = ui.Canvas(recorder);
+        canvas.drawImageRect(
+          image,
+          ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+          ui.Rect.fromLTWH(
+            0,
+            0,
+            targetWidth.toDouble(),
+            targetHeight.toDouble(),
+          ),
+          ui.Paint(),
+        );
+        output = await recorder.endRecording().toImage(
+          targetWidth,
+          targetHeight,
+        );
+        image.dispose();
+      }
+
+      final data = await output.toByteData(format: ui.ImageByteFormat.png);
+      output.dispose();
       final png = data?.buffer.asUint8List();
       if (png != null && png.isNotEmpty) return png;
     } catch (e) {

@@ -15,6 +15,15 @@ private enum WidgetShared {
         let path = container.appendingPathComponent(widgetImageName).path
         return FileManager.default.fileExists(atPath: path) ? path : nil
     }
+
+    static func cachedImageRevision() -> Int64 {
+        guard let path = cachedImagePath() else { return 0 }
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+              let modified = attrs[.modificationDate] as? Date else {
+            return 0
+        }
+        return Int64(modified.timeIntervalSince1970 * 1000)
+    }
 }
 
 struct PetWidgetData: Codable {
@@ -120,7 +129,7 @@ struct PetWidgetEntryView: View {
 
     var body: some View {
         petContent
-            .id(entry.data.updatedAt)
+            .id("\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(widgetPadding)
     }

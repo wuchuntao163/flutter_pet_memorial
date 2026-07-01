@@ -52,7 +52,8 @@ enum WidgetSync {
   static func replaceWidgetImage(with data: Data) -> Bool {
     guard let container = appGroupContainer(),
           let image = UIImage(data: data),
-          let png = image.pngData() else {
+          let resized = resizeForWidget(image),
+          let png = resized.pngData() else {
       NSLog("[PetWidget] replace image decode failed")
       return false
     }
@@ -146,12 +147,35 @@ enum WidgetSync {
     guard #available(iOS 14.0, *) else { return }
     WidgetCenter.shared.reloadTimelines(ofKind: kind)
     if #available(iOS 17.0, *) {
-      // iOS 17+ 对 reload 有节流，补一次延迟刷新
+      // iOS 17+ 对 reload 有节流，补两次延迟刷新
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        WidgetCenter.shared.reloadTimelines(ofKind: kind)
+      }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
         WidgetCenter.shared.reloadTimelines(ofKind: kind)
       }
     }
     WidgetCenter.shared.reloadAllTimelines()
+  }
+
+  private static let widgetImageMaxSide: CGFloat = 512
+
+  private static func resizeForWidget(_ image: UIImage) -> UIImage? {
+    let size = image.size
+    let maxSide = max(size.width, size.height)
+    guard maxSide > widgetImageMaxSide else { return image }
+
+    let scale = widgetImageMaxSide / maxSide
+    let target = CGSize(
+      width: floor(size.width * scale),
+      height: floor(size.height * scale)
+    )
+    let format = UIGraphicsImageRendererFormat.default()
+    format.opaque = false
+    format.scale = 1
+    return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+      image.draw(in: CGRect(origin: .zero, size: target))
+    }
   }
 }
 
@@ -220,6 +244,7 @@ enum WidgetChannelHandler {
     let imageBase64 = args["imageBase64"] as? String ?? ""
     let petImageUrl = args["petImageUrl"] as? String ?? ""
     let authToken = args["authToken"] as? String ?? ""
+    let clearImage = args["clearImage"] as? Bool ?? false
 
     let finish: (Bool) -> Void = { imageWritten in
       WidgetSync.reloadTimelines()
@@ -227,6 +252,10 @@ enum WidgetChannelHandler {
         "imageWritten": imageWritten,
         "jsonWritten": true,
       ])
+    }
+
+    if clearImage {
+      WidgetSync.removeWidgetImage()
     }
 
     // 优先本地文件（AI 生成图），再 base64，最后带 Token 下载

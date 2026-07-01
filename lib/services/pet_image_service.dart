@@ -313,8 +313,31 @@ class PetImageService {
   }) async {
     final dir = await getApplicationDocumentsDirectory();
     final target = File('${dir.path}/$filename');
+    final headers = <String, dynamic>{};
+    final token = AuthSessionStore.instance.token;
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] =
+          token.startsWith('Bearer ') ? token : 'Bearer $token';
+    }
+
     final dio = Dio();
-    await dio.download(resolveUrl(url), target.path);
+    final response = await dio.download(
+      resolveUrl(url),
+      target.path,
+      options: Options(
+        headers: headers,
+        responseType: ResponseType.bytes,
+        followRedirects: true,
+        receiveTimeout: const Duration(seconds: 30),
+      ),
+    );
+    final status = response.statusCode ?? 0;
+    if (status >= 400) {
+      throw ApiException.business(status, '图片下载失败');
+    }
+    if (!target.existsSync() || target.lengthSync() == 0) {
+      throw ApiException.business(0, '图片下载失败');
+    }
     return target.path;
   }
 

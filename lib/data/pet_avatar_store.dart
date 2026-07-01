@@ -96,11 +96,18 @@ class PetAvatarStore {
 
   /// 确保 AI 图在本地 Documents 有副本，供小组件同步（高版本 iOS 必须走本地 PNG）
   static Future<String?> ensureLocalCacheForWidget({int? petId}) async {
-    final existing = localPathForPetSync(petId);
-    if (existing != null) return existing;
+    final url = (urlForPetSync(petId) ?? customAvatarUrl)?.trim();
+    if (url == null || url.isEmpty) return null;
 
-    final url = urlForPetSync(petId) ?? customAvatarUrl;
-    if (url == null || url.trim().isEmpty) return null;
+    final existing = localPathForPetSync(petId);
+    if (existing != null) {
+      final storedUrl = petId != null
+          ? _petUrlById[petId]?.trim()
+          : customAvatarUrl?.trim();
+      if (storedUrl == url && File(existing).lengthSync() > 0) {
+        return existing;
+      }
+    }
 
     try {
       final path = await PetImageService.downloadToDocuments(
@@ -118,7 +125,7 @@ class PetAvatarStore {
       );
       return path;
     } catch (e) {
-      return null;
+      return existing;
     }
   }
 

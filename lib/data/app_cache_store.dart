@@ -233,11 +233,16 @@ class AppCacheStore extends ChangeNotifier {
     if (id != null) {
       await setPetId(id);
       final custom = PetAvatarStore.urlForPetSync(id)?.trim();
-      if (custom != null && custom.isNotEmpty) {
+      final profileImage = petProfile?['image']?.toString().trim();
+      final avatarUrl = (custom != null && custom.isNotEmpty)
+          ? custom
+          : profileImage;
+      if (avatarUrl != null && avatarUrl.isNotEmpty) {
         await PetAvatarStore.setAvatar(
-          url: custom,
+          url: avatarUrl,
           description: PetAvatarStore.customAvatarDescription,
           petId: id,
+          scheduleSync: false,
         );
         repairLocalPetImage();
       }
@@ -245,7 +250,7 @@ class AppCacheStore extends ChangeNotifier {
     scheduleWidgetSync();
   }
 
-  static Map<String, dynamic>? _extractPetProfileMap(dynamic data) {
+  Map<String, dynamic>? _extractPetProfileMap(dynamic data) {
     if (data is! Map) return null;
     final map = Map<String, dynamic>.from(data);
     final info = map['info'];
@@ -253,15 +258,7 @@ class AppCacheStore extends ChangeNotifier {
       return Map<String, dynamic>.from(info);
     }
     if (info is List) {
-      for (final item in info) {
-        if (item is Map &&
-            (item['is_default'] == 1 || item['is_default'] == true)) {
-          return Map<String, dynamic>.from(item);
-        }
-      }
-      if (info.isNotEmpty && info.first is Map) {
-        return Map<String, dynamic>.from(info.first as Map);
-      }
+      return _pickPetProfileFromList(info);
     }
     // 本地直接写入（取名页等）
     if (map.containsKey('nickname') ||
@@ -271,6 +268,49 @@ class AppCacheStore extends ChangeNotifier {
       return map;
     }
     return null;
+  }
+
+  /// 绑定手机号后接口可能返回多宠列表，优先按本地 petId 匹配，避免误选默认猫狗
+  Map<String, dynamic>? _pickPetProfileFromList(List info) {
+    final items = info
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+    if (items.isEmpty) return null;
+
+    final currentId = petId;
+    if (currentId != null) {
+      for (final item in items) {
+        final id = _parsePetId(item['id'] ?? item['pet_id']);
+        if (id == currentId) return item;
+      }
+    }
+
+    final storedCustom = PetAvatarStore.customAvatarUrl?.trim();
+    if (storedCustom != null && storedCustom.isNotEmpty) {
+      for (final item in items) {
+        if (_imageMatches(item['image'], storedCustom)) return item;
+      }
+      for (final item in items) {
+        if (PetDisplayImage.isCustomPet(item)) return item;
+      }
+    }
+
+    for (final item in items) {
+      if (item['is_default'] == 1 || item['is_default'] == true) return item;
+    }
+    return items.first;
+  }
+
+  static bool _imageMatches(dynamic raw, String target) {
+    final value = raw?.toString().trim() ?? '';
+    if (value.isEmpty) return false;
+    final resolvedValue = PetImageService.resolveUrl(value);
+    final resolvedTarget = PetImageService.resolveUrl(target);
+    return value == target ||
+        value == resolvedTarget ||
+        resolvedValue == target ||
+        resolvedValue == resolvedTarget;
   }
 
   static int? _parsePetId(dynamic raw) {
