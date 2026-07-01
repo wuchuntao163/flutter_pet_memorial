@@ -10,9 +10,10 @@ import 'package:flutter/services.dart';
 import '../data/app_cache_store.dart';
 import '../data/auth_session_store.dart';
 import '../data/memorial_store.dart';
+import '../data/pet_avatar_store.dart';
 import '../utils/pet_display_image.dart';
 
-/// iOS 主屏幕小组件：由原生写入 App Group（JSON + PNG），避免 Dart 直写失败
+/// iOS 主屏幕小组件：由原生写入 App Group（JSON + PNG）
 class WidgetService {
   WidgetService._();
 
@@ -20,13 +21,22 @@ class WidgetService {
 
   static const _channel = MethodChannel('com.example.flutterPetMemorial/widget');
 
-  int? _lastSyncedPetId;
-  String? _lastSyncedImageKey;
+  Future<void>? _syncChain;
 
-  Future<void> updateWidget({int retries = 5}) async {
+  Future<void> updateWidget({int retries = 5}) {
+    _syncChain = (_syncChain ?? Future<void>.value()).then(
+      (_) => _updateWidgetWithRetries(retries),
+    );
+    return _syncChain!;
+  }
+
+  Future<void> _updateWidgetWithRetries(int retries) async {
     if (!Platform.isIOS) return;
 
     AppCacheStore.instance.repairLocalPetImage();
+    await PetAvatarStore.ensureLocalCacheForWidget(
+      petId: AppCacheStore.instance.petId,
+    );
 
     Object? lastError;
     for (var attempt = 0; attempt < retries; attempt++) {
@@ -38,7 +48,7 @@ class WidgetService {
         debugPrint('[WidgetService] attempt ${attempt + 1} failed: $e\n$st');
       }
       if (attempt < retries - 1) {
-        await Future<void>.delayed(Duration(milliseconds: 300 * (attempt + 1)));
+        await Future<void>.delayed(Duration(milliseconds: 400 * (attempt + 1)));
       }
     }
     if (lastError != null) {
@@ -70,12 +80,11 @@ class WidgetService {
     final imageCandidates = await PetDisplayImage.downloadCandidates();
     final petImageUrl =
         imageCandidates.isNotEmpty ? imageCandidates.first : '';
-    final imageKey = '${petId ?? 0}|$petImageUrl';
-    final petChanged = petId != _lastSyncedPetId;
-    final imageChanged = imageKey != _lastSyncedImageKey;
-    final clearImage = petChanged || imageChanged;
 
-    final localImagePath = _firstLocalPath(imageCandidates);
+    final localImagePath =
+        PetAvatarStore.localPathForPetSync(petId) ??
+        _firstLocalPath(imageCandidates);
+
     final imageBytes = localImagePath == null
         ? await _loadRemoteImageBytes(imageCandidates)
         : null;
@@ -111,7 +120,6 @@ class WidgetService {
             ? imageBase64
             : '',
         'authToken': token ?? '',
-        'clearImage': clearImage,
       },
     );
 
@@ -123,25 +131,22 @@ class WidgetService {
       return false;
     }
 
-    _lastSyncedPetId = petId;
-    _lastSyncedImageKey = imageKey;
-
     debugPrint(
       '[WidgetService] sync ok: petId=$petId name=$petName '
       'url=${petImageUrl.isEmpty ? '-' : petImageUrl} '
       'local=${localImagePath ?? '-'} '
-      'imageWritten=$imageWritten clear=$clearImage',
+      'imageWritten=$imageWritten',
     );
-    return true;
+    return imageWritten || petImageUrl.isEmpty;
   }
 
   Future<bool> _waitForNativeChannel() async {
-    for (var i = 0; i < 30; i++) {
+    for (var i = 0; i < 40; i++) {
       try {
         final path = await _channel.invokeMethod<String>('getAppGroupPath');
         if (path != null && path.trim().isNotEmpty) return true;
       } catch (e) {
-        if (i == 0 || i == 29) {
+        if (i == 0 || i == 39) {
           debugPrint('[WidgetService] wait channel ($i): $e');
         }
       }

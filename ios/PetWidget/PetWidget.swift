@@ -5,6 +5,16 @@ private enum WidgetShared {
     static let appGroupId = AppGroupConfig.id
     static let widgetDataFileName = "petWidgetData.json"
     static let widgetImageName = "petWidgetImage.png"
+
+    static func cachedImagePath() -> String? {
+        guard let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupId
+        ) else {
+            return nil
+        }
+        let path = container.appendingPathComponent(widgetImageName).path
+        return FileManager.default.fileExists(atPath: path) ? path : nil
+    }
 }
 
 struct PetWidgetData: Codable {
@@ -44,7 +54,12 @@ struct Provider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
         let data = loadWidgetData() ?? PetWidgetData.empty
         let currentDate = Date()
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 5, to: currentDate)!
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate)!
+
+        let hasImage = WidgetShared.cachedImagePath() != nil
+        NSLog(
+            "[PetWidget] timeline pet=\(data.petName) url=\(data.petImageUrl.isEmpty ? "-" : "set") image=\(hasImage)"
+        )
 
         let entry = SimpleEntry(date: currentDate, data: data)
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
@@ -110,25 +125,8 @@ struct PetWidgetEntryView: View {
     private var petContent: some View {
         if let image = loadCachedPetImage() {
             petImage(Image(uiImage: image))
-        } else if let urlString = entry.data.petImageUrl.isEmpty ? nil : entry.data.petImageUrl,
-                  let url = URL(string: urlString) {
-            if #available(iOS 15.0, *) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        petImage(image)
-                    case .failure:
-                        placeholderPet
-                    case .empty:
-                        ProgressView()
-                    @unknown default:
-                        placeholderPet
-                    }
-                }
-            } else {
-                placeholderPet
-            }
         } else {
+            // iOS 17+ 小组件无法对鉴权 URL 使用 AsyncImage，只展示缓存图或昵称
             placeholderPet
         }
     }
@@ -163,14 +161,15 @@ struct PetWidgetEntryView: View {
     }
 
     private func loadCachedPetImage() -> UIImage? {
-        guard let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: WidgetShared.appGroupId
-        ) else {
+        guard let path = cachedImagePath(),
+              let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
             return nil
         }
-        let path = container.appendingPathComponent(WidgetShared.widgetImageName)
-        guard let data = try? Data(contentsOf: path) else { return nil }
         return UIImage(data: data)
+    }
+
+    private func cachedImagePath() -> String? {
+        WidgetShared.cachedImagePath()
     }
 }
 

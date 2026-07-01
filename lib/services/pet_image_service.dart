@@ -306,6 +306,18 @@ class PetImageService {
     return target.path;
   }
 
+  /// 持久化到 Documents，供桌面小组件读取（临时目录会被系统清理）
+  static Future<String> downloadToDocuments(
+    String url, {
+    String filename = 'pet_widget_avatar.png',
+  }) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final target = File('${dir.path}/$filename');
+    final dio = Dio();
+    await dio.download(resolveUrl(url), target.path);
+    return target.path;
+  }
+
   static String resolveUrl(String url) {
     final value = url.trim();
     if (value.isEmpty) return value;

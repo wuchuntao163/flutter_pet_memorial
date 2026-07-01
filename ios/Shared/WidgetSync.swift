@@ -6,6 +6,7 @@ enum WidgetSync {
   static let kind = "PetWidget"
   static let dataFileName = "petWidgetData.json"
   static let imageFileName = "petWidgetImage.png"
+  static let imageTempFileName = "petWidgetImage.tmp.png"
 
   static func appGroupContainer() -> URL? {
     FileManager.default.containerURL(
@@ -21,6 +22,7 @@ enum WidgetSync {
     }
     do {
       try data.write(to: destination, options: .atomic)
+      NSLog("[PetWidget] wrote json: \(destination.path)")
       return true
     } catch {
       NSLog("[PetWidget] write widget json failed: \(error)")
@@ -44,20 +46,36 @@ enum WidgetSync {
     try? FileManager.default.removeItem(at: destination)
   }
 
-  static func writeWidgetImageData(_ data: Data) -> Bool {
+  /// 先写临时文件再原子替换，避免高版本 iOS 读到半写入的图片
+  static func replaceWidgetImage(with data: Data) -> Bool {
     guard let container = appGroupContainer(),
           let image = UIImage(data: data),
           let png = image.pngData() else {
+      NSLog("[PetWidget] replace image decode failed")
       return false
     }
-    let destination = container.appendingPathComponent(imageFileName)
+
+    let finalURL = container.appendingPathComponent(imageFileName)
+    let tempURL = container.appendingPathComponent(imageTempFileName)
+    let fm = FileManager.default
+
     do {
-      try png.write(to: destination, options: .atomic)
+      try png.write(to: tempURL, options: .atomic)
+      if fm.fileExists(atPath: finalURL.path) {
+        try fm.removeItem(at: finalURL)
+      }
+      try fm.moveItem(at: tempURL, to: finalURL)
+      NSLog("[PetWidget] replaced image: \(png.count) bytes")
       return true
     } catch {
-      NSLog("[PetWidget] write widget image failed: \(error)")
+      NSLog("[PetWidget] replace image failed: \(error)")
+      try? fm.removeItem(at: tempURL)
       return false
     }
+  }
+
+  static func writeWidgetImageData(_ data: Data) -> Bool {
+    replaceWidgetImage(with: data)
   }
 
   static func copyWidgetImage(fromLocalPath path: String) -> Bool {
@@ -75,7 +93,7 @@ enum WidgetSync {
       NSLog("[PetWidget] local image missing: \(filePath)")
       return false
     }
-    return writeWidgetImageData(data)
+    return replaceWidgetImage(with: data)
   }
 
   static func downloadWidgetImage(
@@ -96,9 +114,14 @@ enum WidgetSync {
       request.setValue(value, forHTTPHeaderField: "Authorization")
     }
 
-    URLSession.shared.dataTask(with: request) { data, _, error in
+    URLSession.shared.dataTask(with: request) { data, response, error in
       if let error = error {
         NSLog("[PetWidget] download failed: \(error.localizedDescription)")
+        completion(false)
+        return
+      }
+      if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+        NSLog("[PetWidget] download http \(http.statusCode): \(urlString)")
         completion(false)
         return
       }
@@ -106,13 +129,19 @@ enum WidgetSync {
         completion(false)
         return
       }
-      completion(writeWidgetImageData(data))
+      completion(replaceWidgetImage(with: data))
     }.resume()
   }
 
   static func reloadTimelines() {
     guard #available(iOS 14.0, *) else { return }
     WidgetCenter.shared.reloadTimelines(ofKind: kind)
+    if #available(iOS 17.0, *) {
+      // iOS 17+ 对 reload 有节流，补一次延迟刷新
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        WidgetCenter.shared.reloadTimelines(ofKind: kind)
+      }
+    }
     WidgetCenter.shared.reloadAllTimelines()
   }
 }
@@ -128,7 +157,9 @@ enum WidgetChannelHandler {
     channel.setMethodCallHandler { call, result in
       switch call.method {
       case "getAppGroupPath":
-        result(WidgetSync.appGroupContainer()?.path)
+        let path = WidgetSync.appGroupContainer()?.path ?? ""
+        NSLog("[PetWidget] app group path: \(path)")
+        result(path.isEmpty ? nil : path)
       case "syncWidget":
         handleSyncWidget(call: call, result: result)
       case "reloadWidget", "updateWidget":
@@ -178,7 +209,6 @@ enum WidgetChannelHandler {
     let imageBase64 = args["imageBase64"] as? String ?? ""
     let petImageUrl = args["petImageUrl"] as? String ?? ""
     let authToken = args["authToken"] as? String ?? ""
-    let clearImage = args["clearImage"] as? Bool ?? false
 
     let finish: (Bool) -> Void = { imageWritten in
       WidgetSync.reloadTimelines()
@@ -188,12 +218,7 @@ enum WidgetChannelHandler {
       ])
     }
 
-    if clearImage {
-      WidgetSync.removeWidgetImage()
-      finish(false)
-      return
-    }
-
+    // 优先本地文件（AI 生成图），再 base64，最后带 Token 下载
     if !localPath.isEmpty, WidgetSync.copyWidgetImage(fromLocalPath: localPath) {
       NSLog("[PetWidget] syncWidget copied local image")
       finish(true)
@@ -202,7 +227,7 @@ enum WidgetChannelHandler {
 
     if !imageBase64.isEmpty,
        let data = Data(base64Encoded: imageBase64),
-       WidgetSync.writeWidgetImageData(data) {
+       WidgetSync.replaceWidgetImage(with: data) {
       NSLog("[PetWidget] syncWidget wrote base64 image")
       finish(true)
       return
@@ -213,7 +238,7 @@ enum WidgetChannelHandler {
       WidgetSync.downloadWidgetImage(from: petImageUrl, authToken: authToken) { ok in
         DispatchQueue.main.async {
           if !ok {
-            NSLog("[PetWidget] syncWidget download failed, json only")
+            NSLog("[PetWidget] syncWidget download failed, keep existing image if any")
           }
           finish(ok)
         }
@@ -221,8 +246,8 @@ enum WidgetChannelHandler {
       return
     }
 
-    WidgetSync.removeWidgetImage()
-    finish(false)
+    // 无图可写：保留已有缓存图，只更新 JSON
+    finish(WidgetSync.widgetImageExists())
   }
 
   private static func handleReloadWidget(call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -240,16 +265,10 @@ enum WidgetChannelHandler {
     let args = call.arguments as? [String: Any]
     let petImageUrl = args?["petImageUrl"] as? String ?? ""
     let authToken = args?["authToken"] as? String ?? ""
-    let flutterWroteImage = args?["imageWritten"] as? Bool ?? false
 
     let finish: () -> Void = {
       WidgetSync.reloadTimelines()
       result(nil)
-    }
-
-    if flutterWroteImage && WidgetSync.widgetImageExists() {
-      finish()
-      return
     }
 
     if WidgetSync.widgetImageExists() {

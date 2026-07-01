@@ -135,10 +135,17 @@ class _PetNamingScreenState extends State<PetNamingScreen> {
         'type': widget.petType,
       });
       if (widget.petType == 'custom') {
+        String? localPath = PetAvatarStore.localPathForPetSync(
+          id is int ? id : int.tryParse('$id'),
+        );
+        localPath ??= await PetAvatarStore.ensureLocalCacheForWidget(
+          petId: id is int ? id : int.tryParse('$id'),
+        );
         await PetAvatarStore.setAvatar(
           url: image,
           description: PetAvatarStore.customAvatarDescription,
           petId: id is int ? id : int.tryParse('$id'),
+          localPath: localPath,
         );
       }
       await PlatformPetSync.afterProfileUpdate();
@@ -161,10 +168,15 @@ class _PetNamingScreenState extends State<PetNamingScreen> {
             'pet_type': widget.petType == 'custom' ? 3 : profile?['pet_type'],
           });
           if (widget.petType == 'custom') {
+            final petId = id is int ? id : int.tryParse('$id');
+            final localPath =
+                PetAvatarStore.localPathForPetSync(petId) ??
+                await PetAvatarStore.ensureLocalCacheForWidget(petId: petId);
             await PetAvatarStore.setAvatar(
               url: createdImage,
               description: PetAvatarStore.customAvatarDescription,
-              petId: id is int ? id : int.tryParse('$id'),
+              petId: petId,
+              localPath: localPath,
             );
           }
           await PlatformPetSync.afterProfileUpdate();

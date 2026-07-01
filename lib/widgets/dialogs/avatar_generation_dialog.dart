@@ -287,12 +287,29 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
     }
 
     final description = _descriptionController.text.trim();
-    unawaited(
-      PetAvatarStore.setAvatar(url: url, description: description),
-    );
+    unawaited(_persistAvatar(url: url, description: description));
     Navigator.of(
       context,
     ).pop(AvatarGenerationResult(imageUrl: url, description: description));
+  }
+
+  Future<void> _persistAvatar({
+    required String url,
+    required String description,
+  }) async {
+    String? localPath = _localPath;
+    if (localPath == null || !File(localPath).existsSync()) {
+      try {
+        localPath = await PetImageService.downloadToDocuments(url);
+      } catch (_) {
+        localPath = null;
+      }
+    }
+    await PetAvatarStore.setAvatar(
+      url: url,
+      description: description,
+      localPath: localPath,
+    );
   }
 
   void _showMessage(String text) {

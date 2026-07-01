@@ -84,6 +84,7 @@ class PetDisplayImage {
     addRaw(primary);
     addRaw(await PetAvatarStore.urlForPet(AppCacheStore.instance.petId));
     addRaw(profile?['image']?.toString());
+    addRaw(PetAvatarStore.localPathForPetSync(AppCacheStore.instance.petId));
     addRaw(PetAvatarStore.customAvatarUrl);
     addRaw(profile?['animated_image']?.toString());
 
