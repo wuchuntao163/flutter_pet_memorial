@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
@@ -18,9 +19,7 @@ class WidgetService {
 
   static final WidgetService instance = WidgetService._();
 
-  static const _channel = MethodChannel(
-    'com.example.flutterPetMemorial/widget',
-  );
+  static const _channel = MethodChannel('com.example.flutterPetMemorial/widget');
 
   Future<void>? _syncChain;
 
@@ -38,7 +37,6 @@ class WidgetService {
     await PetAvatarStore.ensureLocalCacheForWidget(
       petId: AppCacheStore.instance.petId,
     );
-    AppCacheStore.instance.repairLocalPetImage();
 
     Object? lastError;
     for (var attempt = 0; attempt < retries; attempt++) {
@@ -74,11 +72,14 @@ class WidgetService {
         profile?['name']?.toString().trim() ??
         '';
     final petType =
-        profile?['type']?.toString() ?? profile?['pet_type']?.toString() ?? '';
+        profile?['type']?.toString() ??
+        profile?['pet_type']?.toString() ??
+        '';
     final petAge = '${cache.accompanyDays}';
 
     final imageCandidates = await PetDisplayImage.downloadCandidates();
-    final petImageUrl = imageCandidates.isNotEmpty ? imageCandidates.first : '';
+    final petImageUrl =
+        imageCandidates.isNotEmpty ? imageCandidates.first : '';
 
     final localImagePath =
         PetAvatarStore.localPathForPetSync(petId) ??
@@ -104,21 +105,23 @@ class WidgetService {
         .toList();
 
     final token = AuthSessionStore.instance.token;
-    final result = await _channel
-        .invokeMethod<Map<Object?, Object?>>('syncWidget', {
-          'petId': '${petId ?? ''}',
-          'petName': petName,
-          'petType': petType,
-          'petAge': petAge,
-          'petImageUrl': petImageUrl,
-          'memorials': jsonEncode(memorialPayload),
-          'localImagePath': localImagePath ?? '',
-          'imageBase64':
-              localImagePath == null && imageBase64.length <= 4 * 1024 * 1024
-              ? imageBase64
-              : '',
-          'authToken': token ?? '',
-        });
+    final result = await _channel.invokeMethod<Map<Object?, Object?>>(
+      'syncWidget',
+      {
+        'petId': '${petId ?? ''}',
+        'petName': petName,
+        'petType': petType,
+        'petAge': petAge,
+        'petImageUrl': petImageUrl,
+        'memorials': jsonEncode(memorialPayload),
+        'localImagePath': localImagePath ?? '',
+        'imageBase64':
+            localImagePath == null && imageBase64.length <= 4 * 1024 * 1024
+            ? imageBase64
+            : '',
+        'authToken': token ?? '',
+      },
+    );
 
     final imageWritten = result?['imageWritten'] == true;
     final jsonWritten = result?['jsonWritten'] == true;
@@ -201,9 +204,8 @@ class WidgetService {
       final token = AuthSessionStore.instance.token;
       final headers = <String, dynamic>{};
       if (token != null && token.isNotEmpty) {
-        headers['Authorization'] = token.startsWith('Bearer ')
-            ? token
-            : 'Bearer $token';
+        headers['Authorization'] =
+            token.startsWith('Bearer ') ? token : 'Bearer $token';
       }
 
       final response = await Dio().get<List<int>>(

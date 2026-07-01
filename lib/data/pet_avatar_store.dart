@@ -26,11 +26,11 @@ class PetAvatarStore {
     final url = prefs.getString(_keyCustomAvatarUrl)?.trim();
     customAvatarUrl = (url != null && url.isNotEmpty) ? url : null;
     final description = prefs.getString(_keyCustomAvatarDescription)?.trim();
-    customAvatarDescription = (description != null && description.isNotEmpty)
-        ? description
-        : null;
+    customAvatarDescription =
+        (description != null && description.isNotEmpty) ? description : null;
     final local = prefs.getString(_keyCustomAvatarLocalPath)?.trim();
-    customAvatarLocalPath = (local != null && local.isNotEmpty) ? local : null;
+    customAvatarLocalPath =
+        (local != null && local.isNotEmpty) ? local : null;
 
     _petUrlById.clear();
     _petLocalPathById.clear();
@@ -55,18 +55,11 @@ class PetAvatarStore {
   /// 内存读取（小组件/UI 同步路径用）
   static String? urlForPetSync(int? petId) {
     if (petId != null) {
-      final stored = exactUrlForPetSync(petId);
-      if (stored != null) return stored;
+      final stored = _petUrlById[petId]?.trim();
+      if (stored != null && stored.isNotEmpty) return stored;
     }
     final global = customAvatarUrl?.trim();
     if (global != null && global.isNotEmpty) return global;
-    return null;
-  }
-
-  static String? exactUrlForPetSync(int? petId) {
-    if (petId == null) return null;
-    final stored = _petUrlById[petId]?.trim();
-    if (stored != null && stored.isNotEmpty) return stored;
     return null;
   }
 
@@ -83,30 +76,6 @@ class PetAvatarStore {
       if (stored != null) return stored;
     }
     return pick(customAvatarLocalPath);
-  }
-
-  static String? exactLocalPathForPetSync(int? petId) {
-    if (petId == null) return null;
-    final value = _petLocalPathById[petId]?.trim();
-    if (value == null || value.isEmpty) return null;
-    if (File(value).existsSync()) return value;
-    return null;
-  }
-
-  static Future<void> bindCurrentAvatarToPet(
-    int? petId, {
-    bool scheduleSync = false,
-  }) async {
-    if (petId == null) return;
-    final url = customAvatarUrl?.trim();
-    if (url == null || url.isEmpty) return;
-    await setAvatar(
-      url: url,
-      description: customAvatarDescription,
-      petId: petId,
-      localPath: localPathForPetSync(null) ?? exactLocalPathForPetSync(petId),
-      scheduleSync: scheduleSync,
-    );
   }
 
   /// 当前宠物可用的 AI 图（优先读该 petId 的持久化 URL）

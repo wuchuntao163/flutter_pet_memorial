@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -17,7 +16,6 @@ class AppCacheStore extends ChangeNotifier {
   static final AppCacheStore instance = AppCacheStore._();
   static const _keyPetId = 'pet_id';
   static const _keyCachedConfig = 'cached_get_config';
-  static const _keyLocalCustomPetProfile = 'local_custom_pet_profile';
 
   SharedPreferences? _prefs;
   dynamic _config;
@@ -108,9 +106,21 @@ class AppCacheStore extends ChangeNotifier {
   }
 
   static List<Map<String, dynamic>> _defaultPetList() => [
-    {'type': 'cat', 'pet_type': 2, 'image': '', 'name': '', 'describe': ''},
-    {'type': 'dog', 'pet_type': 1, 'image': '', 'name': '', 'describe': ''},
-  ];
+        {
+          'type': 'cat',
+          'pet_type': 2,
+          'image': '',
+          'name': '',
+          'describe': '',
+        },
+        {
+          'type': 'dog',
+          'pet_type': 1,
+          'image': '',
+          'name': '',
+          'describe': '',
+        },
+      ];
 
   Future<void>? _configFuture;
 
@@ -160,7 +170,6 @@ class AppCacheStore extends ChangeNotifier {
       await _prefs!.setInt(_keyPetId, id);
     } else {
       await _prefs!.remove(_keyPetId);
-      await _prefs!.remove(_keyLocalCustomPetProfile);
     }
     notifyListeners();
   }
@@ -178,8 +187,8 @@ class AppCacheStore extends ChangeNotifier {
     if (prev != null && samePet) {
       for (final entry in prev.entries) {
         final incoming = next[entry.key];
-        final empty =
-            incoming == null || (incoming is String && incoming.trim().isEmpty);
+        final empty = incoming == null ||
+            (incoming is String && incoming.trim().isEmpty);
         if (empty && entry.value != null) {
           final keep = entry.value;
           if (keep is String && keep.trim().isNotEmpty) {
@@ -193,9 +202,6 @@ class AppCacheStore extends ChangeNotifier {
 
     petInfo = next;
     repairLocalPetImage();
-    if (PetDisplayImage.isCustomPet(petProfile)) {
-      unawaited(_saveLocalCustomPetProfile());
-    }
     notifyListeners();
   }
 
@@ -225,11 +231,8 @@ class AppCacheStore extends ChangeNotifier {
     repairLocalPetImage();
     final id = _parsePetId(petProfile?['id'] ?? petProfile?['pet_id']);
     if (id != null) {
-      if (PetDisplayImage.isCustomPet(petProfile)) {
-        await PetAvatarStore.bindCurrentAvatarToPet(id);
-      }
       await setPetId(id);
-      final custom = PetAvatarStore.exactUrlForPetSync(id)?.trim();
+      final custom = PetAvatarStore.urlForPetSync(id)?.trim();
       if (custom != null && custom.isNotEmpty) {
         await PetAvatarStore.setAvatar(
           url: custom,
@@ -242,146 +245,32 @@ class AppCacheStore extends ChangeNotifier {
     scheduleWidgetSync();
   }
 
-  Map<String, dynamic>? _extractPetProfileMap(dynamic data) {
+  static Map<String, dynamic>? _extractPetProfileMap(dynamic data) {
     if (data is! Map) return null;
     final map = Map<String, dynamic>.from(data);
     final info = map['info'];
     if (info is Map) {
-      return _resolveIncomingPetProfile(Map<String, dynamic>.from(info));
+      return Map<String, dynamic>.from(info);
     }
     if (info is List) {
-      return _pickPetProfileFromList(info);
+      for (final item in info) {
+        if (item is Map &&
+            (item['is_default'] == 1 || item['is_default'] == true)) {
+          return Map<String, dynamic>.from(item);
+        }
+      }
+      if (info.isNotEmpty && info.first is Map) {
+        return Map<String, dynamic>.from(info.first as Map);
+      }
     }
     // 本地直接写入（取名页等）
     if (map.containsKey('nickname') ||
         map.containsKey('image') ||
         map.containsKey('pet_type') ||
         map.containsKey('type')) {
-      return _resolveIncomingPetProfile(map);
+      return map;
     }
     return null;
-  }
-
-  Map<String, dynamic> _resolveIncomingPetProfile(
-    Map<String, dynamic> incoming,
-  ) {
-    final currentCustom = PetAvatarStore.customAvatarUrl?.trim();
-    if (currentCustom == null || currentCustom.isEmpty) return incoming;
-    if (_imageMatches(incoming['image'], currentCustom) ||
-        PetDisplayImage.isCustomPet(incoming)) {
-      return incoming;
-    }
-
-    final current = petProfile;
-    if (current != null && PetDisplayImage.isCustomPet(current)) {
-      return Map<String, dynamic>.from(current);
-    }
-
-    final cached = _cachedLocalCustomPetProfile();
-    if (cached != null) {
-      return _localCustomPetProfile(currentCustom);
-    }
-
-    return incoming;
-  }
-
-  Map<String, dynamic>? _pickPetProfileFromList(List info) {
-    final items = info
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
-    if (items.isEmpty) return null;
-
-    final currentCustom = PetAvatarStore.customAvatarUrl?.trim();
-    if (currentCustom != null && currentCustom.isNotEmpty) {
-      for (final item in items) {
-        if (_imageMatches(item['image'], currentCustom)) return item;
-      }
-      for (final item in items) {
-        if (PetDisplayImage.isCustomPet(item)) return item;
-      }
-
-      final current = petProfile;
-      if (current != null && PetDisplayImage.isCustomPet(current)) {
-        return Map<String, dynamic>.from(current);
-      }
-      final cached = _cachedLocalCustomPetProfile();
-      if (cached != null) return _localCustomPetProfile(currentCustom);
-      return _localCustomPetProfile(currentCustom);
-    }
-
-    final currentId = petId;
-    if (currentId != null) {
-      for (final item in items) {
-        final id = _parsePetId(item['id'] ?? item['pet_id']);
-        if (id == currentId) return item;
-      }
-    }
-
-    for (final item in items) {
-      if (item['is_default'] == 1 || item['is_default'] == true) return item;
-    }
-    return items.first;
-  }
-
-  Map<String, dynamic> _localCustomPetProfile(String image) {
-    final cached = _cachedLocalCustomPetProfile();
-    final current = petProfile;
-    final source =
-        cached ??
-        (current != null && PetDisplayImage.isCustomPet(current)
-            ? current
-            : null);
-    final id = _parsePetId(source?['id'] ?? source?['pet_id']) ?? petId;
-    final nickname = source?['nickname']?.toString().trim();
-    final profile = <String, dynamic>{
-      ...?source,
-      'nickname': nickname != null && nickname.isNotEmpty ? nickname : 'AI萌宠',
-      'image': image,
-      'type': 'custom',
-      'pet_type': 3,
-    };
-    if (id != null) {
-      profile['id'] = id;
-      profile['pet_id'] = id;
-    }
-    return profile;
-  }
-
-  Map<String, dynamic>? _cachedLocalCustomPetProfile() {
-    final raw = _prefs?.getString(_keyLocalCustomPetProfile);
-    if (raw == null || raw.isEmpty) return null;
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    } catch (_) {}
-    return null;
-  }
-
-  Future<void> _saveLocalCustomPetProfile() async {
-    final profile = petProfile;
-    if (profile == null || !PetDisplayImage.isCustomPet(profile)) return;
-    final image = profile['image']?.toString().trim();
-    if (image == null || image.isEmpty) return;
-
-    _prefs ??= await SharedPreferences.getInstance();
-    final payload = Map<String, dynamic>.from(profile);
-    if (petId != null) {
-      payload['id'] ??= petId;
-      payload['pet_id'] ??= petId;
-    }
-    await _prefs!.setString(_keyLocalCustomPetProfile, jsonEncode(payload));
-  }
-
-  static bool _imageMatches(dynamic raw, String target) {
-    final value = raw?.toString().trim() ?? '';
-    if (value.isEmpty) return false;
-    final resolvedValue = PetImageService.resolveUrl(value);
-    final resolvedTarget = PetImageService.resolveUrl(target);
-    return value == target ||
-        value == resolvedTarget ||
-        resolvedValue == target ||
-        resolvedValue == resolvedTarget;
   }
 
   static int? _parsePetId(dynamic raw) {
@@ -467,7 +356,6 @@ class AppCacheStore extends ChangeNotifier {
     _configFuture = null;
     _prefs?.remove(_keyPetId);
     _prefs?.remove(_keyCachedConfig);
-    _prefs?.remove(_keyLocalCustomPetProfile);
     notifyListeners();
   }
 
