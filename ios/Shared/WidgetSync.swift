@@ -37,6 +37,12 @@ enum WidgetSync {
     return size.intValue > 0
   }
 
+  static func removeWidgetImage() {
+    guard let container = appGroupContainer() else { return }
+    let destination = container.appendingPathComponent(imageFileName)
+    try? FileManager.default.removeItem(at: destination)
+  }
+
   static func reloadTimelines() {
     guard #available(iOS 14.0, *) else { return }
     WidgetCenter.shared.reloadTimelines(ofKind: kind)

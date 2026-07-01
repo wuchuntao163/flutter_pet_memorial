@@ -137,7 +137,7 @@ struct PetWidgetEntryView: View {
         image
             .resizable()
             .scaledToFit()
-            .scaleEffect(0.90)
+            .scaleEffect(0.95)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

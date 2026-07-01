@@ -6,7 +6,7 @@ import '../../config/layout.dart';
 import '../../data/app_cache_store.dart';
 import '../../l10n/tr.dart';
 import '../../utils/center_tip_util.dart';
-import '../../data/pet_avatar_store.dart';
+import '../../utils/pet_display_image.dart';
 import '../../router/app_routes.dart';
 import '../../widgets/common/bottom_nav_bar.dart';
 import '../../widgets/floating_pet/draggable_floating_pet.dart';
@@ -125,8 +125,7 @@ class _MainShellState extends State<MainShell> {
                   builder: (context, _) {
                     final profile = AppCacheStore.instance.petProfile;
                     final gif = profile?['animated_image']?.toString();
-                    final avatar = profile?['image']?.toString() ??
-                        PetAvatarStore.customAvatarUrl;
+                    final avatar = PetDisplayImage.resolveRaw();
                     return DraggableFloatingPet(
                       key: _floatingPetKey,
                       position: _petPosition!,

@@ -21,6 +21,8 @@ class WidgetService {
   static const _channel = MethodChannel('com.example.flutterPetMemorial/widget');
 
   String? _appGroupPath;
+  int? _lastSyncedPetId;
+  String? _lastSyncedImageKey;
 
   /// 更新小组件数据
   Future<void> updateWidget() async {
@@ -30,6 +32,7 @@ class WidgetService {
       final cache = AppCacheStore.instance;
       final profile = cache.petProfile;
       final memorials = MemorialStore.instance.items;
+      final petId = cache.petId;
 
       final petName =
           profile?['nickname']?.toString().trim() ??
@@ -44,8 +47,21 @@ class WidgetService {
       final imageCandidates = PetDisplayImage.downloadCandidates();
       final petImageUrl =
           imageCandidates.isNotEmpty ? imageCandidates.first : '';
+      final imageKey = '${petId ?? 0}|$petImageUrl';
+      final petChanged = petId != _lastSyncedPetId;
+      final imageChanged = imageKey != _lastSyncedImageKey;
+
+      // 切换宠物或图片变更时先清旧图，避免继续显示上一只宠
+      if (petChanged || imageChanged) {
+        await _clearAppGroupImage();
+      }
+
       final petImageBytes = await _loadPetImageBytes(imageCandidates);
       final imageWritten = await _writeImageToAppGroup(petImageBytes);
+
+      if (!imageWritten && (petChanged || imageChanged)) {
+        await _clearAppGroupImage();
+      }
 
       final memorialPayload = memorials
           .take(10)
@@ -61,6 +77,7 @@ class WidgetService {
 
       final token = AuthSessionStore.instance.token;
       final payload = <String, dynamic>{
+        'petId': '${petId ?? ''}',
         'petName': petName,
         'petType': petType,
         'petAge': petAge,
@@ -74,12 +91,15 @@ class WidgetService {
 
       await _channel.invokeMethod<void>('updateWidget', payload);
 
+      _lastSyncedPetId = petId;
+      _lastSyncedImageKey = imageKey;
+
       debugPrint(
-        '[WidgetService] updateWidget: name=$petName '
+        '[WidgetService] updateWidget: petId=$petId name=$petName '
         'candidates=${imageCandidates.length} '
         'url=${petImageUrl.isEmpty ? '-' : petImageUrl} '
         'bytes=${petImageBytes?.length ?? 0} '
-        'imageWritten=$imageWritten',
+        'imageWritten=$imageWritten petChanged=$petChanged',
       );
     } on PlatformException catch (e) {
       debugPrint(
@@ -104,6 +124,21 @@ class WidgetService {
       debugPrint('[WidgetService] getAppGroupPath failed: $e');
     }
     return null;
+  }
+
+  Future<void> _clearAppGroupImage() async {
+    final appGroupPath = await _getAppGroupPath();
+    if (appGroupPath == null) return;
+    try {
+      final file = File(
+        '$appGroupPath/${PetDisplayImage.widgetImageFileName}',
+      );
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (e) {
+      debugPrint('[WidgetService] clear app group image failed: $e');
+    }
   }
 
   Future<bool> _writeImageToAppGroup(Uint8List? bytes) async {

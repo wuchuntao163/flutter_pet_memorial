@@ -74,7 +74,9 @@ import WidgetKit
     let petImageUrl = arguments["petImageUrl"] as? String ?? ""
     let authToken = arguments["authToken"] as? String ?? ""
     let imageWritten = arguments["imageWritten"] as? Bool ?? false
+    let petId = arguments["petId"] as? String ?? ""
     let widgetData: [String: Any] = [
+      "petId": petId,
       "petName": petName,
       "petType": arguments["petType"] as? String ?? "",
       "petAge": arguments["petAge"] as? String ?? "",
@@ -99,13 +101,17 @@ import WidgetKit
     }
 
     if imageWritten && WidgetSync.widgetImageExists() {
-      NSLog("[PetWidget] using Flutter-written image for \(petName)")
+      NSLog("[PetWidget] using Flutter-written image petId=\(petId) name=\(petName)")
       finish()
       return
     }
 
+    if !imageWritten {
+      WidgetSync.removeWidgetImage()
+    }
+
     if petImageUrl.isEmpty {
-      NSLog("[PetWidget] no image url for \(petName), imageWritten=\(imageWritten)")
+      NSLog("[PetWidget] no image url petId=\(petId) name=\(petName)")
       finish()
       return
     }

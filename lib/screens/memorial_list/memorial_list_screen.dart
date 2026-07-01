@@ -16,7 +16,9 @@ import '../../utils/center_tip_util.dart';
 import '../../utils/app_update_util.dart';
 import '../../services/day_tick_service.dart';
 import '../../services/language_service.dart';
+import '../../services/platform_pet_sync.dart';
 import '../../services/pet_image_cache.dart';
+import '../../utils/pet_display_image.dart';
 import '../main/main_shell_scope.dart';
 
 class MemorialListScreen extends StatefulWidget {
@@ -44,8 +46,7 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
       _onPetChanged();
       AppUpdateUtil.checkOnHomeLaunch(context);
       if (mounted) {
-        final image = AppCacheStore.instance.petProfile?['image']?.toString();
-        PetImageCache.instance.precache(context, image);
+        PetImageCache.instance.precache(context, PetDisplayImage.resolveRaw());
       }
     });
   }
@@ -59,6 +60,7 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
   void _onPetChanged() {
     if (!mounted) return;
     MemorialStore.instance.ensureMemorialsLoaded();
+    PlatformPetSync.afterProfileUpdate();
   }
 
   void _openDayDetail(MemorialDay day) {
@@ -287,7 +289,7 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
   Widget _buildPetCard(bool isPetVisible) {
     final pet = AppCacheStore.instance.petProfile;
     final nickname = pet?['nickname']?.toString() ?? '';
-    final image = pet?['image']?.toString() ?? '';
+    final image = PetDisplayImage.resolveRaw() ?? '';
     final days = AppCacheStore.instance.accompanyDays;
 
     return Container(
