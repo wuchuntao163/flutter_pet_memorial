@@ -1,4 +1,5 @@
 import '../data/app_cache_store.dart';
+import '../data/auth_session_store.dart';
 import '../data/pet_avatar_store.dart';
 import '../services/pet_image_service.dart';
 
@@ -15,6 +16,29 @@ class PetDisplayImage {
     return type == '3' || type == 'custom';
   }
 
+  static bool get _preferCloudProfile => AuthSessionStore.instance.cloudSync;
+
+  static String? _pickProfileOrCustom({
+    required String? profileImage,
+    required String? storedCustom,
+    required Map? profile,
+  }) {
+    if (_preferCloudProfile) {
+      if (profileImage != null && profileImage.isNotEmpty) return profileImage;
+      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
+      return null;
+    }
+
+    if (isCustomPet(profile) || storedCustom != null) {
+      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
+      if (profileImage != null && profileImage.isNotEmpty) return profileImage;
+    } else {
+      if (profileImage != null && profileImage.isNotEmpty) return profileImage;
+      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
+    }
+    return null;
+  }
+
   /// 同步读取（内存 + 按 petId 缓存）
   static String? resolveRawSync() {
     final profile = AppCacheStore.instance.petProfile;
@@ -22,13 +46,12 @@ class PetDisplayImage {
     final storedCustom = PetAvatarStore.urlForPetSync(petId);
     final image = profile?['image']?.toString().trim();
 
-    if (isCustomPet(profile) || storedCustom != null) {
-      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
-      if (image != null && image.isNotEmpty) return image;
-    } else {
-      if (image != null && image.isNotEmpty) return image;
-      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
-    }
+    final picked = _pickProfileOrCustom(
+      profileImage: image,
+      storedCustom: storedCustom,
+      profile: profile,
+    );
+    if (picked != null) return picked;
 
     final animated = profile?['animated_image']?.toString().trim();
     if (animated != null && animated.isNotEmpty) return animated;
@@ -36,7 +59,7 @@ class PetDisplayImage {
     return null;
   }
 
-  /// 异步读取（含按 petId 持久化的 AI 图，绑定手机号后用）
+  /// 异步读取（含按 petId 持久化的 AI 图，绑定手机号后以云端档案为准）
   static Future<String?> resolveRaw() async {
     final profile = AppCacheStore.instance.petProfile;
     final storedCustom = await PetAvatarStore.urlForPet(
@@ -44,13 +67,12 @@ class PetDisplayImage {
     );
     final image = profile?['image']?.toString().trim();
 
-    if (isCustomPet(profile) || storedCustom != null) {
-      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
-      if (image != null && image.isNotEmpty) return image;
-    } else {
-      if (image != null && image.isNotEmpty) return image;
-      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
-    }
+    final picked = _pickProfileOrCustom(
+      profileImage: image,
+      storedCustom: storedCustom,
+      profile: profile,
+    );
+    if (picked != null) return picked;
 
     final animated = profile?['animated_image']?.toString().trim();
     if (animated != null && animated.isNotEmpty) return animated;

@@ -205,7 +205,7 @@ class AppCacheStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// AI 宠：未开启云同步时，用本地 AI 图补全档案（云同步以手机号账号档案为准）
+  /// AI 宠：未云同步时用本地 AI 图补全；绑定手机号后以云端档案为准
   void repairLocalPetImage() {
     if (AuthSessionStore.instance.cloudSync) return;
 
@@ -230,25 +230,25 @@ class AppCacheStore extends ChangeNotifier {
   /// 写入档案，并用返回的 id 覆盖本地 petId
   Future<void> applyPetProfileResponse(dynamic data) async {
     setPetInfo(data);
-    repairLocalPetImage();
     final id = _parsePetId(petProfile?['id'] ?? petProfile?['pet_id']);
     if (id != null) {
       await setPetId(id);
-      final custom = PetAvatarStore.urlForPetSync(id)?.trim();
-      final profileImage = petProfile?['image']?.toString().trim();
       final cloudSync = AuthSessionStore.instance.cloudSync;
-      // 绑定手机号后：以云端档案 image 为准，供首页与桌面组件同步
-      final avatarUrl = cloudSync
-          ? ((profileImage != null && profileImage.isNotEmpty)
-              ? profileImage
-              : custom)
-          : ((custom != null && custom.isNotEmpty) ? custom : profileImage);
-      if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      final profileImage = petProfile?['image']?.toString().trim();
+      final custom = PetAvatarStore.urlForPetSync(id)?.trim();
+
+      if (cloudSync && profileImage != null && profileImage.isNotEmpty) {
         await PetAvatarStore.setAvatar(
-          url: avatarUrl,
+          url: profileImage,
           description: PetAvatarStore.customAvatarDescription,
           petId: id,
           scheduleSync: false,
+        );
+      } else if (custom != null && custom.isNotEmpty) {
+        await PetAvatarStore.setAvatar(
+          url: custom,
+          description: PetAvatarStore.customAvatarDescription,
+          petId: id,
         );
         repairLocalPetImage();
       }
@@ -256,7 +256,7 @@ class AppCacheStore extends ChangeNotifier {
     scheduleWidgetSync();
   }
 
-  Map<String, dynamic>? _extractPetProfileMap(dynamic data) {
+  static Map<String, dynamic>? _extractPetProfileMap(dynamic data) {
     if (data is! Map) return null;
     final map = Map<String, dynamic>.from(data);
     final info = map['info'];
@@ -264,7 +264,15 @@ class AppCacheStore extends ChangeNotifier {
       return Map<String, dynamic>.from(info);
     }
     if (info is List) {
-      return _pickPetProfileFromList(info, cloudSync: AuthSessionStore.instance.cloudSync);
+      for (final item in info) {
+        if (item is Map &&
+            (item['is_default'] == 1 || item['is_default'] == true)) {
+          return Map<String, dynamic>.from(item);
+        }
+      }
+      if (info.isNotEmpty && info.first is Map) {
+        return Map<String, dynamic>.from(info.first as Map);
+      }
     }
     // 本地直接写入（取名页等）
     if (map.containsKey('nickname') ||
@@ -274,83 +282,6 @@ class AppCacheStore extends ChangeNotifier {
       return map;
     }
     return null;
-  }
-
-  /// 多宠列表选取：云同步走手机号账号档案；未绑定时优先本地 petId / AI 图
-  Map<String, dynamic>? _pickPetProfileFromList(
-    List info, {
-    required bool cloudSync,
-  }) {
-    final items = info
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
-    if (items.isEmpty) return null;
-
-    if (cloudSync) {
-      return _pickCloudPetProfileFromList(items);
-    }
-    return _pickLocalPetProfileFromList(items);
-  }
-
-  /// 绑定手机号后：以 getPetProfileInfo 云端列表为准
-  Map<String, dynamic> _pickCloudPetProfileFromList(
-    List<Map<String, dynamic>> items,
-  ) {
-    final currentId = petId;
-    if (currentId != null) {
-      for (final item in items) {
-        final id = _parsePetId(item['id'] ?? item['pet_id']);
-        if (id == currentId) return item;
-      }
-    }
-
-    for (final item in items) {
-      if (PetDisplayImage.isCustomPet(item)) return item;
-    }
-    for (final item in items) {
-      if (item['is_default'] == 1 || item['is_default'] == true) return item;
-    }
-    return items.first;
-  }
-
-  /// 未云同步：优先本地 petId / AI 图，避免小组件误用默认猫狗
-  Map<String, dynamic>? _pickLocalPetProfileFromList(
-    List<Map<String, dynamic>> items,
-  ) {
-    final currentId = petId;
-    if (currentId != null) {
-      for (final item in items) {
-        final id = _parsePetId(item['id'] ?? item['pet_id']);
-        if (id == currentId) return item;
-      }
-    }
-
-    final storedCustom = PetAvatarStore.customAvatarUrl?.trim();
-    if (storedCustom != null && storedCustom.isNotEmpty) {
-      for (final item in items) {
-        if (_imageMatches(item['image'], storedCustom)) return item;
-      }
-      for (final item in items) {
-        if (PetDisplayImage.isCustomPet(item)) return item;
-      }
-    }
-
-    for (final item in items) {
-      if (item['is_default'] == 1 || item['is_default'] == true) return item;
-    }
-    return items.first;
-  }
-
-  static bool _imageMatches(dynamic raw, String target) {
-    final value = raw?.toString().trim() ?? '';
-    if (value.isEmpty) return false;
-    final resolvedValue = PetImageService.resolveUrl(value);
-    final resolvedTarget = PetImageService.resolveUrl(target);
-    return value == target ||
-        value == resolvedTarget ||
-        resolvedValue == target ||
-        resolvedValue == resolvedTarget;
   }
 
   static int? _parsePetId(dynamic raw) {
