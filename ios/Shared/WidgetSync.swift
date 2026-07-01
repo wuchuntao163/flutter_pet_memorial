@@ -17,7 +17,9 @@ enum WidgetSync {
   static func saveWidgetData(_ widgetData: [String: Any]) -> Bool {
     guard let container = appGroupContainer() else { return false }
     let destination = container.appendingPathComponent(dataFileName)
-    guard let data = try? JSONSerialization.data(withJSONObject: widgetData) else {
+    var payload = widgetData
+    payload["updatedAt"] = Int(Date().timeIntervalSince1970 * 1000)
+    guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
       return false
     }
     do {
@@ -62,9 +64,10 @@ enum WidgetSync {
     do {
       try png.write(to: tempURL, options: .atomic)
       if fm.fileExists(atPath: finalURL.path) {
-        try fm.removeItem(at: finalURL)
+        _ = try fm.replaceItemAt(finalURL, withItemAt: tempURL)
+      } else {
+        try fm.moveItem(at: tempURL, to: finalURL)
       }
-      try fm.moveItem(at: tempURL, to: finalURL)
       NSLog("[PetWidget] replaced image: \(png.count) bytes")
       return true
     } catch {
@@ -162,8 +165,10 @@ enum WidgetChannelHandler {
         result(path.isEmpty ? nil : path)
       case "syncWidget":
         handleSyncWidget(call: call, result: result)
-      case "reloadWidget", "updateWidget":
+      case "reloadWidget":
         handleReloadWidget(call: call, result: result)
+      case "updateWidget":
+        handleSyncWidget(call: call, result: result)
       default:
         result(FlutterMethodNotImplemented)
       }

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -278,7 +277,7 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
     );
   }
 
-  void _useAvatar() {
+  Future<void> _useAvatar() async {
     final url = _imageUrl;
     if (url == null) {
       _dismissKeyboard();
@@ -287,7 +286,12 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
     }
 
     final description = _descriptionController.text.trim();
-    unawaited(_persistAvatar(url: url, description: description));
+    setState(() {
+      _isUploading = true;
+      _statusText = tr('avatar.generating');
+    });
+    await _persistAvatar(url: url, description: description);
+    if (!mounted) return;
     Navigator.of(
       context,
     ).pop(AvatarGenerationResult(imageUrl: url, description: description));
@@ -297,13 +301,11 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
     required String url,
     required String description,
   }) async {
-    String? localPath = _localPath;
-    if (localPath == null || !File(localPath).existsSync()) {
-      try {
-        localPath = await PetImageService.downloadToDocuments(url);
-      } catch (_) {
-        localPath = null;
-      }
+    String? localPath;
+    try {
+      localPath = await PetImageService.downloadToDocuments(url);
+    } catch (_) {
+      localPath = null;
     }
     await PetAvatarStore.setAvatar(
       url: url,
@@ -492,10 +494,12 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
                           _buildGradientButton(
                             label: tr('avatar.use_avatar'),
                             gradient: AppColors.avatarActionGradient,
-                            onPressed: () {
-                              _dismissKeyboard();
-                              _useAvatar();
-                            },
+                            onPressed: _isBusy
+                                ? null
+                                : () {
+                                  _dismissKeyboard();
+                                  _useAvatar();
+                                },
                           ),
                         ],
                       ],

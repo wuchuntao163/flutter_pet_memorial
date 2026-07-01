@@ -23,13 +23,15 @@ struct PetWidgetData: Codable {
     let petAge: String
     let petImageUrl: String
     let memorials: String
+    let updatedAt: Int64
 
     static let preview = PetWidgetData(
         petName: "小猫咪",
         petType: "2",
         petAge: "30",
         petImageUrl: "",
-        memorials: "[]"
+        memorials: "[]",
+        updatedAt: 0
     )
 
     static let empty = PetWidgetData(
@@ -37,7 +39,8 @@ struct PetWidgetData: Codable {
         petType: "",
         petAge: "",
         petImageUrl: "",
-        memorials: "[]"
+        memorials: "[]",
+        updatedAt: 0
     )
 }
 
@@ -92,8 +95,17 @@ struct Provider: TimelineProvider {
             petType: dict["petType"] as? String ?? "",
             petAge: dict["petAge"] as? String ?? "",
             petImageUrl: dict["petImageUrl"] as? String ?? "",
-            memorials: dict["memorials"] as? String ?? "[]"
+            memorials: dict["memorials"] as? String ?? "[]",
+            updatedAt: parseUpdatedAt(dict["updatedAt"])
         )
+    }
+
+    private func parseUpdatedAt(_ value: Any?) -> Int64 {
+        if let value = value as? Int64 { return value }
+        if let value = value as? Int { return Int64(value) }
+        if let value = value as? Double { return Int64(value) }
+        if let value = value as? String, let parsed = Int64(value) { return parsed }
+        return 0
     }
 }
 
@@ -108,6 +120,7 @@ struct PetWidgetEntryView: View {
 
     var body: some View {
         petContent
+            .id(entry.data.updatedAt)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(widgetPadding)
     }
