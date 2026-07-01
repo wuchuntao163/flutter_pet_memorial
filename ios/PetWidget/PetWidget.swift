@@ -100,9 +100,9 @@ struct PetWidgetEntryView: View {
     private var widgetPadding: EdgeInsets {
         switch family {
         case .systemMedium:
-            return EdgeInsets(top: 14, leading: 18, bottom: 14, trailing: 18)
+            return EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
         default:
-            return EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
+            return EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10)
         }
     }
 
@@ -137,7 +137,7 @@ struct PetWidgetEntryView: View {
         image
             .resizable()
             .scaledToFit()
-            .scaleEffect(0.78)
+            .scaleEffect(0.90)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

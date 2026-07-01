@@ -6,6 +6,8 @@ import '../services/pet_image_service.dart';
 class PetDisplayImage {
   PetDisplayImage._();
 
+  static const widgetImageFileName = 'petWidgetImage.png';
+
   static String? resolveRaw() {
     final profile = AppCacheStore.instance.petProfile;
     final fromProfile = profile?['image']?.toString().trim();
@@ -23,19 +25,27 @@ class PetDisplayImage {
     return PetImageService.resolveUrl(raw);
   }
 
-  /// 下载候选（去重）：与 resolveRaw 一致，附带解析前后两种写法
+  /// 下载时依次尝试：档案图、AI 图（两者可能不同，都试）
   static List<String> downloadCandidates() {
-    final raw = resolveRaw();
-    if (raw == null || raw.isEmpty) return [];
-
-    final resolved = PetImageService.resolveUrl(raw);
+    final profile = AppCacheStore.instance.petProfile;
     final seen = <String>{};
     final out = <String>[];
-    for (final value in [resolved, raw]) {
-      if (value.isEmpty || seen.contains(value)) continue;
-      seen.add(value);
-      out.add(value);
+
+    void addRaw(String? raw) {
+      if (raw == null) return;
+      final value = raw.trim();
+      if (value.isEmpty) return;
+      final resolved = PetImageService.resolveUrl(value);
+      for (final candidate in [resolved, value]) {
+        if (candidate.isEmpty || seen.contains(candidate)) continue;
+        seen.add(candidate);
+        out.add(candidate);
+      }
     }
+
+    addRaw(profile?['image']?.toString());
+    addRaw(PetAvatarStore.customAvatarUrl);
+
     return out;
   }
 }

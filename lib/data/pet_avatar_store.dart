@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/widget_sync_trigger.dart';
+
 /// 用户选定的 AI 宠物形象
 class PetAvatarStore {
   PetAvatarStore._();
@@ -33,6 +35,7 @@ class PetAvatarStore {
     } else {
       await prefs.remove(_keyCustomAvatarDescription);
     }
+    scheduleWidgetSync();
   }
 
   static Future<void> clear() async {

@@ -40,6 +40,8 @@ import WidgetKit
 
     channel.setMethodCallHandler { [weak self] call, result in
       switch call.method {
+      case "getAppGroupPath":
+        result(WidgetSync.appGroupContainer()?.path)
       case "updateWidget":
         self?.handleUpdateWidget(call: call, result: result)
       default:
@@ -71,6 +73,7 @@ import WidgetKit
     let petName = arguments["petName"] as? String ?? ""
     let petImageUrl = arguments["petImageUrl"] as? String ?? ""
     let authToken = arguments["authToken"] as? String ?? ""
+    let imageWritten = arguments["imageWritten"] as? Bool ?? false
     let widgetData: [String: Any] = [
       "petName": petName,
       "petType": arguments["petType"] as? String ?? "",
@@ -90,67 +93,28 @@ import WidgetKit
       return
     }
 
-    NSLog("[PetWidget] saved widget data for \(petName)")
-
     let finish: () -> Void = {
       WidgetSync.reloadTimelines()
       result(nil)
     }
 
-    if let imageData = arguments["petImageBytes"] as? FlutterStandardTypedData {
-      if savePetImageToAppGroup(imageData.data) {
-        finish()
-      } else if !petImageUrl.isEmpty {
-        cachePetImage(from: petImageUrl, authToken: authToken) { _ in
-          DispatchQueue.main.async {
-            finish()
-          }
-        }
-      } else {
-        finish()
-      }
-      return
-    }
-
-    if petImageUrl.isEmpty {
+    if imageWritten && WidgetSync.widgetImageExists() {
+      NSLog("[PetWidget] using Flutter-written image for \(petName)")
       finish()
       return
     }
 
+    if petImageUrl.isEmpty {
+      NSLog("[PetWidget] no image url for \(petName), imageWritten=\(imageWritten)")
+      finish()
+      return
+    }
+
+    NSLog("[PetWidget] fallback download image for \(petName)")
     cachePetImage(from: petImageUrl, authToken: authToken) { _ in
       DispatchQueue.main.async {
         finish()
       }
-    }
-  }
-
-  private func savePetImageToAppGroup(_ data: Data) -> Bool {
-    guard let container = WidgetSync.appGroupContainer() else {
-      NSLog("[PetWidget] app group container unavailable for image write")
-      return false
-    }
-
-    let destination = container.appendingPathComponent(WidgetSync.imageFileName)
-
-    guard let image = UIImage(data: data) else {
-      NSLog("[PetWidget] failed to decode widget image bytes")
-      return false
-    }
-
-    let processed = Self.prepareWidgetImage(image)
-    let pngData = processed.pngData() ?? Self.renderImageWithAlpha(image).pngData()
-    guard let pngData else {
-      NSLog("[PetWidget] failed to encode widget image png")
-      return false
-    }
-
-    do {
-      try pngData.write(to: destination, options: .atomic)
-      NSLog("[PetWidget] saved widget image to \(destination.path)")
-      return true
-    } catch {
-      NSLog("[PetWidget] write widget image failed: \(error)")
-      return false
     }
   }
 
@@ -184,8 +148,7 @@ import WidgetKit
         completion(false)
         return
       }
-      let processed = Self.prepareWidgetImage(image)
-      let pngData = processed.pngData() ?? Self.renderImageWithAlpha(image).pngData()
+      let pngData = image.pngData()
       guard let pngData else {
         completion(false)
         return
@@ -199,19 +162,5 @@ import WidgetKit
         completion(false)
       }
     }.resume()
-  }
-
-  private static func prepareWidgetImage(_ image: UIImage) -> UIImage {
-    renderImageWithAlpha(image)
-  }
-
-  private static func renderImageWithAlpha(_ image: UIImage) -> UIImage {
-    let format = UIGraphicsImageRendererFormat.default()
-    format.opaque = false
-    format.scale = image.scale
-    let renderer = UIGraphicsImageRenderer(size: image.size, format: format)
-    return renderer.image { _ in
-      image.draw(in: CGRect(origin: .zero, size: image.size))
-    }
   }
 }

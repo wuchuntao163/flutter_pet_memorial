@@ -20,6 +20,8 @@ class WidgetService {
 
   static const _channel = MethodChannel('com.example.flutterPetMemorial/widget');
 
+  String? _appGroupPath;
+
   /// 更新小组件数据
   Future<void> updateWidget() async {
     if (!Platform.isIOS) return;
@@ -43,6 +45,7 @@ class WidgetService {
       final petImageUrl =
           imageCandidates.isNotEmpty ? imageCandidates.first : '';
       final petImageBytes = await _loadPetImageBytes(imageCandidates);
+      final imageWritten = await _writeImageToAppGroup(petImageBytes);
 
       final memorialPayload = memorials
           .take(10)
@@ -63,35 +66,60 @@ class WidgetService {
         'petAge': petAge,
         'petImageUrl': petImageUrl,
         'memorials': jsonEncode(memorialPayload),
+        'imageWritten': imageWritten,
       };
-      if (petImageBytes != null && petImageBytes.isNotEmpty) {
-        payload['petImageBytes'] = petImageBytes;
-      }
       if (token != null && token.isNotEmpty) {
         payload['authToken'] = token;
       }
 
       await _channel.invokeMethod<void>('updateWidget', payload);
 
-      if (kDebugMode) {
-        debugPrint(
-          '[WidgetService] updateWidget ok: name=$petName '
-          'displayRaw=${PetDisplayImage.resolveRaw() ?? '-'} '
-          'url=${petImageUrl.isEmpty ? '-' : petImageUrl} '
-          'bytes=${petImageBytes?.length ?? 0}',
-        );
-      }
+      debugPrint(
+        '[WidgetService] updateWidget: name=$petName '
+        'candidates=${imageCandidates.length} '
+        'url=${petImageUrl.isEmpty ? '-' : petImageUrl} '
+        'bytes=${petImageBytes?.length ?? 0} '
+        'imageWritten=$imageWritten',
+      );
     } on PlatformException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[WidgetService] updateWidget platform error: '
-          '${e.code} ${e.message}',
-        );
-      }
+      debugPrint(
+        '[WidgetService] platform error: ${e.code} ${e.message}',
+      );
     } catch (e, st) {
-      if (kDebugMode) {
-        debugPrint('[WidgetService] updateWidget failed: $e\n$st');
+      debugPrint('[WidgetService] updateWidget failed: $e\n$st');
+    }
+  }
+
+  Future<String?> _getAppGroupPath() async {
+    if (_appGroupPath != null && _appGroupPath!.isNotEmpty) {
+      return _appGroupPath;
+    }
+    try {
+      final path = await _channel.invokeMethod<String>('getAppGroupPath');
+      if (path != null && path.trim().isNotEmpty) {
+        _appGroupPath = path.trim();
+        return _appGroupPath;
       }
+    } catch (e) {
+      debugPrint('[WidgetService] getAppGroupPath failed: $e');
+    }
+    return null;
+  }
+
+  Future<bool> _writeImageToAppGroup(Uint8List? bytes) async {
+    if (bytes == null || bytes.isEmpty) return false;
+    final appGroupPath = await _getAppGroupPath();
+    if (appGroupPath == null) return false;
+
+    try {
+      final file = File(
+        '$appGroupPath/${PetDisplayImage.widgetImageFileName}',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      return await file.exists() && await file.length() > 0;
+    } catch (e) {
+      debugPrint('[WidgetService] write app group image failed: $e');
+      return false;
     }
   }
 
@@ -99,7 +127,8 @@ class WidgetService {
     for (final candidate in candidates) {
       final local = await _readLocalImageBytes(candidate);
       if (local != null && local.isNotEmpty) {
-        return _normalizeToPng(local);
+        final png = await _normalizeToPng(local);
+        if (png != null && png.isNotEmpty) return png;
       }
     }
 
@@ -110,7 +139,8 @@ class WidgetService {
       }
       final bytes = await _downloadBytes(candidate);
       if (bytes != null && bytes.isNotEmpty) {
-        return _normalizeToPng(bytes);
+        final png = await _normalizeToPng(bytes);
+        if (png != null && png.isNotEmpty) return png;
       }
     }
 
@@ -126,9 +156,7 @@ class WidgetService {
       final png = data?.buffer.asUint8List();
       if (png != null && png.isNotEmpty) return png;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[WidgetService] normalize png failed: $e');
-      }
+      debugPrint('[WidgetService] normalize png failed: $e');
     }
     return bytes;
   }
@@ -148,15 +176,14 @@ class WidgetService {
           responseType: ResponseType.bytes,
           receiveTimeout: const Duration(seconds: 30),
           headers: headers,
+          followRedirects: true,
         ),
       );
       final data = response.data;
       if (data == null || data.isEmpty) return null;
       return Uint8List.fromList(data);
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[WidgetService] download image failed ($url): $e');
-      }
+      debugPrint('[WidgetService] download failed ($url): $e');
       return null;
     }
   }

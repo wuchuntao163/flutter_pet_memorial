@@ -27,14 +27,19 @@ enum WidgetSync {
     }
   }
 
-  static func removeWidgetImage() {
-    guard let container = appGroupContainer() else { return }
+  static func widgetImageExists() -> Bool {
+    guard let container = appGroupContainer() else { return false }
     let destination = container.appendingPathComponent(imageFileName)
-    try? FileManager.default.removeItem(at: destination)
+    guard let attrs = try? FileManager.default.attributesOfItem(atPath: destination.path),
+          let size = attrs[.size] as? NSNumber else {
+      return false
+    }
+    return size.intValue > 0
   }
 
   static func reloadTimelines() {
     guard #available(iOS 14.0, *) else { return }
     WidgetCenter.shared.reloadTimelines(ofKind: kind)
+    WidgetCenter.shared.reloadAllTimelines()
   }
 }
