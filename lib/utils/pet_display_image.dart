@@ -43,7 +43,7 @@ class PetDisplayImage {
         await PetAvatarStore.urlForPet(AppCacheStore.instance.petId);
     final image = profile?['image']?.toString().trim();
 
-    if (isCustomPet(profile)) {
+    if (isCustomPet(profile) || storedCustom != null) {
       if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
       if (image != null && image.isNotEmpty) return image;
     } else {

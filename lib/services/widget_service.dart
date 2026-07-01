@@ -12,7 +12,7 @@ import '../data/auth_session_store.dart';
 import '../data/memorial_store.dart';
 import '../utils/pet_display_image.dart';
 
-/// iOS 主屏幕小组件：Flutter 直接写入 App Group（JSON + PNG），避免通道传大图失败
+/// iOS 主屏幕小组件：由原生写入 App Group（JSON + PNG），避免 Dart 直写失败
 class WidgetService {
   WidgetService._();
 
@@ -20,11 +20,10 @@ class WidgetService {
 
   static const _channel = MethodChannel('com.example.flutterPetMemorial/widget');
 
-  String? _appGroupPath;
   int? _lastSyncedPetId;
   String? _lastSyncedImageKey;
 
-  Future<void> updateWidget({int retries = 3}) async {
+  Future<void> updateWidget({int retries = 5}) async {
     if (!Platform.isIOS) return;
 
     AppCacheStore.instance.repairLocalPetImage();
@@ -39,7 +38,7 @@ class WidgetService {
         debugPrint('[WidgetService] attempt ${attempt + 1} failed: $e\n$st');
       }
       if (attempt < retries - 1) {
-        await Future<void>.delayed(Duration(milliseconds: 400 * (attempt + 1)));
+        await Future<void>.delayed(Duration(milliseconds: 300 * (attempt + 1)));
       }
     }
     if (lastError != null) {
@@ -48,6 +47,11 @@ class WidgetService {
   }
 
   Future<bool> _updateWidgetOnce() async {
+    if (!await _waitForNativeChannel()) {
+      debugPrint('[WidgetService] native channel not ready');
+      return false;
+    }
+
     final cache = AppCacheStore.instance;
     final profile = cache.petProfile;
     final memorials = MemorialStore.instance.items;
@@ -69,12 +73,15 @@ class WidgetService {
     final imageKey = '${petId ?? 0}|$petImageUrl';
     final petChanged = petId != _lastSyncedPetId;
     final imageChanged = imageKey != _lastSyncedImageKey;
+    final clearImage = petChanged || imageChanged;
 
-    if (petChanged || imageChanged) {
-      await _clearAppGroupImage();
-    }
-
-    final petImageBytes = await _loadPetImageBytes(imageCandidates);
+    final localImagePath = _firstLocalPath(imageCandidates);
+    final imageBytes = localImagePath == null
+        ? await _loadRemoteImageBytes(imageCandidates)
+        : null;
+    final imageBase64 = imageBytes != null && imageBytes.isNotEmpty
+        ? base64Encode(imageBytes)
+        : '';
 
     final memorialPayload = memorials
         .take(10)
@@ -88,31 +95,33 @@ class WidgetService {
         )
         .toList();
 
-    final widgetJson = <String, dynamic>{
-      'petId': '${petId ?? ''}',
-      'petName': petName,
-      'petType': petType,
-      'petAge': petAge,
-      'petImageUrl': petImageUrl,
-      'memorials': jsonEncode(memorialPayload),
-    };
-
-    final payloadWritten = await _writePayloadToAppGroup(
-      widgetJson: widgetJson,
-      imageBytes: petImageBytes,
+    final token = AuthSessionStore.instance.token;
+    final result = await _channel.invokeMethod<Map<Object?, Object?>>(
+      'syncWidget',
+      {
+        'petId': '${petId ?? ''}',
+        'petName': petName,
+        'petType': petType,
+        'petAge': petAge,
+        'petImageUrl': petImageUrl,
+        'memorials': jsonEncode(memorialPayload),
+        'localImagePath': localImagePath ?? '',
+        'imageBase64':
+            localImagePath == null && imageBase64.length <= 4 * 1024 * 1024
+            ? imageBase64
+            : '',
+        'authToken': token ?? '',
+        'clearImage': clearImage,
+      },
     );
 
-    if (!payloadWritten) {
-      debugPrint('[WidgetService] write app group failed');
+    final imageWritten = result?['imageWritten'] == true;
+    final jsonWritten = result?['jsonWritten'] == true;
+
+    if (jsonWritten != true) {
+      debugPrint('[WidgetService] native json write failed');
       return false;
     }
-
-    final token = AuthSessionStore.instance.token;
-    await _channel.invokeMethod<void>('reloadWidget', {
-      'authToken': token ?? '',
-      'petImageUrl': petImageUrl,
-      'imageWritten': petImageBytes != null && petImageBytes.isNotEmpty,
-    });
 
     _lastSyncedPetId = petId;
     _lastSyncedImageKey = imageKey;
@@ -120,79 +129,43 @@ class WidgetService {
     debugPrint(
       '[WidgetService] sync ok: petId=$petId name=$petName '
       'url=${petImageUrl.isEmpty ? '-' : petImageUrl} '
-      'bytes=${petImageBytes?.length ?? 0} '
-      'petChanged=$petChanged',
+      'local=${localImagePath ?? '-'} '
+      'imageWritten=$imageWritten clear=$clearImage',
     );
     return true;
   }
 
-  Future<String?> _getAppGroupPath() async {
-    if (_appGroupPath != null && _appGroupPath!.isNotEmpty) {
-      return _appGroupPath;
-    }
-    try {
-      final path = await _channel.invokeMethod<String>('getAppGroupPath');
-      if (path != null && path.trim().isNotEmpty) {
-        _appGroupPath = path.trim();
-        return _appGroupPath;
+  Future<bool> _waitForNativeChannel() async {
+    for (var i = 0; i < 30; i++) {
+      try {
+        final path = await _channel.invokeMethod<String>('getAppGroupPath');
+        if (path != null && path.trim().isNotEmpty) return true;
+      } catch (e) {
+        if (i == 0 || i == 29) {
+          debugPrint('[WidgetService] wait channel ($i): $e');
+        }
       }
-    } catch (e) {
-      debugPrint('[WidgetService] getAppGroupPath failed: $e');
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return false;
+  }
+
+  String? _firstLocalPath(List<String> candidates) {
+    for (final candidate in candidates) {
+      if (candidate.isEmpty) continue;
+      if (candidate.startsWith('http://') || candidate.startsWith('https://')) {
+        continue;
+      }
+      var path = candidate;
+      if (path.startsWith('file://')) {
+        path = path.replaceFirst('file://', '');
+      }
+      if (File(path).existsSync()) return path;
     }
     return null;
   }
 
-  Future<bool> _writePayloadToAppGroup({
-    required Map<String, dynamic> widgetJson,
-    Uint8List? imageBytes,
-  }) async {
-    final appGroupPath = await _getAppGroupPath();
-    if (appGroupPath == null) return false;
-
-    try {
-      final jsonFile = File(
-        '$appGroupPath/${PetDisplayImage.widgetDataFileName}',
-      );
-      await jsonFile.writeAsString(jsonEncode(widgetJson), flush: true);
-
-      final imageFile = File(
-        '$appGroupPath/${PetDisplayImage.widgetImageFileName}',
-      );
-      if (imageBytes != null && imageBytes.isNotEmpty) {
-        await imageFile.writeAsBytes(imageBytes, flush: true);
-      } else if (await imageFile.exists()) {
-        await imageFile.delete();
-      }
-
-      return await jsonFile.exists();
-    } catch (e) {
-      debugPrint('[WidgetService] write payload failed: $e');
-      return false;
-    }
-  }
-
-  Future<void> _clearAppGroupImage() async {
-    final appGroupPath = await _getAppGroupPath();
-    if (appGroupPath == null) return;
-    try {
-      final file = File(
-        '$appGroupPath/${PetDisplayImage.widgetImageFileName}',
-      );
-      if (await file.exists()) await file.delete();
-    } catch (e) {
-      debugPrint('[WidgetService] clear image failed: $e');
-    }
-  }
-
-  Future<Uint8List?> _loadPetImageBytes(List<String> candidates) async {
-    for (final candidate in candidates) {
-      final local = await _readLocalImageBytes(candidate);
-      if (local != null && local.isNotEmpty) {
-        final png = await _normalizeToPng(local);
-        if (png != null && png.isNotEmpty) return png;
-      }
-    }
-
+  Future<Uint8List?> _loadRemoteImageBytes(List<String> candidates) async {
     for (final candidate in candidates) {
       if (!candidate.startsWith('http://') &&
           !candidate.startsWith('https://')) {
@@ -204,7 +177,6 @@ class WidgetService {
         if (png != null && png.isNotEmpty) return png;
       }
     }
-
     return null;
   }
 
@@ -247,22 +219,5 @@ class WidgetService {
       debugPrint('[WidgetService] download failed ($url): $e');
       return null;
     }
-  }
-
-  Future<Uint8List?> _readLocalImageBytes(String path) async {
-    if (path.isEmpty) return null;
-
-    if (path.startsWith('file://')) {
-      final file = File(path.replaceFirst('file://', ''));
-      if (await file.exists()) return file.readAsBytes();
-      return null;
-    }
-
-    if (!path.startsWith('http://') && !path.startsWith('https://')) {
-      final file = File(path);
-      if (await file.exists()) return file.readAsBytes();
-    }
-
-    return null;
   }
 }

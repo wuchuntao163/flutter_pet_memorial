@@ -247,7 +247,8 @@ class AppCacheStore extends ChangeNotifier {
 
   static Map<String, dynamic>? _extractPetProfileMap(dynamic data) {
     if (data is! Map) return null;
-    final info = data['info'];
+    final map = Map<String, dynamic>.from(data);
+    final info = map['info'];
     if (info is Map) {
       return Map<String, dynamic>.from(info);
     }
@@ -261,6 +262,13 @@ class AppCacheStore extends ChangeNotifier {
       if (info.isNotEmpty && info.first is Map) {
         return Map<String, dynamic>.from(info.first as Map);
       }
+    }
+    // 本地直接写入（取名页等）
+    if (map.containsKey('nickname') ||
+        map.containsKey('image') ||
+        map.containsKey('pet_type') ||
+        map.containsKey('type')) {
+      return map;
     }
     return null;
   }
