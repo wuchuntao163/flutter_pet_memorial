@@ -65,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _watchRoute();
-      _precachePetAvatar();
+      unawaited(_precachePetAvatar());
       PlatformPetSync.afterProfileUpdate();
     });
     _loadDesktopPetSetting();
@@ -77,9 +77,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) setState(() => _appVersion = version);
   }
 
-  void _precachePetAvatar() {
+  Future<void> _precachePetAvatar() async {
     if (!mounted) return;
-    PetImageCache.instance.precache(context, PetDisplayImage.resolveRaw());
+    final url = await PetDisplayImage.resolveRaw();
+    if (!mounted) return;
+    PetImageCache.instance.precache(context, url);
   }
 
   Future<void> _loadDesktopPetSetting() async {
@@ -164,7 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) setState(() {});
   }
 
-  String? _petAvatarUrl() => PetDisplayImage.resolveRaw();
+  String? _petAvatarUrl() => PetDisplayImage.resolveRawSync();
 
   @override
   Widget build(BuildContext context) {

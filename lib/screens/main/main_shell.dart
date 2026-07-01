@@ -125,7 +125,7 @@ class _MainShellState extends State<MainShell> {
                   builder: (context, _) {
                     final profile = AppCacheStore.instance.petProfile;
                     final gif = profile?['animated_image']?.toString();
-                    final avatar = PetDisplayImage.resolveRaw();
+                    final avatar = PetDisplayImage.resolveRawSync();
                     return DraggableFloatingPet(
                       key: _floatingPetKey,
                       position: _petPosition!,

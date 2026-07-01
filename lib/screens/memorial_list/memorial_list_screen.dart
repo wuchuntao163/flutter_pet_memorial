@@ -46,7 +46,7 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
       _onPetChanged();
       AppUpdateUtil.checkOnHomeLaunch(context);
       if (mounted) {
-        PetImageCache.instance.precache(context, PetDisplayImage.resolveRaw());
+        PetImageCache.instance.precache(context, PetDisplayImage.resolveRawSync());
       }
     });
   }
@@ -289,7 +289,7 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
   Widget _buildPetCard(bool isPetVisible) {
     final pet = AppCacheStore.instance.petProfile;
     final nickname = pet?['nickname']?.toString() ?? '';
-    final image = PetDisplayImage.resolveRaw() ?? '';
+    final image = PetDisplayImage.resolveRawSync() ?? '';
     final days = AppCacheStore.instance.accompanyDays;
 
     return Container(

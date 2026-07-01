@@ -42,8 +42,10 @@ import WidgetKit
       switch call.method {
       case "getAppGroupPath":
         result(WidgetSync.appGroupContainer()?.path)
+      case "reloadWidget":
+        self?.handleReloadWidget(call: call, result: result)
       case "updateWidget":
-        self?.handleUpdateWidget(call: call, result: result)
+        self?.handleReloadWidget(call: call, result: result)
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -52,75 +54,51 @@ import WidgetKit
     NSLog("[PetWidget] Method channel registered")
   }
 
-  private func handleUpdateWidget(call: FlutterMethodCall, result: @escaping FlutterResult) {
-    guard let arguments = call.arguments as? [String: Any] else {
-      result(FlutterError(code: "INVALID_ARGUMENTS", message: "参数无效", details: nil))
-      return
-    }
-
+  /// Flutter 已写入 App Group，此处仅刷新小组件；必要时补下载图片
+  private func handleReloadWidget(call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard WidgetSync.appGroupContainer() != nil else {
-      NSLog("[PetWidget] App Group unavailable: \(AppGroupConfig.id)")
       result(
         FlutterError(
           code: "APP_GROUP_UNAVAILABLE",
-          message: "App Group 未配置，请在 Xcode 为 Runner 和 PetWidget 开启 App Groups",
+          message: "App Group 未配置",
           details: nil
         )
       )
       return
     }
 
-    let petName = arguments["petName"] as? String ?? ""
-    let petImageUrl = arguments["petImageUrl"] as? String ?? ""
-    let authToken = arguments["authToken"] as? String ?? ""
-    let imageWritten = arguments["imageWritten"] as? Bool ?? false
-    let petId = arguments["petId"] as? String ?? ""
-    let widgetData: [String: Any] = [
-      "petId": petId,
-      "petName": petName,
-      "petType": arguments["petType"] as? String ?? "",
-      "petAge": arguments["petAge"] as? String ?? "",
-      "petImageUrl": petImageUrl,
-      "memorials": arguments["memorials"] as? String ?? "[]",
-    ]
-
-    guard WidgetSync.saveWidgetData(widgetData) else {
-      result(
-        FlutterError(
-          code: "WRITE_FAILED",
-          message: "小组件数据写入失败",
-          details: nil
-        )
-      )
-      return
-    }
+    let args = call.arguments as? [String: Any]
+    let petImageUrl = args?["petImageUrl"] as? String ?? ""
+    let authToken = args?["authToken"] as? String ?? ""
+    let flutterWroteImage = args?["imageWritten"] as? Bool ?? false
 
     let finish: () -> Void = {
       WidgetSync.reloadTimelines()
       result(nil)
     }
 
-    if imageWritten && WidgetSync.widgetImageExists() {
-      NSLog("[PetWidget] using Flutter-written image petId=\(petId) name=\(petName)")
+    if flutterWroteImage && WidgetSync.widgetImageExists() {
+      NSLog("[PetWidget] reload with Flutter-written image")
       finish()
       return
     }
 
-    if !imageWritten {
+    if WidgetSync.widgetImageExists() {
+      NSLog("[PetWidget] reload with existing cached image")
+      finish()
+      return
+    }
+
+    guard !petImageUrl.isEmpty else {
       WidgetSync.removeWidgetImage()
-    }
-
-    if petImageUrl.isEmpty {
-      NSLog("[PetWidget] no image url petId=\(petId) name=\(petName)")
+      NSLog("[PetWidget] reload without image url")
       finish()
       return
     }
 
-    NSLog("[PetWidget] fallback download image for \(petName)")
+    NSLog("[PetWidget] fallback download: \(petImageUrl)")
     cachePetImage(from: petImageUrl, authToken: authToken) { _ in
-      DispatchQueue.main.async {
-        finish()
-      }
+      DispatchQueue.main.async { finish() }
     }
   }
 
@@ -145,26 +123,19 @@ import WidgetKit
 
     URLSession.shared.dataTask(with: request) { data, _, error in
       if let error = error {
-        NSLog("[PetWidget] download image failed: \(error.localizedDescription)")
+        NSLog("[PetWidget] download failed: \(error.localizedDescription)")
         completion(false)
         return
       }
-      guard let data = data, let image = UIImage(data: data) else {
-        NSLog("[PetWidget] download image decode failed")
-        completion(false)
-        return
-      }
-      let pngData = image.pngData()
-      guard let pngData else {
+      guard let data = data, let image = UIImage(data: data), let png = image.pngData() else {
+        NSLog("[PetWidget] download decode failed")
         completion(false)
         return
       }
       do {
-        try pngData.write(to: destination, options: .atomic)
-        NSLog("[PetWidget] cached remote widget image")
+        try png.write(to: destination, options: .atomic)
         completion(true)
       } catch {
-        NSLog("[PetWidget] write cached image failed: \(error)")
         completion(false)
       }
     }.resume()

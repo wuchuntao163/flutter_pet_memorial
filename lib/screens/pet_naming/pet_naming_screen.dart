@@ -138,6 +138,7 @@ class _PetNamingScreenState extends State<PetNamingScreen> {
         await PetAvatarStore.setAvatar(
           url: image,
           description: PetAvatarStore.customAvatarDescription,
+          petId: id is int ? id : int.tryParse('$id'),
         );
       }
       await PlatformPetSync.afterProfileUpdate();
@@ -156,7 +157,16 @@ class _PetNamingScreenState extends State<PetNamingScreen> {
             ...?profile,
             'nickname': nickname,
             'image': createdImage,
+            'type': widget.petType == 'custom' ? 'custom' : profile?['type'],
+            'pet_type': widget.petType == 'custom' ? 3 : profile?['pet_type'],
           });
+          if (widget.petType == 'custom') {
+            await PetAvatarStore.setAvatar(
+              url: createdImage,
+              description: PetAvatarStore.customAvatarDescription,
+              petId: id is int ? id : int.tryParse('$id'),
+            );
+          }
           await PlatformPetSync.afterProfileUpdate();
         } catch (e) {
           if (kDebugMode) {

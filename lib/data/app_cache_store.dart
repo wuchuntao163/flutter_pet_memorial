@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api.dart';
 import '../data/pet_avatar_store.dart';
 import '../services/pet_image_service.dart';
+import '../services/widget_sync_trigger.dart';
+import '../utils/pet_display_image.dart';
 
 /// 启动接口数据缓存
 class AppCacheStore extends ChangeNotifier {
@@ -177,7 +179,12 @@ class AppCacheStore extends ChangeNotifier {
     if (next == null) return;
 
     final prev = petProfile;
-    if (prev != null) {
+    final prevId = _parsePetId(prev?['id'] ?? prev?['pet_id']);
+    final nextId = _parsePetId(next['id'] ?? next['pet_id']);
+    // 换宠 / 绑定后 petId 变化时，禁止把上一只宠（如默认猫狗）的 image 合并过来
+    final samePet = prevId != null && nextId != null && prevId == nextId;
+
+    if (prev != null && samePet) {
       for (final entry in prev.entries) {
         final incoming = next[entry.key];
         final empty = incoming == null ||
@@ -194,16 +201,48 @@ class AppCacheStore extends ChangeNotifier {
     }
 
     petInfo = next;
+    repairLocalPetImage();
     notifyListeners();
+  }
+
+  /// AI 宠：若档案 image 为空或与本地 AI 图不一致，用本地 AI 图补全
+  void repairLocalPetImage() {
+    final map = petProfile;
+    if (map == null) return;
+
+    final custom = PetAvatarStore.urlForPetSync(petId)?.trim();
+    if (custom == null || custom.isEmpty) return;
+
+    final image = map['image']?.toString().trim() ?? '';
+    if (image == custom) return;
+
+    final patched = Map<String, dynamic>.from(map);
+    patched['image'] = custom;
+    if (!PetDisplayImage.isCustomPet(map)) {
+      patched['type'] = 'custom';
+      patched['pet_type'] = 3;
+    }
+    petInfo = patched;
   }
 
   /// 写入档案，并用返回的 id 覆盖本地 petId
   Future<void> applyPetProfileResponse(dynamic data) async {
     setPetInfo(data);
+    repairLocalPetImage();
     final id = _parsePetId(petProfile?['id'] ?? petProfile?['pet_id']);
     if (id != null) {
       await setPetId(id);
+      final custom = PetAvatarStore.urlForPetSync(id)?.trim();
+      if (custom != null && custom.isNotEmpty) {
+        await PetAvatarStore.setAvatar(
+          url: custom,
+          description: PetAvatarStore.customAvatarDescription,
+          petId: id,
+        );
+        repairLocalPetImage();
+      }
     }
+    scheduleWidgetSync();
   }
 
   static Map<String, dynamic>? _extractPetProfileMap(dynamic data) {

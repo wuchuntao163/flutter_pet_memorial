@@ -7,26 +7,27 @@ class PetDisplayImage {
   PetDisplayImage._();
 
   static const widgetImageFileName = 'petWidgetImage.png';
+  static const widgetDataFileName = 'petWidgetData.json';
 
-  static bool _isCustomPet(Map? profile) {
+  static bool isCustomPet(Map? profile) {
     final type =
         profile?['type']?.toString() ?? profile?['pet_type']?.toString() ?? '';
     return type == '3' || type == 'custom';
   }
 
-  /// 与首页宠物卡片、悬浮宠一致
-  static String? resolveRaw() {
+  /// 同步读取（内存 + 按 petId 缓存）
+  static String? resolveRawSync() {
     final profile = AppCacheStore.instance.petProfile;
+    final petId = AppCacheStore.instance.petId;
+    final storedCustom = PetAvatarStore.urlForPetSync(petId);
     final image = profile?['image']?.toString().trim();
-    final custom = PetAvatarStore.customAvatarUrl?.trim();
 
-    // AI 宠：优先 AI 图，避免档案里残留上一只默认宠的 image
-    if (_isCustomPet(profile)) {
-      if (custom != null && custom.isNotEmpty) return custom;
+    if (isCustomPet(profile) || storedCustom != null) {
+      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
       if (image != null && image.isNotEmpty) return image;
     } else {
       if (image != null && image.isNotEmpty) return image;
-      if (custom != null && custom.isNotEmpty) return custom;
+      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
     }
 
     final animated = profile?['animated_image']?.toString().trim();
@@ -35,14 +36,34 @@ class PetDisplayImage {
     return null;
   }
 
-  static String resolveUrl() {
-    final raw = resolveRaw();
+  /// 异步读取（含按 petId 持久化的 AI 图，绑定手机号后用）
+  static Future<String?> resolveRaw() async {
+    final profile = AppCacheStore.instance.petProfile;
+    final storedCustom =
+        await PetAvatarStore.urlForPet(AppCacheStore.instance.petId);
+    final image = profile?['image']?.toString().trim();
+
+    if (isCustomPet(profile)) {
+      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
+      if (image != null && image.isNotEmpty) return image;
+    } else {
+      if (image != null && image.isNotEmpty) return image;
+      if (storedCustom != null && storedCustom.isNotEmpty) return storedCustom;
+    }
+
+    final animated = profile?['animated_image']?.toString().trim();
+    if (animated != null && animated.isNotEmpty) return animated;
+
+    return null;
+  }
+
+  static Future<String> resolveUrl() async {
+    final raw = await resolveRaw();
     if (raw == null || raw.isEmpty) return '';
     return PetImageService.resolveUrl(raw);
   }
 
-  /// 下载候选：主图 + 其余来源（切换宠物时逐个尝试）
-  static List<String> downloadCandidates() {
+  static Future<List<String>> downloadCandidates() async {
     final profile = AppCacheStore.instance.petProfile;
     final seen = <String>{};
     final out = <String>[];
@@ -59,14 +80,11 @@ class PetDisplayImage {
       }
     }
 
-    addRaw(resolveRaw());
-    if (_isCustomPet(profile)) {
-      addRaw(PetAvatarStore.customAvatarUrl);
-      addRaw(profile?['image']?.toString());
-    } else {
-      addRaw(profile?['image']?.toString());
-      addRaw(PetAvatarStore.customAvatarUrl);
-    }
+    final primary = await resolveRaw();
+    addRaw(primary);
+    addRaw(await PetAvatarStore.urlForPet(AppCacheStore.instance.petId));
+    addRaw(profile?['image']?.toString());
+    addRaw(PetAvatarStore.customAvatarUrl);
     addRaw(profile?['animated_image']?.toString());
 
     return out;
