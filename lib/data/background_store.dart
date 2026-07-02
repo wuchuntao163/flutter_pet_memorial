@@ -39,6 +39,43 @@ class BackgroundStore extends ChangeNotifier {
 
   Map<String, dynamic>? findById(String id) => _itemById[id];
 
+  /// 注入本地已知的背景项，避免冷启动时等接口才能展示图片 URL
+  void rememberItem({
+    required String id,
+    required String image,
+    String? name,
+    String? categoryKey,
+  }) {
+    final key = id.trim();
+    final url = image.trim();
+    if (key.isEmpty || url.isEmpty) return;
+    final existing = _itemById[key];
+    final item = {
+      ...?existing,
+      'id': key,
+      'image': url,
+      if (name != null && name.isNotEmpty) 'name': name,
+    };
+    _itemById[key] = item;
+
+    final bucketKey = categoryKey?.trim();
+    if (bucketKey == null || bucketKey.isEmpty) return;
+
+    final bucket = List<Map<String, dynamic>>.from(
+      _itemsByCategory[bucketKey] ?? const [],
+    );
+    final index = bucket.indexWhere((entry) => '${entry['id']}' == key);
+    if (index >= 0) {
+      bucket[index] = item;
+    } else {
+      bucket.insert(0, item);
+    }
+    _itemsByCategory[bucketKey] = bucket;
+    if (_isCustomTab && bucketKey == customTabKey) {
+      _currentItems = bucket;
+    }
+  }
+
   static bool isUserOwned(Map<String, dynamic> item) {
     final userId = item['user_id'];
     final parsed = userId is int ? userId : int.tryParse('$userId');

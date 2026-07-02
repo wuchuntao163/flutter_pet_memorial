@@ -2,12 +2,14 @@ import 'package:flutter/foundation.dart';
 
 import '../api/api.dart';
 import '../l10n/tr.dart';
+import '../models/background_style_config.dart';
 import '../models/memorial_day.dart';
 import '../services/reminder_service.dart';
 import '../services/platform_pet_sync.dart';
 import '../utils/language_id_util.dart';
 import '../utils/type_title_util.dart';
 import 'app_cache_store.dart';
+import 'memorial_style_prefs.dart';
 
 /// 纪念日数据（接口 getAnniversaryList / addAnniversary）
 class MemorialStore extends ChangeNotifier {
@@ -94,6 +96,7 @@ class MemorialStore extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    await MemorialStylePrefs.instance.ensureLoaded();
     if (!silent) {
       isLoadingList = true;
       notifyListeners();
@@ -112,9 +115,11 @@ class MemorialStore extends ChangeNotifier {
         if (raw['is_show'] == 0) continue;
         try {
           parsed.add(
-            MemorialDay.fromApi(
-              Map<String, dynamic>.from(raw),
-              types: typeList,
+            MemorialStylePrefs.instance.apply(
+              MemorialDay.fromApi(
+                Map<String, dynamic>.from(raw),
+                types: typeList,
+              ),
             ),
           );
         } catch (e, st) {
@@ -166,13 +171,14 @@ class MemorialStore extends ChangeNotifier {
   }
 
   MemorialDay _mergeLocalOnly(MemorialDay api, MemorialDay local) {
-    return api.copyWith(
+    final merged = api.copyWith(
       fontStyleId: local.fontStyleId,
       backgroundStyleId: local.backgroundStyleId,
       backgroundTab: local.backgroundTab,
       dayCountDisplayMode: local.dayCountDisplayMode,
       isLunarLeapMonth: local.isLunarLeapMonth,
     );
+    return MemorialStylePrefs.instance.apply(merged);
   }
 
   Map<String, dynamic>? typeById(int? typeId) {
@@ -538,12 +544,17 @@ class MemorialStore extends ChangeNotifier {
     final index = _items.indexWhere((e) => e.id == day.id);
     if (index == -1) return;
     _items[index] = day;
+    MemorialStylePrefs.instance.save(
+      day,
+      backgroundImageUrl: BackgroundStyleConfig.imageUrlFor(day.backgroundStyleId),
+    );
     notifyListeners();
   }
 
   void remove(String id) {
     final normalized = id.trim();
     _items.removeWhere((e) => e.id.trim() == normalized);
+    MemorialStylePrefs.instance.remove(normalized);
     notifyListeners();
   }
 
@@ -554,6 +565,7 @@ class MemorialStore extends ChangeNotifier {
     listLoaded = false;
     _loadedPetId = null;
     _ensureMemorialsFuture = null;
+    MemorialStylePrefs.instance.clear();
     notifyListeners();
   }
 

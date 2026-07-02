@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/colors.dart';
 import '../../data/background_store.dart';
+import '../../data/memorial_style_prefs.dart';
 import '../../l10n/tr.dart';
 import '../../models/background_style_config.dart';
 import '../../models/memorial_day.dart';
@@ -43,9 +44,14 @@ class _BackgroundStyleDialogState extends State<BackgroundStyleDialog> {
     super.initState();
     _selectedStyleId = widget.initialStyleId;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await MemorialStylePrefs.instance.prepareForMemorial(_day.id);
       final customTab =
           _day.backgroundTab.trim() == BackgroundStore.customTabKey;
-      await BackgroundStore.instance.ensureReady(customTab: customTab);
+      if (customTab) {
+        await BackgroundStore.instance.selectCustomTab();
+      } else {
+        await BackgroundStore.instance.ensureReady(customTab: false);
+      }
       if (!mounted) return;
       _syncSelection();
     });

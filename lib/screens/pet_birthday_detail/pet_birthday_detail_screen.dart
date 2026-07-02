@@ -4,6 +4,7 @@ import '../../api/api.dart';
 import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../data/memorial_store.dart';
+import '../../data/memorial_style_prefs.dart';
 import '../../data/background_store.dart';
 import '../../models/background_style_config.dart';
 import '../../models/font_style_config.dart';
@@ -12,6 +13,7 @@ import '../../router/app_routes.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/date_format_util.dart';
 import '../../utils/lunar_calendar_util.dart';
+import '../../services/pet_image_cache.dart';
 import '../../widgets/common/memorial_type_info.dart';
 import '../../widgets/common/compact_app_bar.dart';
 import '../../widgets/common/memorial_day_count_display.dart';
@@ -37,7 +39,22 @@ class _MemorialDayDetailScreenState extends State<MemorialDayDetailScreen> {
     super.initState();
     MemorialStore.instance.addListener(_onStoreChanged);
     BackgroundStore.instance.addListener(_onStoreChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureDefaultBackground());
+    _restoreCachedBackground();
+  }
+
+  Future<void> _restoreCachedBackground() async {
+    await MemorialStylePrefs.instance.prepareForMemorial(widget.memorialDay.id);
+    if (!mounted) return;
+    _ensureDefaultBackground();
+    _precacheBackground();
+    setState(() {});
+  }
+
+  void _precacheBackground() {
+    if (!mounted) return;
+    final url = BackgroundStyleConfig.imageUrlFor(_day.backgroundStyleId);
+    if (url == null || url.isEmpty) return;
+    PetImageCache.instance.precache(context, url);
   }
 
   @override

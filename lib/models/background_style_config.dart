@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/colors.dart';
 import '../l10n/tr.dart';
 import '../data/background_store.dart';
+import '../data/memorial_style_prefs.dart';
 import '../models/memorial_day.dart';
 import '../widgets/common/memorial_type_info.dart';
 
@@ -40,6 +41,10 @@ class BackgroundStyleConfig {
         BackgroundStore.instance.findById(styleId) != null) {
       return styleId;
     }
+    if (styleId.isNotEmpty &&
+        MemorialStylePrefs.instance.hasCachedStyle(styleId)) {
+      return styleId;
+    }
     if (day != null) return typeColorStyleId;
     final items = BackgroundStore.instance.items;
     if (items.isNotEmpty) return '${items.first['id']}';
@@ -48,11 +53,15 @@ class BackgroundStyleConfig {
 
   static String? imageUrlFor(String styleId) {
     if (isTypeColorStyle(styleId)) return null;
-    final id = effectiveStyleId(styleId);
-    if (id.isEmpty || isTypeColorStyle(id)) return null;
-    final url =
-        BackgroundStore.instance.findById(id)?['image']?.toString();
-    if (url != null && url.isNotEmpty) return url;
+    final id = styleId.trim();
+    if (id.isEmpty) return null;
+
+    final storeUrl = BackgroundStore.instance.findById(id)?['image']?.toString();
+    if (storeUrl != null && storeUrl.isNotEmpty) return storeUrl;
+
+    final cached = MemorialStylePrefs.instance.cachedImageUrlForStyleId(id);
+    if (cached != null && cached.isNotEmpty) return cached;
+
     return null;
   }
 
