@@ -43,12 +43,9 @@
   "live_activity": {
     "system_disabled": "Please enable Live Activities in Settings",
     "enable_failed": "Failed to enable Dynamic Island reminder",
-    "enabled_tip": "Dynamic Island enabled. Pet and nearest memorial will show on Dynamic Island/Lock Screen",
+    "enabled_tip": "Dynamic Island enabled. Your pet will show on Dynamic Island/Lock Screen",
     "unsupported": "Live Activity is not supported on this device",
-    "accompany_days": "Together for {days} days",
-    "upcoming_days": "{days} days left",
-    "past_days": "{days} days passed",
-    "today": "Today"
+    "tagline": "Remember every special day"
   },
   "profile": {
     "reselect_pet": "Reselect Pet",

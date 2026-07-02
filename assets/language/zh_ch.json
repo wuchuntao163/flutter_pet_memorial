@@ -43,12 +43,9 @@
   "live_activity": {
     "system_disabled": "请在系统设置中开启「实时活动」",
     "enable_failed": "开启灵动岛提醒失败，请稍后重试",
-    "enabled_tip": "已开启灵动岛，将在灵动岛/锁屏显示宠物与最近纪念日",
+    "enabled_tip": "已开启灵动岛，将在灵动岛/锁屏显示宠物图片",
     "unsupported": "当前设备不支持灵动岛 Live Activity",
-    "accompany_days": "已相伴 {days} 天",
-    "upcoming_days": "还有 {days} 天",
-    "past_days": "已经 {days} 天",
-    "today": "就是今天"
+    "tagline": "记录每个值得纪念的日子"
   },
   "profile": {
     "reselect_pet": "重新选择宠物",

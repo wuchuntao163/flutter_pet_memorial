@@ -5,9 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/app_cache_store.dart';
-import '../data/memorial_store.dart';
 import '../l10n/tr.dart';
-import '../models/memorial_day.dart';
 
 /// iOS 灵动岛 / Live Activity：与桌面小组件独立，复用 App Group 宠物 PNG。
 class LiveActivityService {
@@ -88,7 +86,7 @@ class LiveActivityService {
     try {
       final ok =
           await _channel.invokeMethod<bool>('updateActivity', payload) ?? false;
-      debugPrint('[LiveActivityService] sync ok=$ok subtitle=${payload['subtitle']}');
+      debugPrint('[LiveActivityService] sync ok=$ok');
       return ok;
     } catch (e, st) {
       debugPrint('[LiveActivityService] sync failed: $e\n$st');
@@ -105,48 +103,11 @@ class LiveActivityService {
         '';
     if (petName.isEmpty) return null;
 
-    final memorial = _pickDisplayMemorial(MemorialStore.instance.items);
-    final subtitle = memorial == null
-        ? tr('live_activity.accompany_days').replaceAll(
-            '{days}',
-            '${cache.accompanyDays}',
-          )
-        : _memorialSubtitle(memorial);
-    final memorialTitle = memorial?.title.trim() ?? '';
-
     return {
       'petId': '${cache.petId ?? ''}',
       'petName': petName,
-      'subtitle': subtitle,
-      'memorialTitle': memorialTitle,
+      'subtitle': tr('live_activity.tagline'),
+      'memorialTitle': '',
     };
-  }
-
-  MemorialDay? _pickDisplayMemorial(List<MemorialDay> items) {
-    if (items.isEmpty) return null;
-
-    final upcoming = items.where((day) => !day.isPast).toList()
-      ..sort((a, b) => a.displayDayCount.compareTo(b.displayDayCount));
-    if (upcoming.isNotEmpty) return upcoming.first;
-
-    final past = items.where((day) => day.isPast).toList()
-      ..sort((a, b) => a.displayDayCount.compareTo(b.displayDayCount));
-    return past.isEmpty ? null : past.first;
-  }
-
-  String _memorialSubtitle(MemorialDay day) {
-    if (day.isPast) {
-      return tr('live_activity.past_days').replaceAll(
-        '{days}',
-        '${day.displayDayCount}',
-      );
-    }
-    if (day.displayDayCount == 0) {
-      return tr('live_activity.today');
-    }
-    return tr('live_activity.upcoming_days').replaceAll(
-      '{days}',
-      '${day.displayDayCount}',
-    );
   }
 }

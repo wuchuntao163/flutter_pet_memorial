@@ -31,45 +31,22 @@ struct PetLiveActivityWidget: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: PetLiveActivityAttributes.self) { context in
       lockScreenView(context: context)
-        .activityBackgroundTint(Color.orange.opacity(0.15))
+        .activityBackgroundTint(Color.orange.opacity(0.12))
         .activitySystemActionForegroundColor(Color.primary)
     } dynamicIsland: { context in
       DynamicIsland {
-        DynamicIslandExpandedRegion(.leading) {
-          petImageView(size: 44)
-            .id(context.state.imageRevision)
-        }
-        DynamicIslandExpandedRegion(.trailing) {
-          Text(context.state.subtitle)
-            .font(.caption)
-            .foregroundColor(.secondary)
-            .lineLimit(2)
-            .multilineTextAlignment(.trailing)
-        }
-        DynamicIslandExpandedRegion(.center) {
-          Text(context.state.petName)
-            .font(.headline)
-            .lineLimit(1)
-        }
         DynamicIslandExpandedRegion(.bottom) {
-          if !context.state.memorialTitle.isEmpty {
-            Text(context.state.memorialTitle)
-              .font(.caption)
-              .foregroundColor(.secondary)
-              .lineLimit(1)
-          }
+          expandedContent(context: context)
         }
       } compactLeading: {
-        petImageView(size: 22)
+        petImageView(size: 28)
           .id(context.state.imageRevision)
       } compactTrailing: {
-        Text(compactSubtitle(context.state.subtitle))
+        Image(systemName: "heart.fill")
           .font(.caption2)
-          .foregroundColor(.secondary)
-          .lineLimit(1)
-          .minimumScaleFactor(0.7)
+          .foregroundColor(.orange.opacity(0.85))
       } minimal: {
-        petImageView(size: 18)
+        petImageView(size: 22)
           .id(context.state.imageRevision)
       }
       .keylineTint(Color.orange.opacity(0.8))
@@ -77,28 +54,43 @@ struct PetLiveActivityWidget: Widget {
   }
 
   @ViewBuilder
-  private func lockScreenView(context: ActivityViewContext<PetLiveActivityAttributes>) -> some View {
-    HStack(spacing: 12) {
-      petImageView(size: 40)
+  private func expandedContent(context: ActivityViewContext<PetLiveActivityAttributes>) -> some View {
+    HStack(alignment: .center, spacing: 14) {
+      Spacer(minLength: 10)
+      petImageView(size: 64)
         .id(context.state.imageRevision)
-      VStack(alignment: .leading, spacing: 4) {
-        Text(context.state.petName)
-          .font(.headline)
-          .lineLimit(1)
-        if !context.state.memorialTitle.isEmpty {
-          Text(context.state.memorialTitle)
-            .font(.subheadline)
-            .foregroundColor(.secondary)
-            .lineLimit(1)
-        }
-        Text(context.state.subtitle)
-          .font(.caption)
-          .foregroundColor(.secondary)
-          .lineLimit(1)
-      }
-      Spacer(minLength: 0)
+      Text(context.state.subtitle)
+        .font(.title3)
+        .fontWeight(.semibold)
+        .foregroundColor(.primary)
+        .lineLimit(2)
+        .minimumScaleFactor(0.85)
+        .multilineTextAlignment(.leading)
+      Spacer(minLength: 10)
     }
-    .padding(.horizontal, 4)
+    .frame(maxWidth: .infinity)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 6)
+  }
+
+  @ViewBuilder
+  private func lockScreenView(context: ActivityViewContext<PetLiveActivityAttributes>) -> some View {
+    HStack(alignment: .center, spacing: 16) {
+      Spacer(minLength: 16)
+      petImageView(size: 68)
+        .id(context.state.imageRevision)
+      Text(context.state.subtitle)
+        .font(.title3)
+        .fontWeight(.semibold)
+        .foregroundColor(.primary)
+        .lineLimit(2)
+        .minimumScaleFactor(0.85)
+        .multilineTextAlignment(.leading)
+      Spacer(minLength: 16)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 10)
+    .padding(.horizontal, 12)
   }
 
   @ViewBuilder
@@ -106,20 +98,13 @@ struct PetLiveActivityWidget: Widget {
     if let image = LiveActivityShared.loadCachedPetImage() {
       Image(uiImage: image)
         .resizable()
-        .scaledToFill()
+        .scaledToFit()
         .frame(width: size, height: size)
-        .clipShape(Circle())
     } else {
       Image(systemName: "pawprint.fill")
-        .font(.system(size: size * 0.55))
+        .font(.system(size: size * 0.5))
         .foregroundColor(.orange.opacity(0.8))
         .frame(width: size, height: size)
     }
-  }
-
-  private func compactSubtitle(_ text: String) -> String {
-    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.count <= 8 { return trimmed }
-    return String(trimmed.prefix(8))
   }
 }
