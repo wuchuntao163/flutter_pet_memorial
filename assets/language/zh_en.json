@@ -40,9 +40,20 @@
     "overlay_title": "Hakimi Countdown",
     "overlay_content": "Tap notification to manage overlay permission"
   },
+  "live_activity": {
+    "system_disabled": "Please enable Live Activities in Settings",
+    "enable_failed": "Failed to enable Dynamic Island reminder",
+    "enabled_tip": "Dynamic Island enabled. Pet and nearest memorial will show on Dynamic Island/Lock Screen",
+    "unsupported": "Live Activity is not supported on this device",
+    "accompany_days": "Together for {days} days",
+    "upcoming_days": "{days} days left",
+    "past_days": "{days} days passed",
+    "today": "Today"
+  },
   "profile": {
     "reselect_pet": "Reselect Pet",
     "desktop_pet": "Desktop Floating Pet",
+    "dynamic_island": "Dynamic Island Pet",
     "switch_language": "Switch Language",
     "cloud_sync": "Cloud Sync",
     "share_app": "Share with Friends",

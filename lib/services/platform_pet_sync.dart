@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'desktop_pet_overlay_service.dart';
+import 'live_activity_service.dart';
 import 'widget_service.dart';
 
 /// 宠物资料变更后按平台同步：Android 悬浮窗 / iOS 桌面组件。
@@ -14,6 +15,7 @@ class PlatformPetSync {
     }
     if (Platform.isIOS) {
       await WidgetService.instance.updateWidget();
+      await LiveActivityService.instance.syncIfEnabled();
     }
   }
 
@@ -21,5 +23,6 @@ class PlatformPetSync {
   static Future<void> afterDataUpdate() async {
     if (!Platform.isIOS) return;
     await WidgetService.instance.updateWidget();
+    await LiveActivityService.instance.syncIfEnabled();
   }
 }

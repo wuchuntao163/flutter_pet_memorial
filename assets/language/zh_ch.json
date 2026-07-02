@@ -40,9 +40,20 @@
     "overlay_title": "哈基米倒数日",
     "overlay_content": "点击通知管理「在其他应用上层显示」权限"
   },
+  "live_activity": {
+    "system_disabled": "请在系统设置中开启「实时活动」",
+    "enable_failed": "开启灵动岛提醒失败，请稍后重试",
+    "enabled_tip": "已开启灵动岛，将在灵动岛/锁屏显示宠物与最近纪念日",
+    "unsupported": "当前设备不支持灵动岛 Live Activity",
+    "accompany_days": "已相伴 {days} 天",
+    "upcoming_days": "还有 {days} 天",
+    "past_days": "已经 {days} 天",
+    "today": "就是今天"
+  },
   "profile": {
     "reselect_pet": "重新选择宠物",
     "desktop_pet": "桌面悬浮宠物",
+    "dynamic_island": "灵动岛宠物提醒",
     "switch_language": "切换语言",
     "cloud_sync": "云端同步",
     "share_app": "推荐给大家",

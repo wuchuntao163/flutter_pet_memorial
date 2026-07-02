@@ -16,6 +16,8 @@
 	<string>PetWidget</string>
 	<key>AppGroupId</key>
 	<string>$(APP_GROUP_ID)</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

@@ -14,6 +14,7 @@ import '../../data/pet_avatar_store.dart';
 import '../../router/app_routes.dart';
 import '../../services/app_launch.dart';
 import '../../services/desktop_pet_overlay_service.dart';
+import '../../services/live_activity_service.dart';
 import '../../utils/app_promotion_util.dart';
 import '../../utils/app_update_util.dart';
 import '../../utils/center_tip_util.dart';
@@ -28,6 +29,7 @@ import '../../l10n/tr.dart';
 import '../../services/language_service.dart';
 import '../../services/pet_image_cache.dart';
 import '../../services/platform_pet_sync.dart';
+import '../../services/widget_service.dart';
 import '../../services/user_service.dart';
 import '../../utils/pet_display_image.dart';
 
@@ -49,6 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const _iconVersion = 'assets/images/update.png';
 
   bool _showFloatingPet = false;
+  bool _showLiveActivity = false;
   String _appVersion = AppInfo.version;
   GoRouter? _router;
   VoidCallback? _routeListener;
@@ -69,6 +72,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       PlatformPetSync.afterProfileUpdate();
     });
     _loadDesktopPetSetting();
+    if (Platform.isIOS) {
+      _loadLiveActivitySetting();
+    }
     _loadAppVersion();
   }
 
@@ -87,6 +93,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadDesktopPetSetting() async {
     final enabled = await DesktopPetOverlayService.isEnabled();
     if (mounted) setState(() => _showFloatingPet = enabled);
+  }
+
+  Future<void> _loadLiveActivitySetting() async {
+    final enabled = await LiveActivityService.instance.isEnabled();
+    if (mounted) setState(() => _showLiveActivity = enabled);
+  }
+
+  Future<void> _onLiveActivityChanged(bool enabled) async {
+    if (!await LiveActivityService.instance.isSupported()) {
+      if (!mounted) return;
+      showCenterTip(context, tr('live_activity.unsupported'));
+      return;
+    }
+
+    if (enabled) {
+      await WidgetService.instance.updateWidget();
+      final systemEnabled =
+          await LiveActivityService.instance.areActivitiesEnabled();
+      if (!systemEnabled) {
+        if (!mounted) return;
+        showCenterTip(context, tr('live_activity.system_disabled'));
+        return;
+      }
+    }
+
+    final ok = await LiveActivityService.instance.setEnabled(enabled);
+    if (!mounted) return;
+    if (!ok && enabled) {
+      showCenterTip(context, tr('live_activity.enable_failed'));
+      return;
+    }
+    setState(() => _showLiveActivity = enabled);
+    if (enabled) {
+      showCenterTip(context, tr('live_activity.enabled_tip'));
+    }
   }
 
   Future<void> _onDesktopPetChanged(bool enabled) async {
@@ -213,13 +254,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       bottom: 12 + AppLayout.bottomNavBarInset,
                     ),
                     children: [
-                      SwitchSettingsItem(
-                        iconAsset: _iconDesktopPet,
-                        title: tr('profile.desktop_pet'),
-                        value: _showFloatingPet,
-                        onChanged: _onDesktopPetChanged,
-                      ),
-                      const SizedBox(height: 8),
+                      if (Platform.isIOS) ...[
+                        SwitchSettingsItem(
+                          iconAsset: _iconDesktopPet,
+                          title: tr('profile.dynamic_island'),
+                          value: _showLiveActivity,
+                          onChanged: _onLiveActivityChanged,
+                        ),
+                        const SizedBox(height: 8),
+                      ] else ...[
+                        SwitchSettingsItem(
+                          iconAsset: _iconDesktopPet,
+                          title: tr('profile.desktop_pet'),
+                          value: _showFloatingPet,
+                          onChanged: _onDesktopPetChanged,
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       SettingsItem(
                         iconAsset: _iconLanguage,
                         title: tr('profile.switch_language'),
@@ -365,7 +416,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await PetAvatarStore.clear();
     await PlatformPetSync.afterProfileUpdate();
     await DesktopPetOverlayService.setEnabled(false);
-    if (mounted) setState(() => _showFloatingPet = false);
+    await LiveActivityService.instance.setEnabled(false);
+    if (mounted) {
+      setState(() {
+        _showFloatingPet = false;
+        _showLiveActivity = false;
+      });
+    }
     await AppLaunch.instance.clearOnboarding();
 
     if (!context.mounted) return;

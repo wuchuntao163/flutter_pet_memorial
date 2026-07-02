@@ -30,6 +30,7 @@ import UIKit
 
     widgetChannelRegistered = true
     WidgetChannelHandler.register(with: controller)
+    LiveActivityChannelHandler.register(with: controller)
   }
 
   /// iOS 13+ 高版本可能通过 Scene 挂载窗口，不仅依赖 AppDelegate.window
