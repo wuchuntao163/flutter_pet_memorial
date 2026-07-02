@@ -198,6 +198,7 @@
     "photo_fail": "Camera failed: ",
     "uploading": "Uploading photo...",
     "generating": "Generating pet image...",
+    "applying_avatar": "Applying avatar...",
     "matting": "Removing background...",
     "generate_fail": "Generation failed: ",
     "generate_first": "Please generate pet avatar first",

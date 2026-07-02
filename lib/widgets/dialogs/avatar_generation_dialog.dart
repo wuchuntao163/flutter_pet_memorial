@@ -288,7 +288,7 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
     final description = _descriptionController.text.trim();
     setState(() {
       _isUploading = true;
-      _statusText = tr('avatar.generating');
+      _statusText = tr('avatar.applying_avatar');
     });
     await _persistAvatar(url: url, description: description);
     if (!mounted) return;
@@ -489,7 +489,7 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
                               : null,
                           showLoading: _isBusy,
                         ),
-                        if (_hasUploadedPhoto) ...[
+                        if (_imageUrl != null) ...[
                           const SizedBox(height: 10),
                           _buildGradientButton(
                             label: tr('avatar.use_avatar'),

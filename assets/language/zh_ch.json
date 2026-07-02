@@ -199,6 +199,7 @@
     "uploading": "正在上传照片...",
     "upload_fail": "图片上传失败：",
     "generating": "正在生成宠物图片，请稍候...",
+    "applying_avatar": "正在应用形象，请稍候...",
     "matting": "正在抠图，请稍候...",
     "generate_fail": "生成失败：",
     "generate_first": "请先生成宠物形象",
