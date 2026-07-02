@@ -55,42 +55,42 @@ struct PetLiveActivityWidget: Widget {
 
   @ViewBuilder
   private func expandedContent(context: ActivityViewContext<PetLiveActivityAttributes>) -> some View {
-    HStack(alignment: .center, spacing: 14) {
-      Spacer(minLength: 10)
-      petImageView(size: 64)
+    HStack(alignment: .center, spacing: 12) {
+      petImageView(size: 56)
         .id(context.state.imageRevision)
       Text(context.state.subtitle)
-        .font(.title3)
+        .font(.body)
         .fontWeight(.semibold)
         .foregroundColor(.primary)
-        .lineLimit(2)
-        .minimumScaleFactor(0.85)
-        .multilineTextAlignment(.leading)
-      Spacer(minLength: 10)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+      Spacer(minLength: 0)
     }
-    .frame(maxWidth: .infinity)
-    .padding(.horizontal, 16)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.leading, 14)
+    .padding(.trailing, 12)
     .padding(.vertical, 6)
   }
 
   @ViewBuilder
   private func lockScreenView(context: ActivityViewContext<PetLiveActivityAttributes>) -> some View {
-    HStack(alignment: .center, spacing: 16) {
-      Spacer(minLength: 16)
-      petImageView(size: 68)
+    HStack(alignment: .center, spacing: 14) {
+      petImageView(size: 60)
         .id(context.state.imageRevision)
       Text(context.state.subtitle)
-        .font(.title3)
+        .font(.body)
         .fontWeight(.semibold)
         .foregroundColor(.primary)
-        .lineLimit(2)
-        .minimumScaleFactor(0.85)
-        .multilineTextAlignment(.leading)
-      Spacer(minLength: 16)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+      Spacer(minLength: 0)
     }
-    .frame(maxWidth: .infinity)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.leading, 16)
+    .padding(.trailing, 14)
     .padding(.vertical, 10)
-    .padding(.horizontal, 12)
   }
 
   @ViewBuilder
