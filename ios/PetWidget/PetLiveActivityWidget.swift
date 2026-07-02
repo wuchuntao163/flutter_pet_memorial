@@ -26,7 +26,7 @@ private enum LiveActivityShared {
   }
 }
 
-@available(iOS 16.1, *)
+@available(iOS 16.2, *)
 struct PetLiveActivityWidget: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: PetLiveActivityAttributes.self) { context in

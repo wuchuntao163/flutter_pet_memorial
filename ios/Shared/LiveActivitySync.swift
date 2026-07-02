@@ -6,19 +6,19 @@ enum LiveActivitySync {
   static let activityIdKey = "petLiveActivityId"
 
   static var isSupported: Bool {
-    if #available(iOS 16.1, *) {
+    if #available(iOS 16.2, *) {
       return true
     }
     return false
   }
 
   static func areActivitiesEnabled() -> Bool {
-    guard #available(iOS 16.1, *) else { return false }
+    guard #available(iOS 16.2, *) else { return false }
     return ActivityAuthorizationInfo().areActivitiesEnabled
   }
 
   static func isActive() -> Bool {
-    guard #available(iOS 16.1, *) else { return false }
+    guard #available(iOS 16.2, *) else { return false }
     return !Activity<PetLiveActivityAttributes>.activities.isEmpty
   }
 
@@ -33,7 +33,7 @@ enum LiveActivitySync {
     return Int64(modified.timeIntervalSince1970 * 1000)
   }
 
-  @available(iOS 16.1, *)
+  @available(iOS 16.2, *)
   static func start(
     petId: String,
     petName: String,
@@ -62,7 +62,7 @@ enum LiveActivitySync {
     return activity.id
   }
 
-  @available(iOS 16.1, *)
+  @available(iOS 16.2, *)
   @discardableResult
   static func update(
     petName: String,
@@ -94,7 +94,7 @@ enum LiveActivitySync {
   }
 
   static func endAllSync() {
-    guard #available(iOS 16.1, *) else { return }
+    guard #available(iOS 16.2, *) else { return }
     let activities = Activity<PetLiveActivityAttributes>.activities
     guard !activities.isEmpty else {
       clearActivityId()
@@ -149,9 +149,9 @@ enum LiveActivityChannelHandler {
   }
 
   private static func handleStart(call: FlutterMethodCall, result: @escaping FlutterResult) {
-    guard #available(iOS 16.1, *) else {
+    guard #available(iOS 16.2, *) else {
       result(
-        FlutterError(code: "UNSUPPORTED", message: "Live Activity 需要 iOS 16.1+", details: nil)
+        FlutterError(code: "UNSUPPORTED", message: "Live Activity 需要 iOS 16.2+", details: nil)
       )
       return
     }
@@ -190,7 +190,7 @@ enum LiveActivityChannelHandler {
   }
 
   private static func handleUpdate(call: FlutterMethodCall, result: @escaping FlutterResult) {
-    guard #available(iOS 16.1, *) else {
+    guard #available(iOS 16.2, *) else {
       result(false)
       return
     }
