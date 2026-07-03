@@ -1,7 +1,7 @@
 name: flutter_pet_memorial
 description: "哈基米倒数日 - 宠物纪念日记录"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.8.0
