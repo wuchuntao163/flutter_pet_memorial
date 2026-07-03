@@ -55,6 +55,36 @@ class AppCacheStore extends ChangeNotifier {
     return value;
   }
 
+  /// 档案 type / pet_type：1 狗，2 猫
+  int? get petTypeCode {
+    final profile = petProfile;
+    if (profile == null) return null;
+    final raw = profile['pet_type'] ?? profile['type'];
+    if (raw == null) return null;
+    if (raw is int) return raw;
+    final text = raw.toString().trim().toLowerCase();
+    if (text == 'dog' || text == '1') return 1;
+    if (text == 'cat' || text == '2') return 2;
+    return int.tryParse(text);
+  }
+
+  /// 灵动岛配置图：type=1 取 lingdongdog，type=2 取 lingdongcat；其他 type 不在此取图
+  String? get liveActivityImageUrl {
+    final configMap = _config;
+    if (configMap is! Map) return null;
+
+    final String? raw;
+    switch (petTypeCode) {
+      case 1:
+        raw = configMap['lingdongdog']?.toString();
+      case 2:
+        raw = configMap['lingdongcat']?.toString();
+      default:
+        return null;
+    }
+    return _normalizeImageUrl(raw);
+  }
+
   /// 根据 created_at 计算已陪伴天数
   int get accompanyDays {
     final created = _parseCreatedAt(petProfile?['created_at']);
@@ -254,6 +284,7 @@ class AppCacheStore extends ChangeNotifier {
       }
     }
     scheduleWidgetSync();
+    scheduleLiveActivitySync();
   }
 
   static Map<String, dynamic>? _extractPetProfileMap(dynamic data) {
@@ -319,6 +350,7 @@ class AppCacheStore extends ChangeNotifier {
       }
     }
     notifyListeners();
+    scheduleLiveActivitySync();
   }
 
   static Map<String, dynamic>? _extractConfig(dynamic data) {

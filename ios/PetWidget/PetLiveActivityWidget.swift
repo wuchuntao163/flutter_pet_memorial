@@ -5,6 +5,7 @@ import WidgetKit
 
 private enum LiveActivityShared {
   static let appGroupId = AppGroupConfig.id
+  static let liveActivityImageName = "petLiveActivityImage.png"
   static let widgetImageName = "petWidgetImage.png"
 
   static func cachedImagePath() -> String? {
@@ -13,8 +14,12 @@ private enum LiveActivityShared {
     ) else {
       return nil
     }
-    let path = container.appendingPathComponent(widgetImageName).path
-    return FileManager.default.fileExists(atPath: path) ? path : nil
+    let livePath = container.appendingPathComponent(liveActivityImageName).path
+    if FileManager.default.fileExists(atPath: livePath) {
+      return livePath
+    }
+    let widgetPath = container.appendingPathComponent(widgetImageName).path
+    return FileManager.default.fileExists(atPath: widgetPath) ? widgetPath : nil
   }
 
   static func loadCachedPetImage() -> UIImage? {

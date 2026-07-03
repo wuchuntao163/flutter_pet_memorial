@@ -47,6 +47,18 @@
     "unsupported": "Live Activity is not supported on this device",
     "tagline": "Remember every special day"
   },
+  "ios_desktop_guide": {
+    "tab_widget": "Pet Widget",
+    "tab_dynamic_island": "Dynamic Island",
+    "widget_step1_title": "1. Long-press the Home Screen",
+    "widget_step1_body": "Tap Edit or + in the top-left corner, then choose Add Widget",
+    "widget_step2_title": "2. Search for the widget",
+    "widget_step2_body": "Search for Hakimi Countdown, pick a size, and add it to your Home Screen",
+    "island_step1_title": "1. Enable Dynamic Island",
+    "island_step1_body": "Turn on the switch below to show your pet image and tagline, and display your pet on Dynamic Island and Lock Screen",
+    "island_step2_title": "2. Check system settings",
+    "island_step2_body": "If nothing appears, enable Live Activities for this app in iOS Settings"
+  },
   "profile": {
     "reselect_pet": "Reselect Pet",
     "desktop_pet": "Desktop Floating Pet",

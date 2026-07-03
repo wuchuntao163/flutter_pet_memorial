@@ -5,9 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/app_cache_store.dart';
+import '../data/auth_session_store.dart';
 import '../l10n/tr.dart';
+import '../utils/pet_display_image.dart';
 
-/// iOS 灵动岛 / Live Activity：与桌面小组件独立，复用 App Group 宠物 PNG。
+/// iOS 灵动岛 / Live Activity：独立图片与桌面小组件。
+/// type=1/2 用配置 lingdongdog/lingdongcat，其他 type 用档案实时图。
 class LiveActivityService {
   LiveActivityService._();
 
@@ -19,6 +22,7 @@ class LiveActivityService {
   );
 
   bool? _supportedCache;
+  String? _lastSyncedImageKey;
 
   bool get isPlatformSupported => Platform.isIOS;
 
@@ -80,6 +84,8 @@ class LiveActivityService {
     if (!force && !await isEnabled()) return false;
     if (!await areActivitiesEnabled()) return false;
 
+    await _syncLiveActivityImage();
+
     final payload = _buildPayload();
     if (payload == null) return false;
 
@@ -91,6 +97,40 @@ class LiveActivityService {
     } catch (e, st) {
       debugPrint('[LiveActivityService] sync failed: $e\n$st');
       return false;
+    }
+  }
+
+  Future<void> _syncLiveActivityImage() async {
+    final cache = AppCacheStore.instance;
+    final type = cache.petTypeCode;
+    final String? url;
+    if (type == 1 || type == 2) {
+      url = cache.liveActivityImageUrl;
+    } else {
+      final raw = await PetDisplayImage.resolveUrl();
+      url = raw.isEmpty ? null : raw;
+    }
+    if (url == null || url.isEmpty) {
+      debugPrint('[LiveActivityService] no live activity image');
+      return;
+    }
+    final syncKey = '${type ?? 'other'}|$url';
+    if (syncKey == _lastSyncedImageKey) {
+      return;
+    }
+
+    try {
+      final ok = await _channel.invokeMethod<bool>('syncImage', {
+            'petImageUrl': url,
+            'authToken': AuthSessionStore.instance.token ?? '',
+          }) ??
+          false;
+      if (ok) {
+        _lastSyncedImageKey = syncKey;
+      }
+      debugPrint('[LiveActivityService] syncImage ok=$ok url=$url');
+    } catch (e, st) {
+      debugPrint('[LiveActivityService] syncImage failed: $e\n$st');
     }
   }
 

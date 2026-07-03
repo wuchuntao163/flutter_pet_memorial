@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../api/api.dart';
 import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../data/app_cache_store.dart';
+import '../../data/memorial_list_view_prefs.dart';
 import '../../data/memorial_store.dart';
 import '../../widgets/common/pet_avatar_image.dart';
 import '../../models/memorial_day.dart';
@@ -42,6 +45,7 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
   void initState() {
     super.initState();
     AppCacheStore.instance.addListener(_onPetChanged);
+    unawaited(_loadViewMode());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _onPetChanged();
       AppUpdateUtil.checkOnHomeLaunch(context);
@@ -55,6 +59,17 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
   void dispose() {
     AppCacheStore.instance.removeListener(_onPetChanged);
     super.dispose();
+  }
+
+  Future<void> _loadViewMode() async {
+    final isGrid = await MemorialListViewPrefs.loadIsGrid();
+    if (mounted) setState(() => _isGridView = isGrid);
+  }
+
+  void _toggleViewMode() {
+    final next = !_isGridView;
+    setState(() => _isGridView = next);
+    unawaited(MemorialListViewPrefs.saveIsGrid(next));
   }
 
   void _onPetChanged() {
@@ -446,7 +461,7 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
           ),
           const Spacer(),
           GestureDetector(
-            onTap: () => setState(() => _isGridView = !_isGridView),
+            onTap: _toggleViewMode,
             behavior: HitTestBehavior.opaque,
             child: Image.asset(
               _isGridView

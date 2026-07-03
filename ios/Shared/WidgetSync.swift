@@ -7,6 +7,8 @@ enum WidgetSync {
   static let dataFileName = "petWidgetData.json"
   static let imageFileName = "petWidgetImage.png"
   static let imageTempFileName = "petWidgetImage.tmp.png"
+  static let liveActivityImageFileName = "petLiveActivityImage.png"
+  static let liveActivityImageTempFileName = "petLiveActivityImage.tmp.png"
 
   static func appGroupContainer() -> URL? {
     FileManager.default.containerURL(
@@ -50,16 +52,39 @@ enum WidgetSync {
 
   /// 先写临时文件再原子替换，避免高版本 iOS 读到半写入的图片
   static func replaceWidgetImage(with data: Data) -> Bool {
+    replaceAppGroupImage(
+      with: data,
+      fileName: imageFileName,
+      tempFileName: imageTempFileName,
+      logTag: "PetWidget"
+    )
+  }
+
+  static func replaceLiveActivityImage(with data: Data) -> Bool {
+    replaceAppGroupImage(
+      with: data,
+      fileName: liveActivityImageFileName,
+      tempFileName: liveActivityImageTempFileName,
+      logTag: "LiveActivity"
+    )
+  }
+
+  private static func replaceAppGroupImage(
+    with data: Data,
+    fileName: String,
+    tempFileName: String,
+    logTag: String
+  ) -> Bool {
     guard let container = appGroupContainer(),
           let image = UIImage(data: data),
           let resized = resizeForWidget(image),
           let png = resized.pngData() else {
-      NSLog("[PetWidget] replace image decode failed")
+      NSLog("[\(logTag)] replace image decode failed")
       return false
     }
 
-    let finalURL = container.appendingPathComponent(imageFileName)
-    let tempURL = container.appendingPathComponent(imageTempFileName)
+    let finalURL = container.appendingPathComponent(fileName)
+    let tempURL = container.appendingPathComponent(tempFileName)
     let fm = FileManager.default
 
     do {
@@ -69,10 +94,10 @@ enum WidgetSync {
       } else {
         try fm.moveItem(at: tempURL, to: finalURL)
       }
-      NSLog("[PetWidget] replaced image: \(png.count) bytes")
+      NSLog("[\(logTag)] replaced image: \(png.count) bytes")
       return true
     } catch {
-      NSLog("[PetWidget] replace image failed: \(error)")
+      NSLog("[\(logTag)] replace image failed: \(error)")
       try? fm.removeItem(at: tempURL)
       return false
     }
@@ -141,6 +166,60 @@ enum WidgetSync {
       }
       completion(replaceWidgetImage(with: data))
     }.resume()
+  }
+
+  static func downloadLiveActivityImage(
+    from urlString: String,
+    authToken: String,
+    completion: @escaping (Bool) -> Void
+  ) {
+    guard let url = URL(string: urlString),
+          appGroupContainer() != nil else {
+      completion(false)
+      return
+    }
+
+    var request = URLRequest(
+      url: url,
+      cachePolicy: .reloadIgnoringLocalAndRemoteCacheData,
+      timeoutInterval: 30
+    )
+    request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+    request.setValue("no-cache", forHTTPHeaderField: "Pragma")
+    let token = authToken.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !token.isEmpty {
+      let value = token.hasPrefix("Bearer ") ? token : "Bearer \(token)"
+      request.setValue(value, forHTTPHeaderField: "Authorization")
+    }
+
+    URLSession.shared.dataTask(with: request) { data, response, error in
+      if let error = error {
+        NSLog("[LiveActivity] download failed: \(error.localizedDescription)")
+        completion(false)
+        return
+      }
+      if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+        NSLog("[LiveActivity] download http \(http.statusCode): \(urlString)")
+        completion(false)
+        return
+      }
+      guard let data = data else {
+        completion(false)
+        return
+      }
+      completion(replaceLiveActivityImage(with: data))
+    }.resume()
+  }
+
+  static func liveActivityImageRevision() -> Int64 {
+    guard let container = appGroupContainer() else { return 0 }
+    let path = container.appendingPathComponent(liveActivityImageFileName).path
+    guard FileManager.default.fileExists(atPath: path),
+          let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+          let modified = attrs[.modificationDate] as? Date else {
+      return 0
+    }
+    return Int64(modified.timeIntervalSince1970 * 1000)
   }
 
   static func reloadTimelines() {

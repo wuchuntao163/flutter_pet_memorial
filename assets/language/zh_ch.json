@@ -47,6 +47,18 @@
     "unsupported": "当前设备不支持灵动岛 Live Activity",
     "tagline": "记录每个值得纪念的日子"
   },
+  "ios_desktop_guide": {
+    "tab_widget": "萌宠组件",
+    "tab_dynamic_island": "灵动岛",
+    "widget_step1_title": "1、长按手机桌面",
+    "widget_step1_body": "点击左上角【编辑】或「+」号，选择【添加小组件】",
+    "widget_step2_title": "2、搜索小组件",
+    "widget_step2_body": "搜索【哈基米倒数日】，选择小组件大小，添加小组件到桌面即可",
+    "island_step1_title": "1、开启灵动岛",
+    "island_step1_body": "打开下方开关，展示宠物图片与标语，即可在灵动岛和锁屏显示萌宠",
+    "island_step2_title": "2、检查系统设置",
+    "island_step2_body": "若无法显示，请前往 iOS 设置 → 本应用，开启「实时活动」"
+  },
   "profile": {
     "reselect_pet": "重新选择宠物",
     "desktop_pet": "桌面悬浮宠物",
