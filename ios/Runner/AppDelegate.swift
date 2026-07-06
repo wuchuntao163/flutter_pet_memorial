@@ -19,6 +19,9 @@ import UIKit
   override func applicationDidBecomeActive(_ application: UIApplication) {
     super.applicationDidBecomeActive(application)
     setupWidgetChannelIfNeeded()
+    if #available(iOS 16.2, *) {
+      LiveActivitySync.observeExistingActivities()
+    }
   }
 
   private func setupWidgetChannelIfNeeded() {
