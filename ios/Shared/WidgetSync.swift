@@ -343,16 +343,14 @@ enum WidgetSync {
 
   private static func resizeForLiveActivityCompact(_ image: UIImage) -> UIImage? {
     let side = liveActivityCompactSide
+    let aspect = min(side / image.size.width, side / image.size.height)
+    let width = image.size.width * aspect
+    let height = image.size.height * aspect
+    let origin = CGPoint(x: (side - width) / 2, y: (side - height) / 2)
     let format = UIGraphicsImageRendererFormat.default()
-    format.opaque = true
+    format.opaque = false
     format.scale = 1
-    return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { ctx in
-      UIColor.white.setFill()
-      ctx.fill(CGRect(x: 0, y: 0, width: side, height: side))
-      let aspect = min(side / image.size.width, side / image.size.height)
-      let width = image.size.width * aspect
-      let height = image.size.height * aspect
-      let origin = CGPoint(x: (side - width) / 2, y: (side - height) / 2)
+    return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { _ in
       image.draw(in: CGRect(origin: origin, size: CGSize(width: width, height: height)))
     }
   }
