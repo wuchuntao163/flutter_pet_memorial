@@ -9,8 +9,12 @@ enum WidgetSync {
   static let imageTempFileName = "petWidgetImage.tmp.png"
   static let liveActivityImageFileName = "petLiveActivityImage.png"
   static let liveActivityImageTempFileName = "petLiveActivityImage.tmp.png"
+  static let liveActivityCompactPetFileName = "petLiveActivityCompactPet.png"
+  static let liveActivityCompactPetTempFileName = "petLiveActivityCompactPet.tmp.png"
   static let fourCloverImageFileName = "petLiveActivityFourClover.png"
   static let fourCloverImageTempFileName = "petLiveActivityFourClover.tmp.png"
+  static let fourCloverCompactImageFileName = "petLiveActivityCompactClover.png"
+  static let fourCloverCompactImageTempFileName = "petLiveActivityCompactClover.tmp.png"
 
   static func appGroupContainer() -> URL? {
     FileManager.default.containerURL(
@@ -63,34 +67,58 @@ enum WidgetSync {
   }
 
   static func replaceLiveActivityImage(with data: Data) -> Bool {
-    replaceAppGroupImage(
-      with: data,
+    guard let image = UIImage(data: data),
+          let full = resizeForWidget(image),
+          let compact = resizeForLiveActivityCompact(image) else {
+      NSLog("[LiveActivity] replace image decode failed")
+      return false
+    }
+    let fullOk = writePng(
+      full,
       fileName: liveActivityImageFileName,
       tempFileName: liveActivityImageTempFileName,
       logTag: "LiveActivity"
     )
+    let compactOk = writePng(
+      compact,
+      fileName: liveActivityCompactPetFileName,
+      tempFileName: liveActivityCompactPetTempFileName,
+      logTag: "LiveActivityCompactPet"
+    )
+    return fullOk && compactOk
   }
 
   static func replaceFourCloverImage(with data: Data) -> Bool {
-    replaceAppGroupImage(
-      with: data,
+    guard let image = UIImage(data: data),
+          let full = resizeForWidget(image),
+          let compact = resizeForLiveActivityCompact(image) else {
+      NSLog("[LiveActivityFourClover] replace image decode failed")
+      return false
+    }
+    let fullOk = writePng(
+      full,
       fileName: fourCloverImageFileName,
       tempFileName: fourCloverImageTempFileName,
       logTag: "LiveActivityFourClover"
     )
+    let compactOk = writePng(
+      compact,
+      fileName: fourCloverCompactImageFileName,
+      tempFileName: fourCloverCompactImageTempFileName,
+      logTag: "LiveActivityCompactClover"
+    )
+    return fullOk && compactOk
   }
 
-  private static func replaceAppGroupImage(
-    with data: Data,
+  private static func writePng(
+    _ image: UIImage,
     fileName: String,
     tempFileName: String,
     logTag: String
   ) -> Bool {
     guard let container = appGroupContainer(),
-          let image = UIImage(data: data),
-          let resized = resizeForWidget(image),
-          let png = resized.pngData() else {
-      NSLog("[\(logTag)] replace image decode failed")
+          let png = image.pngData() else {
+      NSLog("[\(logTag)] png encode failed")
       return false
     }
 
@@ -112,6 +140,20 @@ enum WidgetSync {
       try? fm.removeItem(at: tempURL)
       return false
     }
+  }
+
+  private static func replaceAppGroupImage(
+    with data: Data,
+    fileName: String,
+    tempFileName: String,
+    logTag: String
+  ) -> Bool {
+    guard let image = UIImage(data: data),
+          let resized = resizeForWidget(image) else {
+      NSLog("[\(logTag)] replace image decode failed")
+      return false
+    }
+    return writePng(resized, fileName: fileName, tempFileName: tempFileName, logTag: logTag)
   }
 
   static func writeWidgetImageData(_ data: Data) -> Bool {
@@ -263,7 +305,10 @@ enum WidgetSync {
   }
 
   static func liveActivityCombinedImageRevision() -> Int64 {
-    liveActivityImageRevision() + fourCloverImageRevision()
+    liveActivityImageRevision()
+      + fourCloverImageRevision()
+      + fileRevision(for: liveActivityCompactPetFileName)
+      + fileRevision(for: fourCloverCompactImageFileName)
   }
 
   private static func fileRevision(for fileName: String) -> Int64 {
@@ -293,6 +338,24 @@ enum WidgetSync {
   }
 
   private static let widgetImageMaxSide: CGFloat = 512
+  /// 灵动岛紧凑区约 28pt，3x 下 84px；超过此尺寸系统会显示灰色占位
+  private static let liveActivityCompactSide: CGFloat = 84
+
+  private static func resizeForLiveActivityCompact(_ image: UIImage) -> UIImage? {
+    let side = liveActivityCompactSide
+    let format = UIGraphicsImageRendererFormat.default()
+    format.opaque = true
+    format.scale = 1
+    return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { ctx in
+      UIColor.white.setFill()
+      ctx.fill(CGRect(x: 0, y: 0, width: side, height: side))
+      let aspect = min(side / image.size.width, side / image.size.height)
+      let width = image.size.width * aspect
+      let height = image.size.height * aspect
+      let origin = CGPoint(x: (side - width) / 2, y: (side - height) / 2)
+      image.draw(in: CGRect(origin: origin, size: CGSize(width: width, height: height)))
+    }
+  }
 
   private static func resizeForWidget(_ image: UIImage) -> UIImage? {
     let size = image.size

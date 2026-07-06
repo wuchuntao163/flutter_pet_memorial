@@ -6,7 +6,9 @@ import WidgetKit
 private enum LiveActivityShared {
   static let appGroupId = AppGroupConfig.id
   static let liveActivityImageName = "petLiveActivityImage.png"
+  static let liveActivityCompactPetName = "petLiveActivityCompactPet.png"
   static let fourCloverImageName = "petLiveActivityFourClover.png"
+  static let fourCloverCompactImageName = "petLiveActivityCompactClover.png"
   static let widgetImageName = "petWidgetImage.png"
 
   static func cachedImagePath(named fileName: String) -> String? {
@@ -26,20 +28,38 @@ private enum LiveActivityShared {
     return cachedImagePath(named: widgetImageName)
   }
 
-  static func loadUIImage(named fileName: String) -> UIImage? {
+  static func cachedCompactPetImagePath() -> String? {
+    cachedImagePath(named: liveActivityCompactPetName)
+  }
+
+  static func loadValidUIImage(named fileName: String) -> UIImage? {
     guard let path = cachedImagePath(named: fileName),
-          let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+          let image = UIImage(contentsOfFile: path),
+          let cgImage = image.cgImage,
+          cgImage.width > 0,
+          cgImage.height > 0 else {
       return nil
     }
-    return UIImage(data: data)
+    return image
   }
 
   static func loadCachedPetImage() -> UIImage? {
     guard let path = cachedPetImagePath(),
-          let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+          let image = UIImage(contentsOfFile: path),
+          let cgImage = image.cgImage,
+          cgImage.width > 0,
+          cgImage.height > 0 else {
       return nil
     }
-    return UIImage(data: data)
+    return image
+  }
+
+  static func loadCompactPetImage() -> UIImage? {
+    loadValidUIImage(named: liveActivityCompactPetName)
+  }
+
+  static func loadCompactCloverImage() -> UIImage? {
+    loadValidUIImage(named: fourCloverCompactImageName)
   }
 }
 
@@ -111,12 +131,8 @@ struct PetLiveActivityWidget: Widget {
 
   @ViewBuilder
   private func compactPetImageView(size: CGFloat) -> some View {
-    if let image = LiveActivityShared.loadCachedPetImage() {
-      Image(uiImage: image)
-        .resizable()
-        .scaledToFill()
-        .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+    if let image = LiveActivityShared.loadCompactPetImage() {
+      islandCompactImage(uiImage: image, size: size, cornerRadius: size * 0.22)
     } else {
       Image(systemName: "pawprint.fill")
         .font(.system(size: size * 0.5))
@@ -127,11 +143,8 @@ struct PetLiveActivityWidget: Widget {
 
   @ViewBuilder
   private func fourCloverImageView(size: CGFloat) -> some View {
-    if let image = LiveActivityShared.loadUIImage(named: LiveActivityShared.fourCloverImageName) {
-      Image(uiImage: image)
-        .resizable()
-        .scaledToFit()
-        .frame(width: size, height: size)
+    if let image = LiveActivityShared.loadCompactCloverImage() {
+      islandCompactImage(uiImage: image, size: size, cornerRadius: size * 0.18)
     } else {
       Image(systemName: "leaf.fill")
         .font(.system(size: size * 0.55))
@@ -141,12 +154,39 @@ struct PetLiveActivityWidget: Widget {
   }
 
   @ViewBuilder
+  private func islandCompactImage(
+    uiImage: UIImage,
+    size: CGFloat,
+    cornerRadius: CGFloat
+  ) -> some View {
+    let image = Image(uiImage: uiImage)
+      .resizable()
+      .interpolation(.high)
+      .antialiased(true)
+      .scaledToFill()
+      .frame(width: size, height: size)
+      .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+
+    if #available(iOS 17.0, *) {
+      image.widgetAccentedRenderingMode(.fullColor)
+    } else {
+      image
+    }
+  }
+
+  @ViewBuilder
   private func petImageView(size: CGFloat) -> some View {
     if let image = LiveActivityShared.loadCachedPetImage() {
-      Image(uiImage: image)
+      let imageView = Image(uiImage: image)
         .resizable()
         .scaledToFit()
         .frame(width: size, height: size)
+
+      if #available(iOS 17.0, *) {
+        imageView.widgetAccentedRenderingMode(.fullColor)
+      } else {
+        imageView
+      }
     } else {
       Image(systemName: "pawprint.fill")
         .font(.system(size: size * 0.5))

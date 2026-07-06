@@ -23,6 +23,7 @@ class LiveActivityService {
 
   bool? _supportedCache;
   String? _lastSyncedImageKey;
+  static const _syncKeyVersion = 2;
 
   bool get isPlatformSupported => Platform.isIOS;
 
@@ -117,7 +118,7 @@ class LiveActivityService {
       return;
     }
     final syncKey =
-        '${type ?? 'other'}|${petUrl ?? ''}|${fourCloverUrl ?? ''}';
+        'v$_syncKeyVersion|${type ?? 'other'}|${petUrl ?? ''}|${fourCloverUrl ?? ''}';
     if (syncKey == _lastSyncedImageKey) {
       return;
     }
