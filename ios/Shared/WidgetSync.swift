@@ -210,7 +210,7 @@ enum WidgetSync {
   private static func downloadAppGroupImage(
     from urlString: String,
     authToken: String,
-    replace: (Data) -> Bool,
+    replace: @escaping (Data) -> Bool,
     logTag: String,
     completion: @escaping (Bool) -> Void
   ) {
