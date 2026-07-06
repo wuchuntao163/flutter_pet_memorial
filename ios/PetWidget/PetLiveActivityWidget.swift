@@ -159,34 +159,22 @@ struct PetLiveActivityWidget: Widget {
     size: CGFloat,
     cornerRadius: CGFloat
   ) -> some View {
-    let image = Image(uiImage: uiImage)
+    Image(uiImage: uiImage)
       .resizable()
       .interpolation(.high)
       .antialiased(true)
       .scaledToFill()
       .frame(width: size, height: size)
       .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-
-    if #available(iOS 17.0, *) {
-      image.widgetAccentedRenderingMode(.fullColor)
-    } else {
-      image
-    }
   }
 
   @ViewBuilder
   private func petImageView(size: CGFloat) -> some View {
     if let image = LiveActivityShared.loadCachedPetImage() {
-      let imageView = Image(uiImage: image)
+      Image(uiImage: image)
         .resizable()
         .scaledToFit()
         .frame(width: size, height: size)
-
-      if #available(iOS 17.0, *) {
-        imageView.widgetAccentedRenderingMode(.fullColor)
-      } else {
-        imageView
-      }
     } else {
       Image(systemName: "pawprint.fill")
         .font(.system(size: size * 0.5))
