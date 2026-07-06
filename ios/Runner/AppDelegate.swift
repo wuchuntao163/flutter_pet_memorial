@@ -20,10 +20,7 @@ import UIKit
     super.applicationDidBecomeActive(application)
     setupWidgetChannelIfNeeded()
     if #available(iOS 16.2, *) {
-      Task {
-        await LiveActivitySync.dismissLingeringActivities()
-        LiveActivitySync.observeExistingActivities()
-      }
+      LiveActivitySync.observeExistingActivities()
     }
   }
 

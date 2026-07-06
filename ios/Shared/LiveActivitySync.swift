@@ -21,28 +21,7 @@ enum LiveActivitySync {
 
   static func isActive() -> Bool {
     guard #available(iOS 16.2, *) else { return false }
-    return Activity<PetLiveActivityAttributes>.activities.contains {
-      $0.activityState == .active || $0.activityState == .stale
-    }
-  }
-
-  /// 清理灵动岛已划掉但锁屏仍残留的 Activity（state == .ended）。
-  @available(iOS 16.2, *)
-  static func dismissLingeringActivities() async {
-    for activity in Activity<PetLiveActivityAttributes>.activities {
-      switch activity.activityState {
-      case .ended:
-        NSLog("[LiveActivity] sweep ended id=\(activity.id), removing lock screen")
-        await activity.end(activity.content, dismissalPolicy: .immediate)
-        clearActivityId()
-      case .dismissed:
-        clearActivityId()
-      case .active, .stale:
-        observeActivity(activity)
-      @unknown default:
-        break
-      }
-    }
+    return !Activity<PetLiveActivityAttributes>.activities.isEmpty
   }
 
   static func imageRevision() -> Int64 {
@@ -141,8 +120,8 @@ enum LiveActivitySync {
   /// 监听 Activity 生命周期，灵动岛被划掉后同步清除锁屏卡片。
   @available(iOS 16.2, *)
   static func observeExistingActivities() {
-    Task {
-      await dismissLingeringActivities()
+    for activity in Activity<PetLiveActivityAttributes>.activities {
+      observeActivity(activity)
     }
   }
 
@@ -165,8 +144,9 @@ enum LiveActivitySync {
   ) async {
     switch state {
     case .ended:
+      // 系统从灵动岛结束 Activity 后，锁屏仍会短暂保留；立即 dismiss 保持两端一致。
       NSLog("[LiveActivity] activity ended, dismissing lock screen")
-      await activity.end(activity.content, dismissalPolicy: .immediate)
+      await activity.end(nil, dismissalPolicy: .immediate)
       clearActivityId()
     case .dismissed:
       NSLog("[LiveActivity] activity dismissed")
@@ -200,14 +180,11 @@ enum LiveActivitySync {
     let staleDate = Calendar.current.date(byAdding: .hour, value: 8, to: Date())
     let content = ActivityContent(state: state, staleDate: staleDate)
 
-    let activities = Activity<PetLiveActivityAttributes>.activities.filter {
-      $0.activityState == .active || $0.activityState == .stale
-    }
+    let activities = Activity<PetLiveActivityAttributes>.activities
     guard !activities.isEmpty else { return false }
 
     Task {
-      await dismissLingeringActivities()
-      for activity in activities where activity.activityState == .active || activity.activityState == .stale {
+      for activity in activities {
         await activity.update(content)
       }
     }
@@ -268,8 +245,6 @@ enum LiveActivityChannelHandler {
       case "endActivity":
         LiveActivitySync.endAllSync()
         result(nil)
-      case "prepareForSync":
-        handlePrepareForSync(result: result)
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -278,19 +253,6 @@ enum LiveActivityChannelHandler {
     NSLog("[LiveActivity] Method channel registered")
     if #available(iOS 16.2, *) {
       LiveActivitySync.observeExistingActivities()
-    }
-  }
-
-  private static func handlePrepareForSync(result: @escaping FlutterResult) {
-    guard #available(iOS 16.2, *) else {
-      result(nil)
-      return
-    }
-    Task {
-      await LiveActivitySync.dismissLingeringActivities()
-      await MainActor.run {
-        result(nil)
-      }
     }
   }
 
@@ -342,41 +304,38 @@ enum LiveActivityChannelHandler {
     }
 
     let args = call.arguments as? [String: Any] ?? [:]
-    let petId = args["petId"] as? String ?? ""
     let petName = args["petName"] as? String ?? ""
     let subtitle = args["subtitle"] as? String ?? ""
     let memorialTitle = args["memorialTitle"] as? String ?? ""
 
-    Task {
-      await LiveActivitySync.dismissLingeringActivities()
-
-      if LiveActivitySync.isActive() {
-        let updated = LiveActivitySync.update(
+    if LiveActivitySync.isActive() {
+      result(
+        LiveActivitySync.update(
           petName: petName,
           subtitle: subtitle,
           memorialTitle: memorialTitle
         )
-        await MainActor.run { result(updated) }
-        return
-      }
+      )
+      return
+    }
 
-      guard !petName.isEmpty else {
-        await MainActor.run { result(false) }
-        return
-      }
+    guard !petName.isEmpty else {
+      result(false)
+      return
+    }
 
-      do {
-        _ = try LiveActivitySync.start(
-          petId: petId,
-          petName: petName,
-          subtitle: subtitle,
-          memorialTitle: memorialTitle
-        )
-        await MainActor.run { result(true) }
-      } catch {
-        NSLog("[LiveActivity] update-as-start failed: \(error)")
-        await MainActor.run { result(false) }
-      }
+    do {
+      let petId = args["petId"] as? String ?? ""
+      _ = try LiveActivitySync.start(
+        petId: petId,
+        petName: petName,
+        subtitle: subtitle,
+        memorialTitle: memorialTitle
+      )
+      result(true)
+    } catch {
+      NSLog("[LiveActivity] update-as-start failed: \(error)")
+      result(false)
     }
   }
 
