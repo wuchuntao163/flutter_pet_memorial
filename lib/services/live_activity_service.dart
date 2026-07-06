@@ -79,13 +79,6 @@ class LiveActivityService {
     }
   }
 
-  /// App 被划掉退出时结束灵动岛/锁屏卡片，保留用户开关偏好以便下次打开恢复。
-  Future<void> endActivityForAppExit() async {
-    if (!await isSupported()) return;
-    if (!await isEnabled()) return;
-    await endActivity();
-  }
-
   /// 用户已开启且系统允许时，同步灵动岛内容（不影响桌面小组件）。
   Future<bool> syncIfEnabled({bool force = false}) async {
     if (!await isSupported()) return false;

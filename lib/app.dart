@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -15,7 +14,6 @@ import 'services/day_tick_service.dart';
 import 'services/language_service.dart';
 import 'l10n/tr.dart';
 import 'services/app_launcher_channel.dart';
-import 'services/live_activity_service.dart';
 import 'services/platform_pet_sync.dart';
 import 'widgets/common/splash_screen.dart';
 import 'widgets/dialogs/number_style_dialog.dart';
@@ -53,10 +51,6 @@ class _PetMemorialAppState extends State<PetMemorialApp>
     if (state == AppLifecycleState.resumed) {
       PlatformPetSync.afterProfileUpdate();
       MemorialStore.instance.resyncReminders();
-      return;
-    }
-    if (Platform.isIOS && state == AppLifecycleState.detached) {
-      unawaited(LiveActivityService.instance.endActivityForAppExit());
     }
   }
 

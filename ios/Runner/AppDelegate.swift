@@ -21,11 +21,6 @@ import UIKit
     setupWidgetChannelIfNeeded()
   }
 
-  override func applicationWillTerminate(_ application: UIApplication) {
-    LiveActivitySync.endAllSync()
-    super.applicationWillTerminate(application)
-  }
-
   private func setupWidgetChannelIfNeeded() {
     guard !widgetChannelRegistered else { return }
     guard let controller = findFlutterViewController() else {
