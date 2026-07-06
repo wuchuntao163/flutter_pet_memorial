@@ -4,8 +4,6 @@ import Foundation
 
 enum LiveActivitySync {
   static let activityIdKey = "petLiveActivityId"
-  @available(iOS 16.2, *)
-  private static var observationTasks: [String: Task<Void, Never>] = [:]
 
   static var isSupported: Bool {
     if #available(iOS 16.2, *) {
@@ -112,56 +110,8 @@ enum LiveActivitySync {
       pushType: nil
     )
     saveActivityId(activity.id)
-    observeActivity(activity)
     NSLog("[LiveActivity] started id=\(activity.id)")
     return activity.id
-  }
-
-  /// 监听 Activity 生命周期，灵动岛被划掉后同步清除锁屏卡片。
-  @available(iOS 16.2, *)
-  static func observeExistingActivities() {
-    for activity in Activity<PetLiveActivityAttributes>.activities {
-      observeActivity(activity)
-    }
-  }
-
-  @available(iOS 16.2, *)
-  private static func observeActivity(_ activity: Activity<PetLiveActivityAttributes>) {
-    let activityId = activity.id
-    observationTasks[activityId]?.cancel()
-    observationTasks[activityId] = Task {
-      for await state in activity.activityStateUpdates {
-        await handleActivityState(activity, state: state)
-      }
-      observationTasks.removeValue(forKey: activityId)
-    }
-  }
-
-  @available(iOS 16.2, *)
-  private static func handleActivityState(
-    _ activity: Activity<PetLiveActivityAttributes>,
-    state: ActivityState
-  ) async {
-    switch state {
-    case .ended:
-      // 系统从灵动岛结束 Activity 后，锁屏仍会短暂保留；立即 dismiss 保持两端一致。
-      NSLog("[LiveActivity] activity ended, dismissing lock screen")
-      await activity.end(nil, dismissalPolicy: .immediate)
-      clearActivityId()
-    case .dismissed:
-      NSLog("[LiveActivity] activity dismissed")
-      clearActivityId()
-    default:
-      break
-    }
-  }
-
-  @available(iOS 16.2, *)
-  private static func cancelAllObservations() {
-    for task in observationTasks.values {
-      task.cancel()
-    }
-    observationTasks.removeAll()
   }
 
   @available(iOS 16.2, *)
@@ -197,7 +147,6 @@ enum LiveActivitySync {
 
   static func endAllSync() {
     guard #available(iOS 16.2, *) else { return }
-    cancelAllObservations()
     let activities = Activity<PetLiveActivityAttributes>.activities
     guard !activities.isEmpty else {
       clearActivityId()
@@ -251,9 +200,6 @@ enum LiveActivityChannelHandler {
     }
 
     NSLog("[LiveActivity] Method channel registered")
-    if #available(iOS 16.2, *) {
-      LiveActivitySync.observeExistingActivities()
-    }
   }
 
   private static func handleStart(call: FlutterMethodCall, result: @escaping FlutterResult) {
