@@ -85,6 +85,13 @@ class AppCacheStore extends ChangeNotifier {
     return _normalizeImageUrl(raw);
   }
 
+  /// 灵动岛右侧装饰图：配置 fourClover
+  String? get fourCloverImageUrl {
+    final configMap = _config;
+    if (configMap is! Map) return null;
+    return _normalizeImageUrl(configMap['fourClover']?.toString());
+  }
+
   /// 根据 created_at 计算已陪伴天数
   int get accompanyDays {
     final created = _parseCreatedAt(petProfile?['created_at']);

@@ -9,6 +9,8 @@ enum WidgetSync {
   static let imageTempFileName = "petWidgetImage.tmp.png"
   static let liveActivityImageFileName = "petLiveActivityImage.png"
   static let liveActivityImageTempFileName = "petLiveActivityImage.tmp.png"
+  static let fourCloverImageFileName = "petLiveActivityFourClover.png"
+  static let fourCloverImageTempFileName = "petLiveActivityFourClover.tmp.png"
 
   static func appGroupContainer() -> URL? {
     FileManager.default.containerURL(
@@ -66,6 +68,15 @@ enum WidgetSync {
       fileName: liveActivityImageFileName,
       tempFileName: liveActivityImageTempFileName,
       logTag: "LiveActivity"
+    )
+  }
+
+  static func replaceFourCloverImage(with data: Data) -> Bool {
+    replaceAppGroupImage(
+      with: data,
+      fileName: fourCloverImageFileName,
+      tempFileName: fourCloverImageTempFileName,
+      logTag: "LiveActivityFourClover"
     )
   }
 
@@ -173,7 +184,39 @@ enum WidgetSync {
     authToken: String,
     completion: @escaping (Bool) -> Void
   ) {
-    guard let url = URL(string: urlString),
+    downloadAppGroupImage(
+      from: urlString,
+      authToken: authToken,
+      replace: replaceLiveActivityImage(with:),
+      logTag: "LiveActivity",
+      completion: completion
+    )
+  }
+
+  static func downloadFourCloverImage(
+    from urlString: String,
+    authToken: String,
+    completion: @escaping (Bool) -> Void
+  ) {
+    downloadAppGroupImage(
+      from: urlString,
+      authToken: authToken,
+      replace: replaceFourCloverImage(with:),
+      logTag: "LiveActivityFourClover",
+      completion: completion
+    )
+  }
+
+  private static func downloadAppGroupImage(
+    from urlString: String,
+    authToken: String,
+    replace: (Data) -> Bool,
+    logTag: String,
+    completion: @escaping (Bool) -> Void
+  ) {
+    let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty,
+          let url = URL(string: trimmed),
           appGroupContainer() != nil else {
       completion(false)
       return
@@ -194,12 +237,12 @@ enum WidgetSync {
 
     URLSession.shared.dataTask(with: request) { data, response, error in
       if let error = error {
-        NSLog("[LiveActivity] download failed: \(error.localizedDescription)")
+        NSLog("[\(logTag)] download failed: \(error.localizedDescription)")
         completion(false)
         return
       }
       if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
-        NSLog("[LiveActivity] download http \(http.statusCode): \(urlString)")
+        NSLog("[\(logTag)] download http \(http.statusCode): \(trimmed)")
         completion(false)
         return
       }
@@ -207,13 +250,25 @@ enum WidgetSync {
         completion(false)
         return
       }
-      completion(replaceLiveActivityImage(with: data))
+      completion(replace(data))
     }.resume()
   }
 
   static func liveActivityImageRevision() -> Int64 {
+    fileRevision(for: liveActivityImageFileName)
+  }
+
+  static func fourCloverImageRevision() -> Int64 {
+    fileRevision(for: fourCloverImageFileName)
+  }
+
+  static func liveActivityCombinedImageRevision() -> Int64 {
+    liveActivityImageRevision() + fourCloverImageRevision()
+  }
+
+  private static func fileRevision(for fileName: String) -> Int64 {
     guard let container = appGroupContainer() else { return 0 }
-    let path = container.appendingPathComponent(liveActivityImageFileName).path
+    let path = container.appendingPathComponent(fileName).path
     guard FileManager.default.fileExists(atPath: path),
           let attrs = try? FileManager.default.attributesOfItem(atPath: path),
           let modified = attrs[.modificationDate] as? Date else {

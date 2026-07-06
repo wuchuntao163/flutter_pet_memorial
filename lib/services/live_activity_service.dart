@@ -103,32 +103,38 @@ class LiveActivityService {
   Future<void> _syncLiveActivityImage() async {
     final cache = AppCacheStore.instance;
     final type = cache.petTypeCode;
-    final String? url;
+    final String? petUrl;
     if (type == 1 || type == 2) {
-      url = cache.liveActivityImageUrl;
+      petUrl = cache.liveActivityImageUrl;
     } else {
       final raw = await PetDisplayImage.resolveUrl();
-      url = raw.isEmpty ? null : raw;
+      petUrl = raw.isEmpty ? null : raw;
     }
-    if (url == null || url.isEmpty) {
-      debugPrint('[LiveActivityService] no live activity image');
+    final fourCloverUrl = cache.fourCloverImageUrl;
+    if ((petUrl == null || petUrl.isEmpty) &&
+        (fourCloverUrl == null || fourCloverUrl.isEmpty)) {
+      debugPrint('[LiveActivityService] no live activity images');
       return;
     }
-    final syncKey = '${type ?? 'other'}|$url';
+    final syncKey =
+        '${type ?? 'other'}|${petUrl ?? ''}|${fourCloverUrl ?? ''}';
     if (syncKey == _lastSyncedImageKey) {
       return;
     }
 
     try {
       final ok = await _channel.invokeMethod<bool>('syncImage', {
-            'petImageUrl': url,
+            'petImageUrl': petUrl ?? '',
+            'fourCloverUrl': fourCloverUrl ?? '',
             'authToken': AuthSessionStore.instance.token ?? '',
           }) ??
           false;
       if (ok) {
         _lastSyncedImageKey = syncKey;
       }
-      debugPrint('[LiveActivityService] syncImage ok=$ok url=$url');
+      debugPrint(
+        '[LiveActivityService] syncImage ok=$ok pet=$petUrl clover=$fourCloverUrl',
+      );
     } catch (e, st) {
       debugPrint('[LiveActivityService] syncImage failed: $e\n$st');
     }

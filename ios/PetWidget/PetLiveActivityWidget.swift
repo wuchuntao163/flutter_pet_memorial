@@ -6,24 +6,36 @@ import WidgetKit
 private enum LiveActivityShared {
   static let appGroupId = AppGroupConfig.id
   static let liveActivityImageName = "petLiveActivityImage.png"
+  static let fourCloverImageName = "petLiveActivityFourClover.png"
   static let widgetImageName = "petWidgetImage.png"
 
-  static func cachedImagePath() -> String? {
+  static func cachedImagePath(named fileName: String) -> String? {
     guard let container = FileManager.default.containerURL(
       forSecurityApplicationGroupIdentifier: appGroupId
     ) else {
       return nil
     }
-    let livePath = container.appendingPathComponent(liveActivityImageName).path
-    if FileManager.default.fileExists(atPath: livePath) {
+    let path = container.appendingPathComponent(fileName).path
+    return FileManager.default.fileExists(atPath: path) ? path : nil
+  }
+
+  static func cachedPetImagePath() -> String? {
+    if let livePath = cachedImagePath(named: liveActivityImageName) {
       return livePath
     }
-    let widgetPath = container.appendingPathComponent(widgetImageName).path
-    return FileManager.default.fileExists(atPath: widgetPath) ? widgetPath : nil
+    return cachedImagePath(named: widgetImageName)
+  }
+
+  static func loadUIImage(named fileName: String) -> UIImage? {
+    guard let path = cachedImagePath(named: fileName),
+          let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+      return nil
+    }
+    return UIImage(data: data)
   }
 
   static func loadCachedPetImage() -> UIImage? {
-    guard let path = cachedImagePath(),
+    guard let path = cachedPetImagePath(),
           let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
       return nil
     }
@@ -44,14 +56,13 @@ struct PetLiveActivityWidget: Widget {
           expandedContent(context: context)
         }
       } compactLeading: {
-        petImageView(size: 28)
+        compactPetImageView(size: 28)
           .id(context.state.imageRevision)
       } compactTrailing: {
-        Image(systemName: "heart.fill")
-          .font(.caption2)
-          .foregroundColor(.orange.opacity(0.85))
+        fourCloverImageView(size: 22)
+          .id(context.state.imageRevision)
       } minimal: {
-        petImageView(size: 22)
+        compactPetImageView(size: 22)
           .id(context.state.imageRevision)
       }
       .keylineTint(Color.orange.opacity(0.8))
@@ -96,6 +107,37 @@ struct PetLiveActivityWidget: Widget {
     .padding(.leading, 16)
     .padding(.trailing, 14)
     .padding(.vertical, 10)
+  }
+
+  @ViewBuilder
+  private func compactPetImageView(size: CGFloat) -> some View {
+    if let image = LiveActivityShared.loadCachedPetImage() {
+      Image(uiImage: image)
+        .resizable()
+        .scaledToFill()
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+    } else {
+      Image(systemName: "pawprint.fill")
+        .font(.system(size: size * 0.5))
+        .foregroundColor(.orange.opacity(0.8))
+        .frame(width: size, height: size)
+    }
+  }
+
+  @ViewBuilder
+  private func fourCloverImageView(size: CGFloat) -> some View {
+    if let image = LiveActivityShared.loadUIImage(named: LiveActivityShared.fourCloverImageName) {
+      Image(uiImage: image)
+        .resizable()
+        .scaledToFit()
+        .frame(width: size, height: size)
+    } else {
+      Image(systemName: "leaf.fill")
+        .font(.system(size: size * 0.55))
+        .foregroundColor(.orange.opacity(0.85))
+        .frame(width: size, height: size)
+    }
   }
 
   @ViewBuilder

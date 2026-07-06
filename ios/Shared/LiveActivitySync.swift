@@ -23,9 +23,9 @@ enum LiveActivitySync {
   }
 
   static func imageRevision() -> Int64 {
-    let liveRevision = WidgetSync.liveActivityImageRevision()
-    if liveRevision > 0 {
-      return liveRevision
+    let combined = WidgetSync.liveActivityCombinedImageRevision()
+    if combined > 0 {
+      return combined
     }
     guard let container = WidgetSync.appGroupContainer() else { return 0 }
     let path = container.appendingPathComponent(WidgetSync.imageFileName).path
@@ -37,17 +37,52 @@ enum LiveActivitySync {
     return Int64(modified.timeIntervalSince1970 * 1000)
   }
 
+  static func syncImages(
+    petUrl: String,
+    fourCloverUrl: String,
+    authToken: String,
+    completion: @escaping (Bool) -> Void
+  ) {
+    let pet = petUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+    let clover = fourCloverUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+    if pet.isEmpty && clover.isEmpty {
+      completion(false)
+      return
+    }
+
+    let group = DispatchGroup()
+    var petOk = false
+    var cloverOk = false
+
+    if !pet.isEmpty {
+      group.enter()
+      WidgetSync.downloadLiveActivityImage(from: pet, authToken: authToken) { ok in
+        petOk = ok
+        group.leave()
+      }
+    }
+
+    if !clover.isEmpty {
+      group.enter()
+      WidgetSync.downloadFourCloverImage(from: clover, authToken: authToken) { ok in
+        cloverOk = ok
+        group.leave()
+      }
+    }
+
+    group.notify(queue: .main) {
+      let petSuccess = pet.isEmpty || petOk
+      let cloverSuccess = clover.isEmpty || cloverOk
+      completion(petSuccess && cloverSuccess)
+    }
+  }
+
   static func syncImage(
     from urlString: String,
     authToken: String,
     completion: @escaping (Bool) -> Void
   ) {
-    let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else {
-      completion(false)
-      return
-    }
-    WidgetSync.downloadLiveActivityImage(from: trimmed, authToken: authToken, completion: completion)
+    syncImages(petUrl: urlString, fourCloverUrl: "", authToken: authToken, completion: completion)
   }
 
   @available(iOS 16.2, *)
@@ -253,9 +288,14 @@ enum LiveActivityChannelHandler {
   private static func handleSyncImage(call: FlutterMethodCall, result: @escaping FlutterResult) {
     let args = call.arguments as? [String: Any] ?? [:]
     let petImageUrl = args["petImageUrl"] as? String ?? ""
+    let fourCloverUrl = args["fourCloverUrl"] as? String ?? ""
     let authToken = args["authToken"] as? String ?? ""
 
-    LiveActivitySync.syncImage(from: petImageUrl, authToken: authToken) { ok in
+    LiveActivitySync.syncImages(
+      petUrl: petImageUrl,
+      fourCloverUrl: fourCloverUrl,
+      authToken: authToken
+    ) { ok in
       DispatchQueue.main.async {
         result(ok)
       }
