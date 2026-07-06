@@ -79,12 +79,22 @@ class LiveActivityService {
     }
   }
 
+  Future<void> _prepareForSync() async {
+    if (!await isSupported()) return;
+    try {
+      await _channel.invokeMethod<void>('prepareForSync');
+    } catch (e, st) {
+      debugPrint('[LiveActivityService] prepareForSync failed: $e\n$st');
+    }
+  }
+
   /// 用户已开启且系统允许时，同步灵动岛内容（不影响桌面小组件）。
   Future<bool> syncIfEnabled({bool force = false}) async {
     if (!await isSupported()) return false;
     if (!force && !await isEnabled()) return false;
     if (!await areActivitiesEnabled()) return false;
 
+    await _prepareForSync();
     await _syncLiveActivityImage();
 
     final payload = _buildPayload();
