@@ -1,5 +1,4 @@
 import '../l10n/tr.dart';
-import '../utils/calendar_date_util.dart';
 import '../utils/date_format_util.dart';
 import '../utils/lunar_calendar_util.dart';
 
@@ -202,7 +201,7 @@ class MemorialDay {
         isLeapMonth: isLunarLeapMonth,
       );
     }
-    return CalendarDateUtil.localDateOnly(date);
+    return DateTime(date.year, date.month, date.day);
   }
 
   String get monthAbbr {
@@ -265,8 +264,9 @@ class MemorialDay {
 
   /// 展示用天数（农历会先换成公历再算间隔）
   int get displayDayCount {
-    final today = CalendarDateUtil.localDateOnly(DateTime.now());
-    final anchor = CalendarDateUtil.localDateOnly(listDisplayDate);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final anchor = listDisplayDate;
     if (anchor.isBefore(today)) {
       return today.difference(anchor).inDays;
     }
@@ -285,13 +285,15 @@ class MemorialDay {
   int get daysFromNow => displayDayCount;
 
   bool get isPast {
-    final today = CalendarDateUtil.localDateOnly(DateTime.now());
-    return CalendarDateUtil.localDateOnly(listDisplayDate).isBefore(today);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return listDisplayDate.isBefore(today);
   }
 
   _DateDiffParts get _displayDateDiff {
-    final today = CalendarDateUtil.localDateOnly(DateTime.now());
-    final anchor = CalendarDateUtil.localDateOnly(listDisplayDate);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final anchor = listDisplayDate;
     final start = anchor.isBefore(today) ? anchor : today;
     final end = anchor.isBefore(today) ? today : anchor;
     return _calendarDiff(start, end);
@@ -484,8 +486,8 @@ class MemorialDay {
       }
     }
     final typeTitle = typeMap?['title']?.toString() ?? '';
-    final parsed = CalendarDateUtil.tryParseLocalDate(json['date']?.toString()) ??
-        CalendarDateUtil.localDateOnly(DateTime.now());
+    final parsed = DateTime.tryParse(json['date']?.toString() ?? '') ??
+        DateTime.now();
 
     return MemorialDay(
       id: '${json['id']}',
