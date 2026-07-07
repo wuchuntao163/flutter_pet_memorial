@@ -13,10 +13,16 @@ class MemorialReminderSchedule {
   static DateTime? nextTrigger(MemorialDay day, {DateTime? from}) {
     if (!day.hasReminder) return null;
     final now = from ?? DateTime.now();
+    final anchorTrigger = _atTime(day.listDisplayDate);
+
+    // 所有重复模式均从所选日期当天 9:00 起才开始推送
+    if (anchorTrigger.isAfter(now)) {
+      return anchorTrigger;
+    }
 
     switch (day.repeatFrequency) {
       case RepeatFrequency.none:
-        return _onceOnAnchor(day, now);
+        return null;
       case RepeatFrequency.daily:
         return _nextDaily(now);
       case RepeatFrequency.weekly:
@@ -26,12 +32,6 @@ class MemorialReminderSchedule {
       case RepeatFrequency.yearly:
         return _nextYearly(day, now);
     }
-  }
-
-  static DateTime? _onceOnAnchor(MemorialDay day, DateTime now) {
-    final anchor = day.listDisplayDate;
-    final trigger = _atTime(anchor);
-    return trigger.isAfter(now) ? trigger : null;
   }
 
   static DateTime _nextDaily(DateTime now) {
