@@ -16,12 +16,14 @@ import '../../widgets/common/memorial_card.dart';
 import '../../widgets/common/memorial_grid_card.dart';
 import '../../l10n/tr.dart';
 import '../../utils/center_tip_util.dart';
+import '../../services/pet_gif_service.dart';
 import '../../utils/app_update_util.dart';
 import '../../services/day_tick_service.dart';
 import '../../services/language_service.dart';
 import '../../services/platform_pet_sync.dart';
 import '../../services/pet_image_cache.dart';
 import '../../utils/pet_display_image.dart';
+import '../../widgets/common/pet_gif_progress_hint.dart';
 import '../main/main_shell_scope.dart';
 
 class MemorialListScreen extends StatefulWidget {
@@ -34,6 +36,8 @@ class MemorialListScreen extends StatefulWidget {
 class _MemorialListScreenState extends State<MemorialListScreen> {
   final _petCardKey = GlobalKey();
   bool _isGridView = false;
+  bool _summonGifLoading = false;
+  PetGifTaskResult? _gifProgress;
 
   late final Listenable _rebuildListenable = Listenable.merge([
     LanguageService.instance,
@@ -131,7 +135,9 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
     }
   }
 
-  void _onSummonOrRecallTap() {
+  Future<void> _onSummonOrRecallTap() async {
+    if (_summonGifLoading) return;
+
     final shell = MainShellScope.of(context);
     if (shell.isPetVisible) {
       shell.recallPet();
@@ -142,9 +148,52 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
     if (box == null || !box.hasSize) return;
 
     final cardTop = box.localToGlobal(Offset.zero).dy;
+    final anchor = Offset(0, cardTop);
 
-    // dy=卡片顶边，召唤后出现在屏幕最右侧并踩在顶边上
-    shell.summonPet(Offset(0, cardTop));
+    final existingGif = PetGifService.existingAnimatedImageUrl();
+    if (existingGif != null && existingGif.isNotEmpty) {
+      shell.summonPet(anchor, animatedImage: existingGif);
+      return;
+    }
+
+    setState(() {
+      _summonGifLoading = true;
+      _gifProgress = const PetGifTaskResult(status: 0);
+    });
+
+    String? gifUrl;
+    try {
+      gifUrl = await PetGifService.resolveAnimatedImage(
+        onProgress: (result) {
+          if (!mounted) return;
+          setState(() => _gifProgress = result);
+        },
+      );
+    } on ApiException catch (e) {
+      if (mounted) {
+        showCenterTip(
+          context,
+          e.message.isNotEmpty ? e.message : tr('summon.failed'),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _summonGifLoading = false;
+          _gifProgress = null;
+        });
+      }
+    }
+
+    if (!mounted) return;
+
+    if (gifUrl != null && gifUrl.isNotEmpty) {
+      AppCacheStore.instance.setAnimatedImage(gifUrl);
+      shell.summonPet(anchor, animatedImage: gifUrl);
+      return;
+    }
+
+    shell.summonPet(anchor);
   }
 
   @override
@@ -173,7 +222,11 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
                 children: [
                   ListenableBuilder(
                     listenable: AppCacheStore.instance,
-                    builder: (context, _) => _buildPetCard(isPetVisible),
+                    builder: (context, _) => _buildPetCard(
+                      isPetVisible,
+                      summonGifLoading: _summonGifLoading,
+                      gifProgress: _gifProgress,
+                    ),
                   ),
                   const SizedBox(height: 17),
                   _buildSectionHeader(context),
@@ -301,131 +354,151 @@ class _MemorialListScreenState extends State<MemorialListScreen> {
     );
   }
 
-  Widget _buildPetCard(bool isPetVisible) {
+  Widget _buildPetCard(
+    bool isPetVisible, {
+    required bool summonGifLoading,
+    PetGifTaskResult? gifProgress,
+  }) {
     final pet = AppCacheStore.instance.petProfile;
     final nickname = pet?['nickname']?.toString() ?? '';
     final image = PetDisplayImage.resolveRawSync() ?? '';
     final days = AppCacheStore.instance.accompanyDays;
 
-    return Container(
-      key: _petCardKey,
-      padding: AppLayout.petCardPadding,
-      decoration: BoxDecoration(
-        color: AppColors.bgWhite,
-        borderRadius: BorderRadius.circular(AppLayout.petCardBorderRadius),
-        border: Border.all(
-          color: AppColors.borderPlaceholder.withValues(alpha: 0.2),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accentDark.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: AppLayout.petAvatarSize,
-            height: AppLayout.petAvatarSize,
-            child: PetAvatarImage(
-              key: ValueKey('home-pet-avatar-$image'),
-              url: image,
-              width: AppLayout.petAvatarSize,
-              height: AppLayout.petAvatarSize,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          key: _petCardKey,
+          padding: AppLayout.petCardPadding,
+          decoration: BoxDecoration(
+            color: AppColors.bgWhite,
+            borderRadius: BorderRadius.circular(AppLayout.petCardBorderRadius),
+            border: Border.all(
+              color: AppColors.borderPlaceholder.withValues(alpha: 0.2),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.accentDark.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          const SizedBox(width: AppLayout.petCardAvatarGap),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  nickname,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.accentDark,
-                  ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: AppLayout.petAvatarSize,
+                height: AppLayout.petAvatarSize,
+                child: PetAvatarImage(
+                  key: ValueKey('home-pet-avatar-$image'),
+                  url: image,
+                  width: AppLayout.petAvatarSize,
+                  height: AppLayout.petAvatarSize,
                 ),
-                const SizedBox(height: AppLayout.petCardTextGap),
-                Row(
+              ),
+              const SizedBox(width: AppLayout.petCardAvatarGap),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(
-                        Icons.favorite,
-                        size: 14,
-                        color: AppColors.accent.withValues(alpha: 0.9),
+                    Text(
+                      nickname,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.accentDark,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: tr('memorial.days_prefix'),
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textTertiary,
-                              ),
-                            ),
-                            TextSpan(
-                              text: '$days',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.accentDark,
-                              ),
-                            ),
-                            TextSpan(
-                              text: tr('memorial.days_suffix'),
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textTertiary,
-                              ),
-                            ),
-                          ],
+                    const SizedBox(height: AppLayout.petCardTextGap),
+                    Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Icon(
+                            Icons.favorite,
+                            size: 14,
+                            color: AppColors.accent.withValues(alpha: 0.9),
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: tr('memorial.days_prefix'),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textTertiary,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '$days',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.accentDark,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: tr('memorial.days_suffix'),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textTertiary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          GradientTapButton(
-            onTap: _onSummonOrRecallTap,
-            gradient: AppColors.avatarGenerateGradient,
-            borderRadius: 999,
-            width: AppLayout.petSummonButtonMaxWidth,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Text(
-              isPetVisible
-                  ? tr('memorial.recall_pet')
-                  : tr('memorial.summon_pet'),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              softWrap: true,
-              style: const TextStyle(
-                fontSize: 12,
-                height: 1.15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.avatarGenerateButtonText,
               ),
+              const SizedBox(width: 8),
+              GradientTapButton(
+                onTap: summonGifLoading ? null : _onSummonOrRecallTap,
+                gradient: AppColors.avatarGenerateGradient,
+                borderRadius: 999,
+                width: AppLayout.petSummonButtonMaxWidth,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Text(
+                  isPetVisible
+                      ? tr('memorial.recall_pet')
+                      : summonGifLoading
+                          ? tr('summon.preparing_short')
+                          : tr('memorial.summon_pet'),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  softWrap: true,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.avatarGenerateButtonText,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (gifProgress != null)
+          Positioned(
+            top: -52,
+            right: 8,
+            child: PetGifProgressHint(
+              progress: gifProgress,
+              petImageUrl: image,
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 

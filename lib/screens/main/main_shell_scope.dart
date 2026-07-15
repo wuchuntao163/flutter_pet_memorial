@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 /// 主壳层：供子页面控制悬浮宠物
 class MainShellScope extends InheritedWidget {
   final bool isPetVisible;
-  final void Function(Offset initialGlobalPosition) summonPet;
+  final void Function(Offset initialGlobalPosition, {String? animatedImage})
+      summonPet;
   final VoidCallback recallPet;
 
   const MainShellScope({

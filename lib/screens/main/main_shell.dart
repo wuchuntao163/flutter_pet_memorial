@@ -33,8 +33,10 @@ class _MainShellState extends State<MainShell> {
   int _petAnimationEpoch = 0;
   GlobalKey _floatingPetKey = GlobalKey();
 
+  String? _summonAnimatedImage;
+
   /// [anchor] dy=卡片顶边全局 y
-  void _summonPet(Offset anchor) {
+  void _summonPet(Offset anchor, {String? animatedImage}) {
     final petSize = AppLayout.homePetAvatarSize;
     final media = MediaQuery.of(context);
     final padding = media.padding;
@@ -50,6 +52,7 @@ class _MainShellState extends State<MainShell> {
     setState(() {
       _floatingPetKey = GlobalKey();
       _petAnimationEpoch++;
+      _summonAnimatedImage = animatedImage?.trim();
       _petVisible = true;
       _petPosition = Offset(x, y);
     });
@@ -59,6 +62,7 @@ class _MainShellState extends State<MainShell> {
     setState(() {
       _floatingPetKey = GlobalKey();
       _petAnimationEpoch++;
+      _summonAnimatedImage = null;
       _petVisible = false;
       _petPosition = null;
     });
@@ -71,8 +75,9 @@ class _MainShellState extends State<MainShell> {
   /// 主 Tab 根页按一次返回直接退出
   void _onRootBack(BuildContext context) {
     final path = GoRouterState.of(context).uri.path;
-    final onMainTab =
-        path == AppRoutes.home || path == AppRoutes.profile;
+    final onMainTab = path == AppRoutes.home ||
+        path == AppRoutes.profile ||
+        path == AppRoutes.component;
 
     if (!onMainTab) {
       final router = GoRouter.of(context);
@@ -124,7 +129,8 @@ class _MainShellState extends State<MainShell> {
                   listenable: AppCacheStore.instance,
                   builder: (context, _) {
                     final profile = AppCacheStore.instance.petProfile;
-                    final gif = profile?['animated_image']?.toString();
+                    final gif = _summonAnimatedImage ??
+                        profile?['animated_image']?.toString();
                     final avatar = PetDisplayImage.resolveRawSync();
                     return DraggableFloatingPet(
                       key: _floatingPetKey,

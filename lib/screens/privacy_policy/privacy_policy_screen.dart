@@ -43,6 +43,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
         backgroundColor: AppColors.bgPrimary,
         elevation: 0,
         centerTitle: true,
+        foregroundColor: AppColors.textPrimary,
         title: Text(
           tr('profile.privacy_policy'),
           style: const TextStyle(
@@ -53,7 +54,11 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
         ),
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            size: 18,
+            color: AppColors.textPrimary,
+          ),
         ),
       ),
       body: Stack(

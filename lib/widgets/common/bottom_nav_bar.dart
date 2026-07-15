@@ -22,7 +22,7 @@ class BottomNavBar extends StatelessWidget {
     {'name': '', 'url': AppRoutes.profile, 'icon': ''},
   ];
 
-  /// 接口 name（如「日子」「我的」）→ nav.{name} 双语文案
+  /// 接口 name（如「日子」「我的」「组件」）→ nav.{name} 双语文案
   static String _localizedNavName(String rawName) {
     final key = rawName.trim();
     if (key.isEmpty) return key;
@@ -30,15 +30,25 @@ class BottomNavBar extends StatelessWidget {
   }
 
   static String _fallbackName(String url) {
-    final path = url.split('?').first;
+    final path = _normalizePath(url);
     if (path == AppRoutes.profile) return tr('nav.我的', fb: '我的');
+    if (path == AppRoutes.component) return tr('nav.组件', fb: '组件');
     return tr('nav.日子', fb: '日子');
   }
 
-  static int branchIndexForUrl(String url) {
-    final path = url.split('?').first;
+  static String _normalizePath(String url) {
+    final path = url.split('?').first.trim();
+    if (path.isEmpty) return path;
+    return path.startsWith('/') ? path : '/$path';
+  }
+
+  /// url → StatefulShell 分支下标（与 app_router 中 branches 顺序一致）
+  static int? shellBranchIndexForUrl(String url) {
+    final path = _normalizePath(url);
+    if (path == AppRoutes.home) return 0;
     if (path == AppRoutes.profile) return 1;
-    return 0;
+    if (path == AppRoutes.component) return 2;
+    return null;
   }
 
   @override
@@ -100,14 +110,24 @@ class BottomNavBar extends StatelessWidget {
     final name = rawName.isNotEmpty
         ? _localizedNavName(rawName)
         : (url.isEmpty ? '' : _fallbackName(url));
-    final branchIndex = url.isEmpty ? listIndex : branchIndexForUrl(url);
-    final active = currentIndex == branchIndex;
+    final itemPath = _normalizePath(url);
+    final branchIndex =
+        url.isEmpty ? listIndex : shellBranchIndexForUrl(url);
+    final active = branchIndex != null && currentIndex == branchIndex;
+
     final icon = map['icon']?.toString() ?? '';
     final textColor = AppColors.accentDark;
-    final fallback = branchIndex == 0 ? Icons.star_rounded : Icons.cloud;
+    final fallback = itemPath == AppRoutes.profile
+        ? Icons.cloud
+        : (itemPath == AppRoutes.component
+            ? Icons.widgets_outlined
+            : Icons.star_rounded);
+    final fallbackColor = itemPath == AppRoutes.profile
+        ? const Color(0xFFB8A0D9)
+        : AppColors.blue;
 
     return GestureDetector(
-      onTap: url.isEmpty
+      onTap: url.isEmpty || branchIndex == null
           ? null
           : () {
               if (navigationShell.currentIndex == branchIndex) return;
@@ -132,18 +152,14 @@ class BottomNavBar extends StatelessWidget {
                 errorBuilder: (_, _, _) => Icon(
                   fallback,
                   size: 26,
-                  color: branchIndex == 0
-                      ? AppColors.blue
-                      : const Color(0xFFB8A0D9),
+                  color: fallbackColor,
                 ),
               )
             else
               Icon(
                 fallback,
                 size: 26,
-                color: branchIndex == 0
-                    ? AppColors.blue
-                    : const Color(0xFFB8A0D9),
+                color: fallbackColor,
               ),
             const SizedBox(height: 0),
             Text(

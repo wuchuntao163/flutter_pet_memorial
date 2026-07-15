@@ -144,6 +144,12 @@ class ApiPaths {
   /// 删除背景图片 · POST
   static const deleteBackground = '/api/pet/deleteBackground';
 
+  /// 图片加文本生成 GIF 动图 · POST
+  static const generateImageWithTextGif = '/api/pet/generateImageWithTextGif';
+
+  /// 获取 GIF 生成任务结果 · GET
+  static const getGifTaskResult = '/api/pet/getGifTaskResult';
+
   // ═══════════════════════════════════════════════════════════
   //  需要登录 · User 用户
   // ═══════════════════════════════════════════════════════════

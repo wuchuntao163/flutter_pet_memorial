@@ -262,6 +262,18 @@ class AppCacheStore extends ChangeNotifier {
       patched['pet_type'] = 3;
     }
     petInfo = patched;
+    notifyListeners();
+  }
+
+  void setAnimatedImage(String url) {
+    final value = url.trim();
+    if (value.isEmpty) return;
+    final map = petProfile;
+    if (map == null) return;
+    final patched = Map<String, dynamic>.from(map);
+    patched['animated_image'] = value;
+    petInfo = patched;
+    notifyListeners();
   }
 
   /// 写入档案，并用返回的 id 覆盖本地 petId

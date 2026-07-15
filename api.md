@@ -769,6 +769,7 @@
             "id": 1,
             "nickname": "旺财",
             "image": "https://example.com/pet/1.png",
+            "animated_image": "https://example.com/pet/1.gif",
             "type": 1,
             "description": "可爱的小狗",
             "is_default": 1,
@@ -777,6 +778,12 @@
     }
 }
 ```
+
+**返回字段说明（info 列表项）**:
+
+| 字段名 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| animated_image | string | 宠物召唤用 GIF 动图 URL；有值时前端召唤宠物直接使用，无需再调 GIF 生成接口 |
 
 #### 5. 获取纪念日列表
 
@@ -1264,86 +1271,151 @@
 }
 ```
 
-#### 20. 图片加文本生成GIF动图
+#### 20. 图片加文本生成 GIF 动图
 
 **接口地址**: `/api/pet/generateImageWithTextGif`
 
 **请求方式**: POST
 
+**使用场景**: 召唤宠物时，若档案 `animated_image` 为空，且 `getGifTaskResult` 返回 `status` 为 `null`（未生成），则调用本接口发起 GIF 生成。
+
 **请求参数**:
 
 | 参数名 | 类型 | 必填 | 说明 |
 | :--- | :--- | :--- | :--- |
 | app_id | int | 是 | 应用ID |
-| image | string | 是 | 图片URL |
+| pet_id | int | 是 | 宠物ID |
+| image | string | 是 | 宠物静态图 URL（通常取档案 `image` 字段） |
 
-**说明**: 文本内容从配置项 `gif_text` 中获取，默认值为"宠物纪念"
+**说明**: 文本内容从配置项 `gif_text` 中获取，默认值为「宠物纪念」。
 
-**返回示例**:
+**返回示例（提交成功）**:
 
 ```json
 {
     "code": 200,
     "msg": "success",
     "data": {
-        "task_id": "gif_1234567890abcdef"
+        "image_url": "https://pet.laowaidrivetest.com/pet/gif/app_1/1234567890.gif"
     }
 }
 ```
 
-**说明**: 此接口只负责创建GIF生成任务，不返回最终处理结果。前端需要使用返回的 `task_id` 调用 `getGifTaskResult` 接口轮询获取处理结果。
+**返回字段说明**:
 
-#### 19. 获取GIF生成任务结果
+| 字段名 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| image_url | string | GIF 动图 URL。同步生成完成时直接返回；异步生成时可能为空，需轮询 `getGifTaskResult` 直至 `status=3` 后获取 |
+
+**说明**:
+- 本接口用于创建 GIF 生成任务；提交成功后任务状态变为 `0`（生成中）
+- 前端应继续轮询 `getGifTaskResult`，在 `status=3` 时取 `image_url` 用于召唤宠物展示
+
+#### 21. 获取 GIF 生成任务结果
 
 **接口地址**: `/api/pet/getGifTaskResult`
 
 **请求方式**: GET
 
+**使用场景**: 召唤宠物时，若档案 `animated_image` 为空，先调用本接口查询当前宠物的 GIF 生成状态，再决定是否调用 `generateImageWithTextGif` 或轮询等待。
+
 **请求参数**:
 
 | 参数名 | 类型 | 必填 | 说明 |
 | :--- | :--- | :--- | :--- |
 | app_id | int | 是 | 应用ID |
-| task_id | string | 是 | 任务ID（从generateImageWithTextGif接口获取） |
+| pet_id | int | 是 | 宠物ID |
 
-**返回示例**:
+**返回示例（未生成）**:
 
-任务进行中：
 ```json
 {
     "code": 200,
     "msg": "success",
     "data": {
-        "status": "processing",
-        "message": "处理中..."
+        "status": null,
+        "message": ""
     }
 }
 ```
 
-任务完成：
+**返回示例（生成中）**:
+
 ```json
 {
     "code": 200,
     "msg": "success",
     "data": {
-        "status": "completed",
-        "gif_url": "https://pet.laowaidrivetest.com/pet/gif/app_1/1234567890.gif"
+        "status": 0,
+        "message": "生成中",
+        "list": [
+            { "key": 1, "status": 3 },
+            { "key": 2, "status": 3 },
+            { "key": 3, "status": 1 },
+            { "key": 4, "status": 0 },
+            { "key": 5, "status": 0 },
+            { "key": 6, "status": 0 },
+            { "key": 7, "status": 0 }
+        ]
     }
 }
 ```
 
-任务失败：
+**list 字段说明**（7 个步骤，首页召唤宠物进度提示使用）:
+
+| 字段 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| key | int | 步骤序号 `1`～`7` |
+| status | int | 单步状态：`0`-未开始，`1`-进行中，`2`-失败，`3`-成功 |
+
+前端进度条：`status=3` 实心完成；第一个 `status=1` 的格闪烁；`status=0` 浅色未开始。
+
+**返回示例（生成成功）**:
+
 ```json
 {
-    "code": 400,
-    "msg": "GIF生成失败：具体错误信息"
+    "code": 200,
+    "msg": "success",
+    "data": {
+        "status": 3,
+        "message": "",
+        "image_url": "https://pet.laowaidrivetest.com/pet/gif/app_1/1234567890.gif"
+    }
 }
 ```
 
-**说明**: 
-- 前端需要轮询调用此接口获取任务结果
-- 任务状态：`processing`-处理中，`completed`-完成，`failed`-失败
-- 建议轮询间隔为2-3秒
+**返回示例（生成失败）**:
+
+```json
+{
+    "code": 200,
+    "msg": "success",
+    "data": {
+        "status": 2,
+        "message": "GIF生成失败：具体错误信息"
+    }
+}
+```
+
+**返回字段说明**:
+
+| 字段名 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| status | int \| null | 任务状态：`null`-未生成，`0`/`1`-生成中，`2`-失败，`3`-成功 |
+| message | string | 状态说明或失败原因 |
+| list | array | 7 步进度：`[{key, status}]`；`key` 为 1～7，`status`：`0`未开始 / `1`进行中 / `2`失败 / `3`成功 |
+| image_url | string | GIF 动图 URL；仅任务 `status=3` 时返回 |
+
+**前端召唤宠物 GIF 获取流程**:
+
+1. 读取 `getPetProfileInfo` 返回的 `animated_image`；**有值则直接使用**，不再请求 GIF 相关接口
+2. `animated_image` 为空时，调用 `getGifTaskResult` 查询任务状态
+3. `status` 为 `null`：未生成 → 调用 `generateImageWithTextGif` 发起生成
+4. `status` 为 `0` 或 `1`：生成中 → 轮询 `getGifTaskResult`（建议间隔 2～3 秒）
+5. `status` 为 `2`：失败 → **从头重新调用** `generateImageWithTextGif`，再继续轮询
+6. `status` 为 `3`：成功 → 使用 `image_url` 作为召唤宠物动图
+
+**说明**: 无客户端超时；`status` 为 `0`/`1` 时持续轮询；`status=2` 时重新发起生成并继续等待，直至 `status=3`。
 
 ---
 

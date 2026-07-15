@@ -55,6 +55,54 @@ class PetImagePicker {
     return file?.path;
   }
 
+  /// 打开相册选择多张图片
+  static Future<List<String>> pickMultipleFromGallery(
+    BuildContext context, {
+    int maxAssets = 3,
+  }) async {
+    await AppPermissionUtil.ensureGalleryAccess();
+    if (!context.mounted) return const [];
+
+    if (Platform.isIOS) {
+      try {
+        final files = await _cameraPicker.pickMultiImage(
+          maxWidth: 1920,
+          maxHeight: 1920,
+          imageQuality: 88,
+        );
+        return files.take(maxAssets).map((f) => f.path).toList();
+      } on PlatformException catch (e) {
+        if (e.code == 'photo_access_denied' ||
+            e.code == 'photo_access_restricted') {
+          throw const AppPermissionDeniedException(AppPermissionType.gallery);
+        }
+        rethrow;
+      }
+    }
+
+    final assets = await AssetPicker.pickAssets(
+      context,
+      pickerConfig: AssetPickerConfig(
+        maxAssets: maxAssets,
+        requestType: RequestType.image,
+        textDelegate: const AssetPickerTextDelegate(),
+        pickerTheme: AssetPicker.themeData(
+          AppColors.accent,
+          light: true,
+        ),
+      ),
+    );
+    if (assets == null || assets.isEmpty) return const [];
+
+    final paths = <String>[];
+    for (final asset in assets) {
+      final file = await asset.originFile;
+      final path = file?.path;
+      if (path != null && path.isNotEmpty) paths.add(path);
+    }
+    return paths;
+  }
+
   /// 相机拍照
   static Future<String?> pickFromCamera() async {
     try {

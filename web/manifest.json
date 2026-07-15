@@ -1,11 +1,11 @@
 {
-    "name": "哈基米倒数日",
-    "short_name": "哈基米倒数日",
+    "name": "哈基米纪念日",
+    "short_name": "哈基米纪念日",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FEF8F1",
     "theme_color": "#FFB2A6",
-    "description": "哈基米倒数日 - 宠物纪念日记录",
+    "description": "哈基米纪念日 - 宠物纪念日记录",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

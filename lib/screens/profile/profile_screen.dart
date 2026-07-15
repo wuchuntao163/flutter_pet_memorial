@@ -47,6 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const _iconShare = 'assets/images/image_84.png';
   static const _iconRate = 'assets/images/image_85.png';
   static const _iconContactService = 'assets/images/image_86.png';
+  static const _iconFeedback = 'assets/images/feedback.png';
   static const _iconPrivacy = 'assets/images/privacy.png';
   static const _iconVersion = 'assets/images/update.png';
 
@@ -249,6 +250,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onChanged: _onDesktopPetChanged,
                         ),
                       const SizedBox(height: 8),
+                      SwitchSettingsItem(
+                        iconAsset: _iconCloudSync,
+                        title: tr('profile.cloud_sync'),
+                        value: cloudSync,
+                        onChanged: _onCloudSyncChanged,
+                      ),
+                      const SizedBox(height: 8),
                       SettingsItem(
                         iconAsset: _iconLanguage,
                         title: tr('profile.switch_language'),
@@ -256,11 +264,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         onTap: () => LanguagePickerDialog.show(context),
                       ),
                       const SizedBox(height: 8),
-                      SwitchSettingsItem(
-                        iconAsset: _iconCloudSync,
-                        title: tr('profile.cloud_sync'),
-                        value: cloudSync,
-                        onChanged: _onCloudSyncChanged,
+                      SettingsItem(
+                        iconAsset: _iconContactService,
+                        title: tr('profile.contact_service'),
+                        showArrow: true,
+                        onTap: () => _onContactService(context),
+                      ),
+                      const SizedBox(height: 8),
+                      SettingsItem(
+                        iconAsset: _iconFeedback,
+                        title: tr('profile.feedback'),
+                        showArrow: true,
+                        onTap: () => context.push(AppRoutes.feedback),
                       ),
                       const SizedBox(height: 8),
                       SettingsItem(
@@ -270,20 +285,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         onTap: () => _onShareRecommend(context),
                       ),
                       const SizedBox(height: 8),
-                      if (!Platform.isIOS) ...[
-                        SettingsItem(
-                          iconAsset: _iconRate,
-                          title: tr('profile.rate_us'),
-                          showArrow: true,
-                          onTap: () => _onRateApp(context),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
                       SettingsItem(
-                        iconAsset: _iconContactService,
-                        title: tr('profile.contact_service'),
+                        iconAsset: _iconRate,
+                        title: tr('profile.rate_us'),
                         showArrow: true,
-                        onTap: () => _onContactService(context),
+                        onTap: () => _onRateApp(context),
                       ),
                       const SizedBox(height: 8),
                       SettingsItem(

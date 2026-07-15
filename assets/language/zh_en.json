@@ -13,12 +13,14 @@
     "unit_year": "years"
   },
   "app": {
-    "title": "Hakimi Countdown",
+    "title": "Hakimi Memorial Day",
     "adoption_success": "Adopted successfully! Welcome!"
   },
   "nav": {
     "日子": "Days",
-    "我的": "Me"
+    "我的": "Me",
+    "组件": "Components",
+    "page_coming_soon": "Coming soon"
   },
   "language": {
     "title": "Switch Language",
@@ -32,12 +34,23 @@
     "album_save_denied": "Photo library write access is required to save images. Please enable it in Settings.",
     "open_settings": "Open Settings"
   },
+  "summon": {
+    "loading_title": "Summon Pet",
+    "preparing": "Preparing to summon your pet…",
+    "preparing_short": "Summoning…",
+    "checking_gif": "Checking pet animation…",
+    "generating_gif": "Generating pet animation, first time may take a while…",
+    "waiting_gif": "Animation in progress, please wait…",
+    "generating_short": "Generating...",
+    "failed": "Animation failed. Summoning with static image instead.",
+    "no_image": "Pet image not found. Cannot generate animation."
+  },
   "desktop_pet": {
     "android_only": "Desktop floating pet only supports Android",
     "permission_required": "Please grant \"Display over other apps\" permission",
     "enable_failed": "Failed to enable desktop floating pet, please check permissions",
     "enabled_tip": "Desktop floating pet enabled. Return to home screen to see your pet.",
-    "overlay_title": "Hakimi Countdown",
+    "overlay_title": "Hakimi Memorial Day",
     "overlay_content": "Tap notification to manage overlay permission"
   },
   "live_activity": {
@@ -53,7 +66,7 @@
     "widget_step1_title": "1. Long-press the Home Screen",
     "widget_step1_body": "Tap Edit or + in the top-left corner, then choose Add Widget",
     "widget_step2_title": "2. Search for the widget",
-    "widget_step2_body": "Search for Hakimi Countdown, pick a size, and add it to your Home Screen",
+    "widget_step2_body": "Search for Hakimi Memorial Day, pick a size, and add it to your Home Screen",
     "island_step1_title": "1. Enable Dynamic Island",
     "island_step1_body": "Turn on the switch below to display your pet on Dynamic Island and Lock Screen",
     "island_step2_title": "2. Check system settings",
@@ -69,6 +82,7 @@
     "rate_us": "Rate Us",
     "contact_service": "Contact Support",
     "contact_service_unavailable": "Customer service is not available yet",
+    "feedback": "Feedback",
     "logout": "Log Out",
     "share_failed": "Share failed: ",
     "cannot_open_store": "Cannot open app store",
@@ -76,6 +90,24 @@
     "bind_phone": "Bind Phone",
     "privacy_policy": "Privacy Policy",
     "version": "Version"
+  },
+  "feedback": {
+    "name_label": "Name",
+    "name_hint": "Enter your name",
+    "name_required": "Please enter your name",
+    "phone_label": "Phone",
+    "phone_hint": "Enter your phone number",
+    "phone_required": "Please enter your phone number",
+    "phone_invalid": "Please enter a valid phone number",
+    "content_label": "Feedback",
+    "content_hint": "Describe your issue or suggestion",
+    "content_required": "Please enter your feedback",
+    "images_label": "Images (optional)",
+    "images_hint": "Up to 3 images",
+    "images_limit": "You can upload up to 3 images",
+    "submit": "Submit",
+    "submit_success": "Submitted successfully",
+    "submit_failed": "Submit failed: "
   },
   "banner": {
     "open_wechat_title": "Notice",
@@ -91,7 +123,7 @@
     "message": "Reselect pet? All current pet data will be cleared."
   },
   "pet_type": {
-    "title": "Hakimi Countdown",
+    "title": "Hakimi Memorial Day",
     "subtitle": "Choose a pet to accompany you",
     "generate_ai": "Generate AI Pet",
     "regenerate_ai": "Regenerate Avatar",
@@ -218,13 +250,15 @@
     "photo_fail": "Camera failed: ",
     "uploading": "Uploading photo...",
     "generating": "Generating pet image...",
-    "applying_avatar": "Applying avatar...",
+    "applying_avatar": "Generating pet animation...\nTap Summon Pet to check progress",
+    "applying_avatar_button": "Generating pet animation, please wait...",
     "matting": "Removing background...",
     "generate_fail": "Generation failed: ",
     "generate_first": "Please generate pet avatar first",
     "dialog_title": "Generate virtual pet",
     "upload_hint": "Upload a photo to generate virtual pet",
     "feature_label": "Describe your pet",
+    "feature_required": "Please describe your pet's features",
     "use_avatar": "Use this avatar",
     "upload_title": "Upload pet photo",
     "upload_subtitle": "Tap to choose from album or camera",
@@ -298,11 +332,11 @@
     "wechat_not_installed": "WeChat not installed, opened system share",
     "timeline_hint": "Choose WeChat Moments in share sheet",
     "xhs_not_installed": "RedNote not installed, opened system share",
-    "card_title": "Hakimi Countdown · "
+    "card_title": "Hakimi Memorial Day · "
   },
   "promotion": {
-    "app_name": "Hakimi Countdown",
-    "intro": "Try Hakimi Countdown — an all-in-one memorial app with your own digital pet, here for every day worth remembering."
+    "app_name": "Hakimi Memorial Day",
+    "intro": "Try Hakimi Memorial Day — an all-in-one memorial app with your own digital pet, here for every day worth remembering."
   },
   "update": {
     "title": "Update Available",

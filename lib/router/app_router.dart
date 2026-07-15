@@ -14,6 +14,8 @@ import '../screens/pet_naming/pet_naming_screen.dart';
 import '../screens/avatar_style_selection/avatar_style_selection_screen.dart';
 import '../screens/pet_type_selection/pet_type_selection_screen.dart';
 import '../screens/privacy_policy/privacy_policy_screen.dart';
+import '../screens/feedback/feedback_screen.dart';
+import '../screens/component/component_page_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import 'app_routes.dart';
 
@@ -51,6 +53,14 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.component,
+              builder: (_, _) => const ComponentPageScreen(),
+            ),
+          ],
+        ),
       ],
     ),
     GoRoute(
@@ -62,6 +72,11 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: rootNavigatorKey,
       path: AppRoutes.privacyPolicy,
       builder: (_, _) => const PrivacyPolicyScreen(),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.feedback,
+      builder: (_, _) => const FeedbackScreen(),
     ),
     GoRoute(
       parentNavigatorKey: rootNavigatorKey,

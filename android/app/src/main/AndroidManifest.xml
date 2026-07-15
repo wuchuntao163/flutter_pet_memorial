@@ -11,7 +11,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <application
-        android:label="哈基米倒数日"
+        android:label="哈基米纪念日"
         android:name=".PetMemorialApplication"
         android:icon="@mipmap/ic_launcher">
         <activity

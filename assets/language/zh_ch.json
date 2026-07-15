@@ -13,12 +13,14 @@
     "unit_year": "年"
   },
   "app": {
-    "title": "哈基米倒数日",
+    "title": "哈基米纪念日",
     "adoption_success": "领养成功！欢迎新成员~"
   },
   "nav": {
     "日子": "日子",
-    "我的": "我的"
+    "我的": "我的",
+    "组件": "组件",
+    "page_coming_soon": "页面建设中"
   },
   "language": {
     "title": "切换语言",
@@ -32,12 +34,23 @@
     "album_save_denied": "需要相册写入权限才能保存图片，请在设置中开启",
     "open_settings": "前往设置"
   },
+  "summon": {
+    "loading_title": "召唤宠物",
+    "preparing": "正在准备召唤宠物…",
+    "preparing_short": "召唤中…",
+    "checking_gif": "正在查询宠物动图…",
+    "generating_gif": "正在生成宠物动图，首次可能稍慢…",
+    "waiting_gif": "动图生成中，请稍候…",
+    "generating_short": "生成中...",
+    "failed": "动图生成失败，将使用静态形象召唤",
+    "no_image": "宠物形象不存在，无法生成动图"
+  },
   "desktop_pet": {
     "android_only": "iOS 暂不支持桌面悬浮宠物\n您可以添加主屏幕小组件查看宠物状态",
     "permission_required": "请授予「显示在其他应用上层」权限",
     "enable_failed": "开启桌面悬浮失败，请检查权限",
     "enabled_tip": "已开启桌面悬浮，返回桌面即可看到宠物；点击通知栏消息可管理「在其他应用上层显示」权限",
-    "overlay_title": "哈基米倒数日",
+    "overlay_title": "哈基米纪念日",
     "overlay_content": "点击通知管理「在其他应用上层显示」权限"
   },
   "live_activity": {
@@ -53,7 +66,7 @@
     "widget_step1_title": "1、长按手机桌面",
     "widget_step1_body": "点击左上角【编辑】或「+」号，选择【添加小组件】",
     "widget_step2_title": "2、搜索小组件",
-    "widget_step2_body": "搜索【哈基米倒数日】，选择小组件大小，添加小组件到桌面即可",
+    "widget_step2_body": "搜索【哈基米纪念日】，选择小组件大小，添加小组件到桌面即可",
     "island_step1_title": "1、开启灵动岛",
     "island_step1_body": "打开下方开关，即可在灵动岛和锁屏显示萌宠",
     "island_step2_title": "2、检查系统设置",
@@ -65,10 +78,11 @@
     "dynamic_island": "灵动岛宠物",
     "switch_language": "切换语言",
     "cloud_sync": "云端同步",
-    "share_app": "推荐给大家",
+    "share_app": "分享给朋友",
     "rate_us": "给我们评分",
     "contact_service": "联系客服",
     "contact_service_unavailable": "暂未配置客服入口",
+    "feedback": "意见反馈",
     "logout": "退出登录",
     "share_failed": "分享失败：",
     "cannot_open_store": "暂时无法打开应用商店",
@@ -76,6 +90,24 @@
     "bind_phone": "绑定手机号",
     "privacy_policy": "隐私政策",
     "version": "版本号"
+  },
+  "feedback": {
+    "name_label": "姓名",
+    "name_hint": "请输入姓名",
+    "name_required": "请输入姓名",
+    "phone_label": "手机号",
+    "phone_hint": "请输入手机号",
+    "phone_required": "请输入手机号",
+    "phone_invalid": "请输入正确的手机号",
+    "content_label": "反馈内容",
+    "content_hint": "请描述你的问题或建议",
+    "content_required": "请输入反馈内容",
+    "images_label": "图片（选填）",
+    "images_hint": "最多上传 3 张",
+    "images_limit": "最多只能上传 3 张图片",
+    "submit": "提交反馈",
+    "submit_success": "提交成功",
+    "submit_failed": "提交失败："
   },
   "banner": {
     "open_wechat_title": "提示",
@@ -91,7 +123,7 @@
     "message": "确定要重新选择宠物吗？这将清除当前宠物的所有数据。"
   },
   "pet_type": {
-    "title": "哈基米倒数日",
+    "title": "哈基米纪念日",
     "subtitle": "选择一只陪伴你的宠物吧",
     "generate_ai": "生成宠物AI形象",
     "regenerate_ai": "重新生成形象",
@@ -219,13 +251,15 @@
     "uploading": "正在上传照片...",
     "upload_fail": "图片上传失败：",
     "generating": "正在生成宠物图片，请稍候...",
-    "applying_avatar": "正在应用形象，请稍候...",
+    "applying_avatar": "宠物动态生成中...\n点击召唤宠物查看进度",
+    "applying_avatar_button": "宠物动态生成中，请稍后...",
     "matting": "正在抠图，请稍候...",
     "generate_fail": "生成失败：",
     "generate_first": "请先生成宠物形象",
     "dialog_title": "生成宠物虚拟形象",
     "upload_hint": "上传萌宠照片生成宠物虚拟形象",
     "feature_label": "描述你的宠物特征",
+    "feature_required": "请描述你的宠物特征",
     "use_avatar": "使用此形象",
     "upload_title": "上传萌宠照片",
     "upload_subtitle": "点击从相册或拍照上传",
@@ -299,11 +333,11 @@
     "wechat_not_installed": "未安装微信，已打开系统分享",
     "timeline_hint": "请在分享面板中选择微信朋友圈",
     "xhs_not_installed": "未安装小红书，已打开系统分享",
-    "card_title": "哈基米倒数日 · "
+    "card_title": "哈基米纪念日 · "
   },
   "promotion": {
-    "app_name": "哈基米倒数日",
-    "intro": "推荐一款全能纪念日 App「哈基米倒数日」，专属电子宠物，陪你记录每个值得纪念的日子"
+    "app_name": "哈基米纪念日",
+    "intro": "推荐一款全能纪念日 App「哈基米纪念日」，专属电子宠物，陪你记录每个值得纪念的日子"
   },
   "update": {
     "title": "版本更新",

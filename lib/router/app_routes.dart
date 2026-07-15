@@ -3,8 +3,10 @@ abstract final class AppRoutes {
   // ── 主 Tab（底部导航）──
   static const home = '/page/home';
   static const profile = '/page/profile';
+  static const component = '/page/component';
   static const bindPhone = '/bind-phone';
   static const privacyPolicy = '/privacy-policy';
+  static const feedback = '/feedback';
 
   // ── 宠物引导 ──
   static const petType = '/pet-type';

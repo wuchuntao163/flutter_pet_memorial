@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import '../../api/api.dart';
 import '../../l10n/tr.dart';
 import '../../config/colors.dart';
 import '../../data/pet_avatar_store.dart';
+import '../../services/pet_gif_service.dart';
 import '../../services/pet_image_service.dart';
 import '../../utils/app_permission_util.dart';
 import '../../utils/center_tip_util.dart';
@@ -67,11 +69,13 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
   /// 本地图片上传接口返回的 URL，选图后自动上传
   String? _uploadedImageUrl;
   String? _imageUrl;
-  bool _isUploading = false;
+  bool _isUploadingPhoto = false;
+  bool _isGenerating = false;
+  bool _isApplyingAvatar = false;
   bool _hasGeneratedOnce = false;
   int _uploadGeneration = 0;
 
-  /// 当前加载说明（与转圈一起展示）
+  /// 生成/上传过程中的说明（预览区转圈文案）
   String _statusText = '';
 
   int _generateGeneration = 0;
@@ -90,19 +94,19 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
 
   bool get _hasUploadedPhoto => _localPath != null;
 
-  bool get _canGenerate =>
-      _hasUploadedPhoto &&
-      _uploadedImageUrl != null &&
-      _descriptionController.text.trim().isNotEmpty &&
-      !_isUploading;
+  bool get _canTapGenerate =>
+      _hasUploadedPhoto && _uploadedImageUrl != null && !_isBusy;
 
   String get _generateButtonLabel {
-    if (_isUploading) return _statusText;
+    if (_isUploadingPhoto || _isGenerating) return _statusText;
     if (_hasGeneratedOnce) return tr('avatar.regenerate');
     return tr('avatar.generate');
   }
 
-  bool get _isBusy => _isUploading;
+  bool get _isBusy =>
+      _isUploadingPhoto || _isGenerating || _isApplyingAvatar;
+
+  bool get _showGenerateLoading => _isUploadingPhoto || _isGenerating;
 
   Future<void> _pickFromGallery() async {
     try {
@@ -139,7 +143,7 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
       _uploadedImageUrl = null;
       _imageUrl = null;
       _hasGeneratedOnce = false;
-      _isUploading = true;
+      _isUploadingPhoto = true;
       _statusText = tr('avatar.uploading');
     });
 
@@ -148,20 +152,20 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
       if (!mounted || generation != _uploadGeneration) return;
       setState(() {
         _uploadedImageUrl = url;
-        _isUploading = false;
+        _isUploadingPhoto = false;
         _statusText = '';
       });
     } on ApiException catch (e) {
       if (!mounted || generation != _uploadGeneration) return;
       setState(() {
-        _isUploading = false;
+        _isUploadingPhoto = false;
         _statusText = '';
       });
       _showMessage(e.message);
     } catch (e) {
       if (!mounted || generation != _uploadGeneration) return;
       setState(() {
-        _isUploading = false;
+        _isUploadingPhoto = false;
         _statusText = '';
       });
       _showMessage('${tr('avatar.upload_fail')}$e');
@@ -204,12 +208,21 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
     if (mounted) _dismissKeyboard();
   }
 
+  Future<void> _onGenerateTap() async {
+    _dismissKeyboard();
+    if (_descriptionController.text.trim().isEmpty) {
+      showCenterTip(context, tr('avatar.feature_required'));
+      return;
+    }
+    await _startGeneration();
+  }
+
   Future<void> _startGeneration() async {
-    if (!_canGenerate || _uploadedImageUrl == null || _isUploading) return;
+    if (!_canTapGenerate || _uploadedImageUrl == null) return;
 
     final generation = ++_generateGeneration;
     setState(() {
-      _isUploading = true;
+      _isGenerating = true;
       _statusText = tr('avatar.generating');
     });
 
@@ -243,7 +256,7 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
       setState(() {
         _imageUrl = displayUrl;
         _hasGeneratedOnce = true;
-        _isUploading = false;
+        _isGenerating = false;
         _statusText = '';
       });
       widget.onGenerationComplete?.call();
@@ -260,7 +273,7 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
   void _handleGenerationError(int generation, String message) {
     if (!mounted || generation != _generateGeneration) return;
     setState(() {
-      _isUploading = false;
+      _isGenerating = false;
       _statusText = '';
     });
     showDialog<void>(
@@ -286,11 +299,13 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
     }
 
     final description = _descriptionController.text.trim();
-    setState(() {
-      _isUploading = true;
-      _statusText = tr('avatar.applying_avatar');
-    });
+    _dismissKeyboard();
+    setState(() => _isApplyingAvatar = true);
+    // 先持久化并触发动图生成，提示结束后再关闭弹窗进入取名页
     await _persistAvatar(url: url, description: description);
+    unawaited(PetGifService.requestGeneration(imageUrl: url));
+    if (!mounted) return;
+    await showCenterTip(context, tr('avatar.applying_avatar'));
     if (!mounted) return;
     Navigator.of(
       context,
@@ -481,25 +496,23 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
                         _buildGradientButton(
                           label: _generateButtonLabel,
                           gradient: AppColors.avatarGenerateGradient,
-                          onPressed: _canGenerate
-                              ? () {
-                                  _dismissKeyboard();
-                                  _startGeneration();
-                                }
-                              : null,
-                          showLoading: _isBusy,
+                          onPressed: _canTapGenerate ? _onGenerateTap : null,
+                          showLoading: _showGenerateLoading,
                         ),
                         if (_imageUrl != null) ...[
                           const SizedBox(height: 10),
                           _buildGradientButton(
-                            label: tr('avatar.use_avatar'),
+                            label: _isApplyingAvatar
+                                ? tr('avatar.applying_avatar_button')
+                                : tr('avatar.use_avatar'),
                             gradient: AppColors.avatarActionGradient,
                             onPressed: _isBusy
                                 ? null
                                 : () {
-                                  _dismissKeyboard();
-                                  _useAvatar();
-                                },
+                                    _dismissKeyboard();
+                                    _useAvatar();
+                                  },
+                            showLoading: _isApplyingAvatar,
                           ),
                         ],
                       ],
@@ -589,7 +602,7 @@ class _AvatarGenerationDialogState extends State<AvatarGenerationDialog> {
             child: image,
           ),
         ),
-        if (_isBusy) _buildLoadingOverlay(),
+        if (_showGenerateLoading) _buildLoadingOverlay(),
         if (!_isBusy) ...[
           Positioned(
             left: 8,
