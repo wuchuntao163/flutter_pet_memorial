@@ -1420,7 +1420,21 @@ class _CountdownWidgetConfigScreenState
       else
         prefs.setString('${_prefsPrefix}_background_image', _backgroundImage!),
     ]);
-    await saveWidgetToLibrary(definition);
+    final memorial = _selectedMemorial;
+    await saveWidgetToLibrary(
+      definition,
+      settings: {
+        'memorial_id': _selectedMemorialId ?? '',
+        'memorial_ids': _selectedMemorialIds.toList(),
+        'memorial_title': memorial?.title ?? '',
+        'memorial_days': memorial?.displayDayCount ?? 0,
+        'memorial_date': memorial?.date.toIso8601String() ?? '',
+        'font_style': _selectedFontStyleId,
+        'text_color': _textColor.toARGB32(),
+        'background_color': _backgroundColor.toARGB32(),
+        'background_image': _backgroundImage ?? '',
+      },
+    );
     if (!mounted) return;
     await showCenterTip(context, '已保存到我的组件');
   }

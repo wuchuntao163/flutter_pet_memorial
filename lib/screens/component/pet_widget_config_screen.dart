@@ -557,7 +557,17 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
       else
         prefs.setString(_backgroundImageKey, _selectedBackgroundImage!),
     ]);
-    await saveWidgetToLibrary(definition);
+    await saveWidgetToLibrary(
+      definition,
+      settings: {
+        'pet_index': _selectedPet,
+        'pet_image': _petImages.isNotEmpty
+            ? _petImages[_selectedPet.clamp(0, _petImages.length - 1)]
+            : '',
+        'background_color': _customColor.toARGB32(),
+        'background_image': _selectedBackgroundImage ?? '',
+      },
+    );
     if (!mounted) return;
     await showCenterTip(context, '已保存到我的组件');
   }

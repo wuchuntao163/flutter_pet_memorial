@@ -55,12 +55,16 @@ struct PetWidgetData: Codable {
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), data: PetWidgetData.preview)
+        SimpleEntry(date: Date(), data: PetWidgetData.preview, config: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
         let data = context.isPreview ? PetWidgetData.preview : (loadWidgetData() ?? PetWidgetData.empty)
-        completion(SimpleEntry(date: Date(), data: data))
+        completion(SimpleEntry(
+            date: Date(),
+            data: data,
+            config: SavedWidgetConfiguration.loadAll().first
+        ))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
@@ -73,7 +77,11 @@ struct Provider: TimelineProvider {
             "[PetWidget] timeline pet=\(data.petName) url=\(data.petImageUrl.isEmpty ? "-" : "set") image=\(hasImage)"
         )
 
-        let entry = SimpleEntry(date: currentDate, data: data)
+        let entry = SimpleEntry(
+            date: currentDate,
+            data: data,
+            config: SavedWidgetConfiguration.loadAll().first
+        )
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
     }
@@ -121,6 +129,7 @@ struct Provider: TimelineProvider {
 struct SimpleEntry: TimelineEntry {
     let date: Date
     let data: PetWidgetData
+    let config: SavedWidgetConfiguration?
 }
 
 struct PetWidgetEntryView: View {
@@ -128,7 +137,13 @@ struct PetWidgetEntryView: View {
     var entry: Provider.Entry
 
     var body: some View {
-        petContent
+        Group {
+            if let config = entry.config {
+                SavedWidgetTemplateView(config: config)
+            } else {
+                petContent
+            }
+        }
             .id("\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(widgetPadding)
@@ -224,9 +239,9 @@ struct PetWidget: Widget {
 struct PetWidget_Previews: PreviewProvider {
     static var previews: some View {
         Group {
-            PetWidgetEntryView(entry: SimpleEntry(date: Date(), data: PetWidgetData.preview))
+            PetWidgetEntryView(entry: SimpleEntry(date: Date(), data: PetWidgetData.preview, config: nil))
                 .previewContext(WidgetPreviewContext(family: .systemSmall))
-            PetWidgetEntryView(entry: SimpleEntry(date: Date(), data: PetWidgetData.preview))
+            PetWidgetEntryView(entry: SimpleEntry(date: Date(), data: PetWidgetData.preview, config: nil))
                 .previewContext(WidgetPreviewContext(family: .systemMedium))
         }
     }

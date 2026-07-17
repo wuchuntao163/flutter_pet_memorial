@@ -49,7 +49,13 @@ DecorationImage? widgetDefaultBackgroundDecoration(BuildContext context) {
   return DecorationImage(image: provider, fit: BoxFit.cover);
 }
 
-Future<void> saveWidgetToLibrary(WidgetDefinition? definition) async {
+Future<void> saveWidgetToLibrary(
+  WidgetDefinition? definition, {
+  Map<String, dynamic> settings = const {},
+}) async {
   if (definition == null || definition.isIsland) return;
-  await SavedWidgetStore.instance.saveDefinition(definition);
+  await SavedWidgetStore.instance.saveDefinition(
+    definition,
+    settings: settings,
+  );
 }

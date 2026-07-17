@@ -5,6 +5,7 @@ class SavedWidget {
     required this.image,
     required this.template,
     required this.savedAt,
+    this.settings = const {},
   });
 
   final int widgetId;
@@ -12,6 +13,7 @@ class SavedWidget {
   final String image;
   final int template;
   final DateTime savedAt;
+  final Map<String, dynamic> settings;
 
   factory SavedWidget.fromJson(Map<String, dynamic> json) => SavedWidget(
     widgetId: int.tryParse('${json['widget_id'] ?? ''}') ?? 0,
@@ -19,6 +21,9 @@ class SavedWidget {
     image: '${json['image'] ?? ''}'.trim(),
     template: int.tryParse('${json['template'] ?? ''}') ?? 0,
     savedAt: DateTime.tryParse('${json['saved_at'] ?? ''}') ?? DateTime.now(),
+    settings: json['settings'] is Map
+        ? Map<String, dynamic>.from(json['settings'] as Map)
+        : const {},
   );
 
   Map<String, dynamic> toJson() => {
@@ -27,5 +32,6 @@ class SavedWidget {
     'image': image,
     'template': template,
     'saved_at': savedAt.toIso8601String(),
+    'settings': settings,
   };
 }

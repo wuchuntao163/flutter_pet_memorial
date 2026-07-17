@@ -12,7 +12,11 @@ import SwiftUI
 struct PetWidgetBundle: WidgetBundle {
     @WidgetBundleBuilder
     var body: some Widget {
-        PetWidget()
+        if #available(iOS 17.0, *) {
+            ConfigurableSavedWidget()
+        } else {
+            PetWidget()
+        }
         if #available(iOS 16.2, *) {
             PetLiveActivityWidget()
         }

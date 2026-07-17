@@ -1080,7 +1080,26 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
       prefs.setString('${_prefsPrefix}_text', _textController.text.trim()),
       prefs.setBool('${_prefsPrefix}_icon_right', _iconOnRight),
     ]);
-    await saveWidgetToLibrary(definition);
+    await saveWidgetToLibrary(
+      definition,
+      settings: {
+        'pet_index': _selectedPet,
+        'pet_image': _petImages.isNotEmpty
+            ? _petImages[_selectedPet.clamp(0, _petImages.length - 1)]
+            : '',
+        'memorial_id': _selectedMemorialId ?? '',
+        'font_style': _fontStyleId,
+        'text_color': _textColor.toARGB32(),
+        'background_color': _backgroundColor.toARGB32(),
+        'background_image': _selectedBackground ?? '',
+        'upload_image': _uploadedImage ?? '',
+        'icon_image': _iconImage ?? '',
+        'icon': _icon,
+        'text_size': _textSize,
+        'text': _textController.text.trim(),
+        'icon_right': _iconOnRight,
+      },
+    );
     if (mounted) await showCenterTip(context, '已保存');
   }
 }

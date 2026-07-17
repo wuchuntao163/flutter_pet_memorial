@@ -5,6 +5,7 @@ import WidgetKit
 enum WidgetSync {
   static let kind = "PetWidget"
   static let dataFileName = "petWidgetData.json"
+  static let configsFileName = "savedWidgetConfigs.json"
   static let imageFileName = "petWidgetImage.png"
   static let imageTempFileName = "petWidgetImage.tmp.png"
   static let liveActivityImageFileName = "petLiveActivityImage.png"
@@ -36,6 +37,24 @@ enum WidgetSync {
       return true
     } catch {
       NSLog("[PetWidget] write widget json failed: \(error)")
+      return false
+    }
+  }
+
+  static func saveWidgetConfigs(_ raw: String) -> Bool {
+    guard let container = appGroupContainer(),
+          let data = raw.data(using: .utf8),
+          (try? JSONSerialization.jsonObject(with: data)) is [Any] else {
+      return false
+    }
+    do {
+      try data.write(
+        to: container.appendingPathComponent(configsFileName),
+        options: .atomic
+      )
+      return true
+    } catch {
+      NSLog("[PetWidget] write configs failed: \(error)")
       return false
     }
   }
@@ -390,6 +409,21 @@ enum WidgetChannelHandler {
         result(path.isEmpty ? nil : path)
       case "syncWidget":
         handleSyncWidget(call: call, result: result)
+      case "syncWidgetConfigs":
+        let args = call.arguments as? [String: Any] ?? [:]
+        let raw = args["configs"] as? String ?? "[]"
+        if WidgetSync.saveWidgetConfigs(raw) {
+          WidgetSync.reloadTimelines()
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "WRITE_WIDGET_CONFIGS_FAILED",
+              message: "写入组件配置失败",
+              details: nil
+            )
+          )
+        }
       case "reloadWidget":
         handleReloadWidget(call: call, result: result)
       case "updateWidget":

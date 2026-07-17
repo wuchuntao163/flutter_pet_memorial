@@ -17,6 +17,7 @@
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		AABB00011234567890ABCDEF /* PetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00021234567890ABCDEF /* PetWidget.swift */; };
 		AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00041234567890ABCDEF /* PetWidgetBundle.swift */; };
+		DDAA00011234567890ABCDEF /* SavedWidgetRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */; };
 		AABB00071234567890ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AABB00081234567890ABCDEF /* Assets.xcassets */; };
 		BBAACC011234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
 		BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
@@ -82,6 +83,7 @@
 		A4A74639267546055AE6535D /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		AABB00021234567890ABCDEF /* PetWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetWidget.swift; sourceTree = "<group>"; };
 		AABB00041234567890ABCDEF /* PetWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetWidgetBundle.swift; sourceTree = "<group>"; };
+		DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedWidgetRenderer.swift; sourceTree = "<group>"; };
 		AABB00061234567890ABCDEF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AABB00081234567890ABCDEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AABB000C1234567890ABCDEF /* PetWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PetWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -202,6 +204,7 @@
 				257AA6102FEA2C7900252C79 /* PetWidgetDebug.entitlements */,
 				AABB00021234567890ABCDEF /* PetWidget.swift */,
 				AABB00041234567890ABCDEF /* PetWidgetBundle.swift */,
+				DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */,
 				CCBB00071234567890ABCDEF /* PetLiveActivityWidget.swift */,
 				AABB00061234567890ABCDEF /* Info.plist */,
 				AABB00081234567890ABCDEF /* Assets.xcassets */,
@@ -514,6 +517,7 @@
 			files = (
 				AABB00011234567890ABCDEF /* PetWidget.swift in Sources */,
 				AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */,
+				DDAA00011234567890ABCDEF /* SavedWidgetRenderer.swift in Sources */,
 				BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */,
 				CCBB00021234567890ABCDEF /* PetLiveActivityAttributes.swift in Sources */,
 				CCBB00061234567890ABCDEF /* PetLiveActivityWidget.swift in Sources */,

@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/saved_widget.dart';
@@ -11,6 +13,9 @@ class SavedWidgetStore extends ChangeNotifier {
 
   static final SavedWidgetStore instance = SavedWidgetStore._();
   static const _storageKey = 'saved_widget_library_v1';
+  static const _channel = MethodChannel(
+    'com.example.flutterPetMemorial/widget',
+  );
 
   final List<SavedWidget> _items = [];
   bool _loaded = false;
@@ -41,7 +46,10 @@ class SavedWidgetStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> saveDefinition(WidgetDefinition definition) async {
+  Future<void> saveDefinition(
+    WidgetDefinition definition, {
+    Map<String, dynamic> settings = const {},
+  }) async {
     if (definition.type != 1 || definition.id <= 0) return;
     await load();
     final item = SavedWidget(
@@ -50,6 +58,7 @@ class SavedWidgetStore extends ChangeNotifier {
       image: definition.image,
       template: definition.template,
       savedAt: DateTime.now(),
+      settings: settings,
     );
     final index = _items.indexWhere((value) => value.widgetId == item.widgetId);
     if (index == -1) {
@@ -74,6 +83,15 @@ class SavedWidgetStore extends ChangeNotifier {
       _storageKey,
       jsonEncode(_items.map((item) => item.toJson()).toList()),
     );
+    if (Platform.isIOS) {
+      try {
+        await _channel.invokeMethod<void>('syncWidgetConfigs', {
+          'configs': jsonEncode(_items.map((item) => item.toJson()).toList()),
+        });
+      } catch (error) {
+        debugPrint('[SavedWidgetStore] iOS sync failed: $error');
+      }
+    }
     notifyListeners();
   }
 }
