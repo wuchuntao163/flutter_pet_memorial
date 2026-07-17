@@ -14,6 +14,9 @@ class BackgroundStore extends ChangeNotifier {
 
   final List<Map<String, dynamic>> _categories = [];
   final Map<String, List<Map<String, dynamic>>> _itemsByCategory = {};
+  final Map<int, List<Map<String, dynamic>>> _widgetItemsByType = {};
+  final Set<int> _widgetLoadingTypes = {};
+  final Map<int, int> _widgetRequestSeq = {};
   final Map<String, Map<String, dynamic>> _itemById = {};
 
   List<Map<String, dynamic>> _currentItems = [];
@@ -27,6 +30,9 @@ class BackgroundStore extends ChangeNotifier {
 
   List<Map<String, dynamic>> get categories => List.unmodifiable(_categories);
   List<Map<String, dynamic>> get items => List.unmodifiable(_currentItems);
+  List<Map<String, dynamic>> widgetItems(int type) =>
+      List.unmodifiable(_widgetItemsByType[type] ?? const []);
+  bool widgetListLoading(int type) => _widgetLoadingTypes.contains(type);
   int? get selectedCategoryId => _selectedCategoryId;
   bool get isCustomTab => _isCustomTab;
 
@@ -151,7 +157,10 @@ class BackgroundStore extends ChangeNotifier {
     }
   }
 
-  Future<void> selectCategory(int categoryId, {bool forceRefresh = false}) async {
+  Future<void> selectCategory(
+    int categoryId, {
+    bool forceRefresh = false,
+  }) async {
     final cacheKey = '$categoryId';
     final cached = _itemsByCategory[cacheKey];
     if (!forceRefresh &&
@@ -258,6 +267,44 @@ class BackgroundStore extends ChangeNotifier {
     }
   }
 
+  Future<void> fetchWidgetList({
+    required int type,
+    bool forceRefresh = false,
+  }) async {
+    assert(type == 1 || type == 2, 'Widget background type must be 1 or 2');
+    final cached = _widgetItemsByType[type];
+    if (!forceRefresh && _hasUsableCache(cached)) {
+      notifyListeners();
+      return;
+    }
+
+    final seq = (_widgetRequestSeq[type] ?? 0) + 1;
+    _widgetRequestSeq[type] = seq;
+    _widgetLoadingTypes.add(type);
+    notifyListeners();
+    try {
+      final res = await Api.get(
+        ApiPaths.getWidgetBackground,
+        query: LanguageIdUtil.withLanguageId({'type': type}),
+      );
+      if (_widgetRequestSeq[type] != seq) return;
+      final parsed = _parseList(res.data, categoryId: null);
+      _widgetItemsByType[type] = parsed;
+      _mergeItems(parsed);
+    } on ApiException catch (e) {
+      if (_widgetRequestSeq[type] != seq) return;
+      if (kDebugMode) {
+        debugPrint('[BackgroundStore] fetchWidgetList(type=$type) failed: $e');
+      }
+      _widgetItemsByType[type] = [];
+    } finally {
+      if (_widgetRequestSeq[type] == seq) {
+        _widgetLoadingTypes.remove(type);
+        notifyListeners();
+      }
+    }
+  }
+
   Future<Map<String, dynamic>?> uploadCustomBackground({
     required String localPath,
     String? name,
@@ -287,8 +334,9 @@ class BackgroundStore extends ChangeNotifier {
     if (created == null) return null;
 
     _mergeItems([created]);
-    final cacheKey =
-        _isCustomTab ? customTabKey : _selectedCategoryId?.toString() ?? 'all';
+    final cacheKey = _isCustomTab
+        ? customTabKey
+        : _selectedCategoryId?.toString() ?? 'all';
     final bucket = List<Map<String, dynamic>>.from(
       _itemsByCategory[cacheKey] ?? _currentItems,
     );
@@ -330,10 +378,7 @@ class BackgroundStore extends ChangeNotifier {
 
   Future<bool> deleteBackground(int id) async {
     try {
-      final res = await Api.post(
-        ApiPaths.deleteBackground,
-        data: {'id': id},
-      );
+      final res = await Api.post(ApiPaths.deleteBackground, data: {'id': id});
       if (kDebugMode) {
         debugPrint('[BackgroundStore] deleteBackground res=$res');
       }
@@ -356,12 +401,7 @@ class BackgroundStore extends ChangeNotifier {
     }
   }
 
-  void _patchLocalItem(
-    int id, {
-    String? name,
-    String? image,
-    int? categoryId,
-  }) {
+  void _patchLocalItem(int id, {String? name, String? image, int? categoryId}) {
     final key = '$id';
     void patchMap(Map<String, dynamic> item) {
       if (name != null && name.isNotEmpty) item['name'] = name;
@@ -390,8 +430,9 @@ class BackgroundStore extends ChangeNotifier {
           .where((item) => '${item['id']}' != key)
           .toList();
     }
-    _currentItems =
-        _currentItems.where((item) => '${item['id']}' != key).toList();
+    _currentItems = _currentItems
+        .where((item) => '${item['id']}' != key)
+        .toList();
   }
 
   static Map<String, dynamic>? _normalizeCreatedItem(
@@ -452,7 +493,8 @@ class BackgroundStore extends ChangeNotifier {
     List<Map<String, dynamic>> result, {
     int? categoryId,
   }) {
-    final children = map['backgrounds'] ??
+    final children =
+        map['backgrounds'] ??
         map['items'] ??
         map['children'] ??
         map['background_list'] ??

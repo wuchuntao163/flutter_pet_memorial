@@ -85,6 +85,30 @@ class AppCacheStore extends ChangeNotifier {
     return _normalizeImageUrl(raw);
   }
 
+  String? get liveActivityCatImageUrl {
+    final configMap = _config;
+    if (configMap is! Map) return null;
+    return _normalizeImageUrl(configMap['lingdongcat']?.toString());
+  }
+
+  String? get liveActivityDogImageUrl {
+    final configMap = _config;
+    if (configMap is! Map) return null;
+    return _normalizeImageUrl(configMap['lingdongdog']?.toString());
+  }
+
+  String? get defaultPetCatImageUrl {
+    final configMap = _config;
+    if (configMap is! Map) return null;
+    return _normalizeImageUrl(configMap['defaultp_cat']?.toString());
+  }
+
+  String? get defaultPetDogImageUrl {
+    final configMap = _config;
+    if (configMap is! Map) return null;
+    return _normalizeImageUrl(configMap['defaultp_dog']?.toString());
+  }
+
   /// 灵动岛右侧装饰图：配置 fourClover
   String? get fourCloverImageUrl {
     final configMap = _config;
@@ -143,21 +167,9 @@ class AppCacheStore extends ChangeNotifier {
   }
 
   static List<Map<String, dynamic>> _defaultPetList() => [
-        {
-          'type': 'cat',
-          'pet_type': 2,
-          'image': '',
-          'name': '',
-          'describe': '',
-        },
-        {
-          'type': 'dog',
-          'pet_type': 1,
-          'image': '',
-          'name': '',
-          'describe': '',
-        },
-      ];
+    {'type': 'cat', 'pet_type': 2, 'image': '', 'name': '', 'describe': ''},
+    {'type': 'dog', 'pet_type': 1, 'image': '', 'name': '', 'describe': ''},
+  ];
 
   Future<void>? _configFuture;
 
@@ -224,8 +236,8 @@ class AppCacheStore extends ChangeNotifier {
     if (prev != null && samePet) {
       for (final entry in prev.entries) {
         final incoming = next[entry.key];
-        final empty = incoming == null ||
-            (incoming is String && incoming.trim().isEmpty);
+        final empty =
+            incoming == null || (incoming is String && incoming.trim().isEmpty);
         if (empty && entry.value != null) {
           final keep = entry.value;
           if (keep is String && keep.trim().isNotEmpty) {

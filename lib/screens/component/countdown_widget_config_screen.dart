@@ -1,0 +1,1519 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../config/colors.dart';
+import '../../config/layout.dart';
+import '../../data/background_store.dart';
+import '../../data/font_style_store.dart';
+import '../../data/memorial_store.dart';
+import '../../models/font_style_config.dart';
+import '../../models/memorial_day.dart';
+import '../../router/app_routes.dart';
+import '../../services/live_activity_service.dart';
+import '../../services/pet_image_service.dart';
+import '../../utils/app_permission_util.dart';
+import '../../utils/center_tip_util.dart';
+import '../../utils/pet_image_picker.dart';
+import '../../widgets/common/day_number_display.dart';
+import '../../widgets/common/memorial_type_info.dart';
+import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
+import '../../widgets/common/widget_detail_scope.dart';
+import 'pet_widget_config_screen.dart' show showComponentColorPicker;
+
+enum CountdownWidgetVariant {
+  photo,
+  simple,
+  medium,
+  multiSmall,
+  multiMedium,
+  calendar,
+}
+
+class CountdownWidgetConfigScreen extends StatefulWidget {
+  final CountdownWidgetVariant variant;
+
+  const CountdownWidgetConfigScreen({super.key, required this.variant});
+
+  @override
+  State<CountdownWidgetConfigScreen> createState() =>
+      _CountdownWidgetConfigScreenState();
+}
+
+class _CountdownWidgetConfigScreenState
+    extends State<CountdownWidgetConfigScreen> {
+  static const _headerContentHeight = 52.0;
+
+  String? _selectedMemorialId;
+  final Set<String> _selectedMemorialIds = {};
+  String _selectedFontStyleId = FontStyleConfig.normalStyleId;
+  Color _textColor = Colors.white;
+  Color _multiTitleTextColor = Colors.black;
+  Color _backgroundColor = const Color(0xFF98CBF2);
+  String? _backgroundImage;
+  bool _backgroundReady = false;
+  bool _showAllMemorials = false;
+  bool _fontSelectionInitialized = false;
+  bool _apiDetailMode = false;
+  bool _hasSelectedTextColor = false;
+
+  void _applyOverallTextColor(Color color) {
+    _textColor = color;
+    _multiTitleTextColor = color;
+    _hasSelectedTextColor = true;
+  }
+
+  String? get _effectiveBackgroundImage {
+    if (_backgroundImage != null) return _backgroundImage;
+    final value = WidgetDetailScope.maybeOf(context)?.defaultBackground.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
+  String get _prefsPrefix => switch (widget.variant) {
+    CountdownWidgetVariant.photo => 'photo_widget',
+    CountdownWidgetVariant.simple => 'simple_widget',
+    CountdownWidgetVariant.medium => 'medium_widget',
+    CountdownWidgetVariant.multiSmall => 'multi_memorial_widget',
+    CountdownWidgetVariant.multiMedium => 'birthday_countdown_widget',
+    CountdownWidgetVariant.calendar => 'calendar_widget',
+  };
+
+  String get _title => switch (widget.variant) {
+    CountdownWidgetVariant.photo => '图文纪念日',
+    CountdownWidgetVariant.simple => '简约',
+    CountdownWidgetVariant.medium => '中号',
+    CountdownWidgetVariant.multiSmall => '多纪念日',
+    CountdownWidgetVariant.multiMedium => '生日倒计时',
+    CountdownWidgetVariant.calendar => '波点日历',
+  };
+
+  bool get _isMulti =>
+      widget.variant == CountdownWidgetVariant.multiSmall ||
+      widget.variant == CountdownWidgetVariant.multiMedium;
+
+  bool get _isMedium =>
+      widget.variant == CountdownWidgetVariant.medium ||
+      widget.variant == CountdownWidgetVariant.multiMedium;
+
+  bool get _isSingleMedium => widget.variant == CountdownWidgetVariant.medium;
+
+  bool get _isCalendar => widget.variant == CountdownWidgetVariant.calendar;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.variant == CountdownWidgetVariant.simple || _isCalendar) {
+      _textColor = Colors.black;
+    }
+    MemorialStore.instance.addListener(_rebuild);
+    FontStyleStore.instance.addListener(_rebuild);
+    BackgroundStore.instance.addListener(_onBackgroundChanged);
+    MemorialStore.instance.ensureMemorialsLoaded();
+    if (FontStyleStore.instance.items.isEmpty) {
+      FontStyleStore.instance.fetchList();
+    }
+    BackgroundStore.instance.fetchWidgetList(type: 1, forceRefresh: true);
+    _restore();
+  }
+
+  @override
+  void dispose() {
+    MemorialStore.instance.removeListener(_rebuild);
+    FontStyleStore.instance.removeListener(_rebuild);
+    BackgroundStore.instance.removeListener(_onBackgroundChanged);
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_apiDetailMode && WidgetDetailScope.maybeOf(context) != null) {
+      _apiDetailMode = true;
+      _backgroundReady = true;
+    }
+  }
+
+  void _rebuild() {
+    if (!mounted) return;
+    if (_isCalendar) {
+      setState(() {});
+      return;
+    }
+    final days = MemorialStore.instance.items;
+    if (_isMulti) {
+      if (!MemorialStore.instance.listLoaded) {
+        setState(() {});
+        return;
+      }
+      final validIds = days.map((item) => item.id).toSet();
+      _selectedMemorialIds.removeWhere((id) => !validIds.contains(id));
+      if (_selectedMemorialIds.isEmpty) {
+        _selectedMemorialIds.addAll(days.take(3).map((item) => item.id));
+      }
+      setState(() {});
+      return;
+    }
+    final hasSelectedMemorial = days.any(
+      (item) => item.id == _selectedMemorialId,
+    );
+    if (!hasSelectedMemorial && days.isNotEmpty) {
+      _selectedMemorialId = days.first.id;
+    }
+    if (_fontSelectionInitialized &&
+        !FontStyleConfig.isNormalStyle(_selectedFontStyleId) &&
+        !FontStyleStore.instance.isLoading &&
+        FontStyleStore.instance.findById(_selectedFontStyleId) == null) {
+      _selectedFontStyleId = FontStyleConfig.normalStyleId;
+    }
+    _syncInitialFontStyle();
+    setState(() {});
+  }
+
+  void _syncInitialFontStyle() {
+    if (_fontSelectionInitialized) return;
+    final memorial = _selectedMemorial;
+    if (memorial == null) return;
+    final styleId = memorial.fontStyleId;
+    if (FontStyleConfig.isNormalStyle(styleId) ||
+        FontStyleStore.instance.findById(styleId) != null) {
+      _selectedFontStyleId = styleId;
+      _fontSelectionInitialized = true;
+    }
+  }
+
+  void _onBackgroundChanged() {
+    if (!mounted) return;
+    if (!_apiDetailMode &&
+        !_backgroundReady &&
+        !BackgroundStore.instance.widgetListLoading(1) &&
+        BackgroundStore.instance.widgetItems(1).isNotEmpty) {
+      _backgroundImage = _backgroundUrl(
+        BackgroundStore.instance.widgetItems(1).first,
+      );
+      _backgroundReady = true;
+    }
+    setState(() {});
+  }
+
+  MemorialDay? get _selectedMemorial {
+    final items = MemorialStore.instance.items;
+    for (final item in items) {
+      if (item.id == _selectedMemorialId) return item;
+    }
+    return items.isEmpty ? null : items.first;
+  }
+
+  int get _days {
+    final memorial = _selectedMemorial;
+    if (memorial == null) return 0;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(
+      memorial.date.year,
+      memorial.date.month,
+      memorial.date.day,
+    );
+    return date.difference(today).inDays.abs();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FB),
+      appBar: _buildAppBar(),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(child: _buildPreview()),
+                  if (!_isCalendar &&
+                      widgetOptionEnabled(context, 'anniversary_select')) ...[
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Text(
+                          widgetOptionLabel(
+                            context,
+                            'anniversary_select',
+                            '选择纪念日事项',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const Spacer(),
+                        InkWell(
+                          onTap: () => context.push(AppRoutes.memorialAdd),
+                          borderRadius: BorderRadius.circular(7),
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppColors.bgInput,
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              size: 17,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    _buildMemorialPicker(),
+                  ],
+                  if (!_apiDetailMode && !_isMulti) ...[
+                    const SizedBox(height: 18),
+                    const Text(
+                      '文字样式',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildFontPicker(),
+                  ],
+                  if (_apiDetailMode &&
+                      (widgetOptionEnabled(
+                            context,
+                            'text_style',
+                            fallback: false,
+                          ) ||
+                          widgetOptionEnabled(
+                            context,
+                            'text_color',
+                            fallback: false,
+                          ))) ...[
+                    const SizedBox(height: 18),
+                    Text(
+                      widgetOptionLabel(
+                        context,
+                        widgetOptionEnabled(
+                              context,
+                              'text_style',
+                              fallback: false,
+                            )
+                            ? 'text_style'
+                            : 'text_color',
+                        '文字样式',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildTextStylePicker(),
+                  ],
+                  if (_apiDetailMode &&
+                      widgetOptionEnabled(
+                        context,
+                        'number_style',
+                        fallback: false,
+                      )) ...[
+                    const SizedBox(height: 18),
+                    Text(
+                      widgetOptionLabel(context, 'number_style', '数字样式'),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildFontPicker(includeColorPalette: false),
+                  ],
+                  if (widgetOptionEnabled(context, 'background')) ...[
+                    const SizedBox(height: 18),
+                    Text(
+                      widgetOptionLabel(context, 'background', '背景'),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildBackgroundPicker(),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          SafeArea(
+            top: false,
+            minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
+            child: SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: AppColors.avatarGenerateGradient,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _save,
+                    borderRadius: BorderRadius.circular(12),
+                    child: const Center(
+                      child: Text(
+                        '保存到我的组件',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.accentDarker,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      toolbarHeight: _headerContentHeight + AppLayout.memorialDetailTopPadding,
+      backgroundColor: const Color(0xFFF7F8FB),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      leadingWidth: 72,
+      leading: GestureDetector(
+        onTap: () => context.pop(),
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.only(
+            left: 12,
+            top: AppLayout.memorialDetailTopPadding,
+          ),
+          child: SizedBox(
+            height: _headerContentHeight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(
+                  Icons.arrow_back_ios_new,
+                  size: 14,
+                  color: AppColors.accentDark,
+                ),
+                SizedBox(width: 4),
+                Text(
+                  '返回',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.accentDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      centerTitle: true,
+      title: Padding(
+        padding: const EdgeInsets.only(top: AppLayout.memorialDetailTopPadding),
+        child: SizedBox(
+          height: _headerContentHeight,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Text(
+                _title,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Positioned(
+                top: 39,
+                child: Text(
+                  _isMedium ? '中号' : '小号',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        GestureDetector(
+          onTap: _showTutorial,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.only(
+              left: 10,
+              right: 10,
+              top: AppLayout.memorialDetailTopPadding,
+            ),
+            child: SizedBox(
+              height: _headerContentHeight,
+              child: Center(
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFF0EC),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.question_mark,
+                        size: 13,
+                        color: AppColors.accent,
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(top: 1),
+                        child: Text(
+                          '教程',
+                          style: TextStyle(
+                            height: 1,
+                            fontSize: 8,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreview() {
+    if (_isCalendar) return _buildCalendarPreview();
+    if (_isMulti) return _buildMultiPreview();
+    if (_isSingleMedium) return _buildMediumPreview();
+    final simple = widget.variant == CountdownWidgetVariant.simple;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 132,
+        height: 132,
+        decoration: BoxDecoration(color: _backgroundColor),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_effectiveBackgroundImage != null)
+              _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover),
+            Container(
+              color: simple ? Colors.white.withValues(alpha: 0.18) : null,
+            ),
+            if (simple) _buildSimplePreview() else _buildPhotoPreview(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediumPreview() {
+    final memorial = _selectedMemorial;
+    final date = memorial?.listDisplayDate ?? DateTime.now();
+    const weekdays = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 280,
+        height: 124,
+        decoration: BoxDecoration(color: _backgroundColor),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_effectiveBackgroundImage != null)
+              _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover),
+            Container(color: Colors.black.withValues(alpha: 0.16)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(15, 10, 15, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    weekdays[date.weekday - 1],
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: _textColor,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Transform.translate(
+                    offset: const Offset(0, 6),
+                    child: Text(
+                      memorial?.title ?? '考研倒计时',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _textColor,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _buildMediumDayNumber(),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 2, bottom: 5),
+                        child: Text(
+                          '天',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _textColor,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '${date.year}.${date.month}.${date.day}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: _textColor.withValues(alpha: 0.82),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediumDayNumber() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 140, maxHeight: 48),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.bottomLeft,
+        child: DayNumberDisplay(
+          value: _days,
+          fontStyleId: _selectedFontStyleId,
+          digitHeight: 48,
+          textStyle: TextStyle(
+            fontSize: 50,
+            fontWeight: FontWeight.w600,
+            color: _textColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCalendarPreview() {
+    final now = DateTime.now();
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 132,
+        height: 132,
+        color: _backgroundColor,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_effectiveBackgroundImage != null)
+              _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover)
+            else
+              CustomPaint(
+                painter: _DotPatternPainter(
+                  color: _textColor.withValues(alpha: 0.12),
+                ),
+              ),
+            Column(
+              children: [
+                SizedBox(
+                  height: 29,
+                  child: Center(
+                    child: Text(
+                      months[now.month - 1],
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: _hasSelectedTextColor
+                            ? _textColor
+                            : Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildCalendarDay(now.day),
+                      const SizedBox(height: 2),
+                      Text(
+                        weekdays[now.weekday - 1],
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: _textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCalendarDay(int day) {
+    return SizedBox(
+      width: 90,
+      height: 53,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: DayNumberDisplay(
+          value: day,
+          fontStyleId: _selectedFontStyleId,
+          digitHeight: 50,
+          textStyle: TextStyle(
+            fontSize: 48,
+            fontWeight: FontWeight.w700,
+            color: _textColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMultiPreview() {
+    final items = MemorialStore.instance.items
+        .where((item) => _selectedMemorialIds.contains(item.id))
+        .take(3)
+        .toList();
+    final width = _isMedium ? 280.0 : 132.0;
+    final height = _isMedium ? 124.0 : 132.0;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(color: _backgroundColor),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_effectiveBackgroundImage != null)
+              _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover),
+            Padding(
+              padding: EdgeInsets.all(_isMedium ? 10 : 8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var index = 0; index < items.length; index++) ...[
+                    _buildMultiPreviewRow(items[index]),
+                    if (index != items.length - 1)
+                      SizedBox(height: _isMedium ? 5 : 6),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMultiPreviewRow(MemorialDay item) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(item.date.year, item.date.month, item.date.day);
+    final days = target.difference(today).inDays.abs();
+    final badgeColor = MemorialTypeInfo.daysBackground(item);
+    final badgeText = MemorialTypeInfo.daysText(item);
+    final typeLabel = MemorialTypeInfo.label(item);
+    return Container(
+      height: _isMedium ? 29 : 32,
+      padding: const EdgeInsets.only(right: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: _isMedium ? 54 : 47,
+            height: double.infinity,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: badgeColor,
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(8),
+              ),
+            ),
+            child: Text(
+              '$days天',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: badgeText,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              item.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: _isMedium ? 12 : 11,
+                fontWeight: FontWeight.w600,
+                color: _multiTitleTextColor,
+              ),
+            ),
+          ),
+          if (_isMedium) ...[
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: badgeColor,
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Text(
+                typeLabel,
+                style: TextStyle(fontSize: 8, color: badgeText),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoPreview() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 14, 8, 14),
+        child: Column(
+          children: [
+            _buildPhotoHeader(),
+            const Spacer(),
+            _buildDayNumber(width: 110, height: 48, digitHeight: 44),
+            const Spacer(),
+            Text(
+              _photoDateLabel(),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: _textColor.withValues(alpha: 0.82),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimplePreview() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.topRight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _buildDayNumber(
+                  width: 96,
+                  height: 43,
+                  digitHeight: 40,
+                  alignment: Alignment.centerRight,
+                ),
+                Text(
+                  'Days',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: _textColor.withValues(alpha: 0.38),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Text(
+            _selectedMemorial?.title ?? '纪念日还有',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _textColor,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            _simpleDateLabel(),
+            style: TextStyle(
+              fontSize: 11,
+              color: _textColor.withValues(alpha: 0.42),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDayNumber({
+    required double width,
+    required double height,
+    required double digitHeight,
+    Alignment alignment = Alignment.center,
+  }) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: alignment,
+        child: DayNumberDisplay(
+          value: _days,
+          fontStyleId: _selectedFontStyleId,
+          digitHeight: digitHeight,
+          textStyle: TextStyle(
+            fontSize: 40,
+            fontWeight: FontWeight.w600,
+            color: _textColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoHeader() {
+    final memorial = _selectedMemorial;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            memorial?.title ?? '纪念日',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: _textColor,
+            ),
+          ),
+        ),
+        if (memorial != null) ...[
+          const SizedBox(width: 3),
+          MemorialTypeInfo.icon(memorial, size: 14, color: _textColor),
+        ],
+      ],
+    );
+  }
+
+  String _photoDateLabel() {
+    final date = _selectedMemorial?.date;
+    if (date == null) return '';
+    const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day  周${weekdays[date.weekday - 1]}';
+  }
+
+  String _simpleDateLabel() {
+    final date = _selectedMemorial?.date;
+    if (date == null) return '';
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+
+  Widget _buildMemorialPicker() {
+    final items = MemorialStore.instance.items;
+    final visibleItems = _showAllMemorials ? items : items.take(3).toList();
+    return Column(
+      children: [
+        for (var index = 0; index < visibleItems.length; index++) ...[
+          _buildMemorialRow(visibleItems[index]),
+          if (index != visibleItems.length - 1) const SizedBox(height: 7),
+        ],
+        if (items.length > 3) ...[
+          const SizedBox(height: 7),
+          GestureDetector(
+            onTap: () => setState(() => _showAllMemorials = !_showAllMemorials),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Column(
+                children: [
+                  Text(
+                    _showAllMemorials ? '收起' : '更多',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textPlaceholder,
+                    ),
+                  ),
+                  Icon(
+                    _showAllMemorials
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 15,
+                    color: AppColors.textPlaceholder,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildMemorialRow(MemorialDay item) {
+    final selected = _isMulti
+        ? _selectedMemorialIds.contains(item.id)
+        : item.id == _selectedMemorialId;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(item.date.year, item.date.month, item.date.day);
+    final days = date.difference(today).inDays.abs();
+    return GestureDetector(
+      onTap: () => _toggleMemorial(item.id),
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEEF0F2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? AppColors.accent : Colors.transparent,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            Text(
+              '$days天',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.accent,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _toggleMemorial(String id) {
+    if (!_isMulti) {
+      setState(() => _selectedMemorialId = id);
+      return;
+    }
+    if (_selectedMemorialIds.contains(id)) {
+      setState(() => _selectedMemorialIds.remove(id));
+      return;
+    }
+    if (_selectedMemorialIds.length >= 3) {
+      showCenterTip(context, '最多选择3条纪念日');
+      return;
+    }
+    setState(() => _selectedMemorialIds.add(id));
+  }
+
+  Widget _buildFontPicker({bool includeColorPalette = true}) {
+    final items = FontStyleConfig.displayItems();
+    final offset = includeColorPalette ? 1 : 0;
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: items.length + offset,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          if (includeColorPalette && index == 0) {
+            return _fontRoundOption(
+              selected: false,
+              child: const _PaletteCircle(size: 48),
+              onTap: _pickTextColor,
+            );
+          }
+          final item = items[index - offset];
+          final id = '${item['id']}';
+          final selected = id == _selectedFontStyleId;
+          final preview = FontStyleConfig.previewImageUrl(id);
+          return _fontRoundOption(
+            selected: selected,
+            onTap: () => setState(() {
+              _selectedFontStyleId = id;
+              _fontSelectionInitialized = true;
+            }),
+            child: preview == null
+                ? const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '0',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : ClipOval(
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Image.network(preview, fit: BoxFit.cover),
+                    ),
+                  ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTextStylePicker() {
+    const colors = [
+      Colors.white,
+      Colors.black,
+      Color(0xFFFF9E99),
+      Color(0xFFFF956E),
+      Color(0xFFFFC85D),
+      Color(0xFFB6F36C),
+      Color(0xFF83E7B5),
+      Color(0xFF6695F5),
+      Color(0xFFB36EF3),
+    ];
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: colors.length + 1,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return _fontRoundOption(
+              selected: false,
+              child: const _PaletteCircle(size: 48),
+              onTap: _pickTextColor,
+            );
+          }
+          final color = colors[index - 1];
+          return _fontRoundOption(
+            selected: color.toARGB32() == _textColor.toARGB32(),
+            onTap: () => setState(() => _applyOverallTextColor(color)),
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: ColoredBox(color: color),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBackgroundPicker() {
+    final items = BackgroundStore.instance.widgetItems(1);
+    if (!_backgroundReady) {
+      return const SizedBox(
+        height: 48,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: items.length + 2,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return _roundOption(
+              selected: false,
+              onTap: _pickBackground,
+              fill: true,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF0F1F4),
+                  shape: BoxShape.circle,
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.photo_outlined, size: 20),
+                    SizedBox(height: 2),
+                    Text('相册', style: TextStyle(fontSize: 9, height: 1)),
+                  ],
+                ),
+              ),
+            );
+          }
+          if (index == 1) {
+            return _roundOption(
+              selected: !_apiDetailMode && _backgroundImage == null,
+              onTap: _pickBackgroundColor,
+              fill: true,
+              child: const _PaletteCircle(size: 48),
+            );
+          }
+          final url = _backgroundUrl(items[index - 2]);
+          return _roundOption(
+            selected: url.isNotEmpty && url == _backgroundImage,
+            onTap: () => setState(() => _backgroundImage = url),
+            fill: true,
+            child: ClipOval(
+              child: Image.network(
+                url,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) =>
+                    const ColoredBox(color: AppColors.bgInput),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _roundOption({
+    required bool selected,
+    required Widget child,
+    required VoidCallback onTap,
+    bool fill = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        alignment: fill ? Alignment.center : null,
+        padding: fill ? EdgeInsets.zero : const EdgeInsets.all(3),
+        clipBehavior: fill ? Clip.antiAlias : Clip.none,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: fill
+              ? null
+              : Border.all(
+                  color: selected ? AppColors.accent : AppColors.borderMedium,
+                  width: selected ? 2 : 1,
+                ),
+        ),
+        foregroundDecoration: fill
+            ? BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? AppColors.accent : AppColors.borderMedium,
+                  width: selected ? 2 : 1,
+                ),
+              )
+            : null,
+        child: fill ? child : ClipOval(child: Center(child: child)),
+      ),
+    );
+  }
+
+  Widget _fontRoundOption({
+    required bool selected,
+    required Widget child,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        alignment: Alignment.center,
+        clipBehavior: Clip.antiAlias,
+        decoration: const BoxDecoration(shape: BoxShape.circle),
+        foregroundDecoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? AppColors.accent : AppColors.borderMedium,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Center(child: child),
+      ),
+    );
+  }
+
+  Future<void> _pickTextColor() async {
+    final color = await _pickColor(_textColor);
+    if (color != null && mounted) {
+      setState(() => _applyOverallTextColor(color));
+    }
+  }
+
+  Future<void> _pickBackgroundColor() async {
+    final color = await _pickColor(_backgroundColor);
+    if (color != null && mounted) {
+      setState(() {
+        _backgroundColor = color;
+        _backgroundImage = null;
+      });
+    }
+  }
+
+  Future<Color?> _pickColor(Color initial) {
+    return showComponentColorPicker(context, initialColor: initial);
+  }
+
+  Future<void> _pickBackground() async {
+    try {
+      final path = await PetImagePicker.pickFromGallery(context);
+      if (path == null || path.isEmpty || !mounted) return;
+      setState(() => _backgroundImage = path);
+    } on AppPermissionDeniedException catch (error) {
+      if (!mounted) return;
+      await AppPermissionUtil.showDeniedDialog(context, error);
+    }
+  }
+
+  Widget _sourceImage(String source, {BoxFit fit = BoxFit.contain}) {
+    final local =
+        source.startsWith('/') ||
+        source.startsWith('file://') ||
+        RegExp(r'^[A-Za-z]:[\\/]').hasMatch(source);
+    if (local) {
+      final path = source.startsWith('file://')
+          ? Uri.parse(source).toFilePath()
+          : source;
+      return Image.file(File(path), fit: fit);
+    }
+    return Image.network(source, fit: fit);
+  }
+
+  String _backgroundUrl(Map<String, dynamic> item) {
+    final raw = item['image'] ?? item['img'] ?? item['url'];
+    return PetImageService.resolveUrl(raw?.toString() ?? '');
+  }
+
+  Future<void> _showTutorial() async {
+    final enabled = await LiveActivityService.instance.isEnabled();
+    if (!mounted) return;
+    await IosDesktopPetGuideDialog.show(context, liveActivityEnabled: enabled);
+  }
+
+  Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (_isMulti)
+        prefs.setStringList(
+          '${_prefsPrefix}_memorials',
+          _selectedMemorialIds.toList(),
+        )
+      else if (_selectedMemorialId == null)
+        prefs.remove('${_prefsPrefix}_memorial')
+      else
+        prefs.setString('${_prefsPrefix}_memorial', _selectedMemorialId!),
+      prefs.setString('${_prefsPrefix}_font', _selectedFontStyleId),
+      prefs.setInt('${_prefsPrefix}_text_color', _textColor.toARGB32()),
+      prefs.setInt(
+        '${_prefsPrefix}_background_color',
+        _backgroundColor.toARGB32(),
+      ),
+      prefs.setString(
+        '${_prefsPrefix}_background_mode',
+        _backgroundImage == null ? 'palette' : 'image',
+      ),
+      if (_backgroundImage == null)
+        prefs.remove('${_prefsPrefix}_background_image')
+      else
+        prefs.setString('${_prefsPrefix}_background_image', _backgroundImage!),
+    ]);
+    if (!mounted) return;
+    await showCenterTip(context, '已保存到我的组件');
+  }
+
+  Future<void> _restore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final memorial = prefs.getString('${_prefsPrefix}_memorial');
+    final savedMemorials = prefs.getStringList('${_prefsPrefix}_memorials');
+    final font = prefs.getString('${_prefsPrefix}_font');
+    final textColor = prefs.getInt('${_prefsPrefix}_text_color');
+    final backgroundColor = prefs.getInt('${_prefsPrefix}_background_color');
+    final backgroundImage = prefs.getString('${_prefsPrefix}_background_image');
+    final backgroundMode = prefs.getString('${_prefsPrefix}_background_mode');
+    if (!mounted) return;
+    final memorials = MemorialStore.instance.items;
+    final restoredMemorialExists = memorials.any((item) => item.id == memorial);
+    final effectiveMemorialId = restoredMemorialExists
+        ? memorial
+        : (memorials.isEmpty ? memorial : memorials.first.id);
+    setState(() {
+      if (_isMulti) {
+        _selectedMemorialIds
+          ..clear()
+          ..addAll(savedMemorials ?? const []);
+        if (_selectedMemorialIds.isEmpty && memorials.isNotEmpty) {
+          _selectedMemorialIds.addAll(memorials.take(3).map((item) => item.id));
+        }
+      } else {
+        _selectedMemorialId = effectiveMemorialId;
+      }
+      if (font != null && font.isNotEmpty) {
+        _selectedFontStyleId = font;
+        _fontSelectionInitialized = true;
+      }
+      if (textColor != null) _applyOverallTextColor(Color(textColor));
+      if (backgroundColor != null) _backgroundColor = Color(backgroundColor);
+      if (_apiDetailMode) {
+        _backgroundImage = null;
+        _backgroundReady = true;
+      } else {
+        if (backgroundMode == 'palette') {
+          _backgroundImage = null;
+          _backgroundReady = true;
+        } else if (backgroundImage != null && backgroundImage.isNotEmpty) {
+          _backgroundImage = backgroundImage;
+          _backgroundReady = true;
+        }
+      }
+      if (!_isMulti && !_isCalendar) _syncInitialFontStyle();
+    });
+  }
+}
+
+class _DotPatternPainter extends CustomPainter {
+  final Color color;
+
+  const _DotPatternPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    const gap = 13.0;
+    for (var y = 7.0; y < size.height; y += gap) {
+      for (var x = 7.0; x < size.width; x += gap) {
+        canvas.drawCircle(Offset(x, y), 1.5, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DotPatternPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+class _PaletteCircle extends StatelessWidget {
+  const _PaletteCircle({this.size = 40});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: SweepGradient(
+          colors: [
+            Colors.red,
+            Colors.yellow,
+            Colors.green,
+            Colors.cyan,
+            Colors.blue,
+            Colors.purple,
+            Colors.red,
+          ],
+        ),
+      ),
+    );
+  }
+}

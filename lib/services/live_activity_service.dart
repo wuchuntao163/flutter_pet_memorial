@@ -29,7 +29,8 @@ class LiveActivityService {
 
   Future<bool> isSupported() async {
     if (!isPlatformSupported) return false;
-    _supportedCache ??= await _channel.invokeMethod<bool>('isSupported') ?? false;
+    _supportedCache ??=
+        await _channel.invokeMethod<bool>('isSupported') ?? false;
     return _supportedCache!;
   }
 
@@ -124,7 +125,8 @@ class LiveActivityService {
     }
 
     try {
-      final ok = await _channel.invokeMethod<bool>('syncImage', {
+      final ok =
+          await _channel.invokeMethod<bool>('syncImage', {
             'petImageUrl': petUrl ?? '',
             'fourCloverUrl': fourCloverUrl ?? '',
             'authToken': AuthSessionStore.instance.token ?? '',

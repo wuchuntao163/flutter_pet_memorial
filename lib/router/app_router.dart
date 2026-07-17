@@ -16,6 +16,15 @@ import '../screens/pet_type_selection/pet_type_selection_screen.dart';
 import '../screens/privacy_policy/privacy_policy_screen.dart';
 import '../screens/feedback/feedback_screen.dart';
 import '../screens/component/component_page_screen.dart';
+import '../screens/component/pet_widget_config_screen.dart';
+import '../screens/component/countdown_widget_config_screen.dart';
+import '../screens/component/pet_island_config_screen.dart';
+import '../screens/component/timer_island_config_screen.dart';
+import '../screens/component/memorial_island_config_screen.dart';
+import '../screens/component/photo_island_config_screen.dart';
+import '../screens/component/custom_island_config_screen.dart';
+import '../screens/component/api_widget_config_screen.dart';
+import '../models/widget_definition.dart';
 import '../screens/profile/profile_screen.dart';
 import 'app_routes.dart';
 
@@ -25,8 +34,7 @@ final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: AppRoutes.home,
   refreshListenable: AppLaunch.instance,
-  redirect: (context, state) =>
-      AppLaunch.instance.redirect(state.uri.path),
+  redirect: (context, state) => AppLaunch.instance.redirect(state.uri.path),
   routes: [
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
@@ -65,6 +73,95 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentPet,
+      builder: (_, _) => const PetWidgetConfigScreen(),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentPhotoCountdown,
+      builder: (_, _) => const CountdownWidgetConfigScreen(
+        variant: CountdownWidgetVariant.photo,
+      ),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentSimpleCountdown,
+      builder: (_, _) => const CountdownWidgetConfigScreen(
+        variant: CountdownWidgetVariant.simple,
+      ),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentMediumCountdown,
+      builder: (_, _) => const CountdownWidgetConfigScreen(
+        variant: CountdownWidgetVariant.medium,
+      ),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentMultiMemorial,
+      builder: (_, _) => const CountdownWidgetConfigScreen(
+        variant: CountdownWidgetVariant.multiSmall,
+      ),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentBirthdayCountdown,
+      builder: (_, _) => const CountdownWidgetConfigScreen(
+        variant: CountdownWidgetVariant.multiMedium,
+      ),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentCalendar,
+      builder: (_, _) => const CountdownWidgetConfigScreen(
+        variant: CountdownWidgetVariant.calendar,
+      ),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentPetIsland,
+      builder: (_, _) => const PetIslandConfigScreen(),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentCountUpIsland,
+      builder: (_, _) =>
+          const TimerIslandConfigScreen(mode: TimerIslandMode.countUp),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentCountDownIsland,
+      builder: (_, _) =>
+          const TimerIslandConfigScreen(mode: TimerIslandMode.countDown),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentMemorialIsland,
+      builder: (_, _) => const MemorialIslandConfigScreen(),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentPhotoIsland,
+      builder: (_, _) => const PhotoIslandConfigScreen(),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.componentCustomIsland,
+      builder: (_, _) => const CustomIslandConfigScreen(),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: '/component/config/:id',
+      builder: (_, state) => ApiWidgetConfigScreen(
+        widgetId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        initial: state.extra is WidgetDefinition
+            ? state.extra! as WidgetDefinition
+            : null,
+      ),
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
       path: AppRoutes.bindPhone,
       builder: (_, _) => const BindPhoneScreen(),
     ),
@@ -91,9 +188,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       parentNavigatorKey: rootNavigatorKey,
       path: '/pet-naming/:petType',
-      builder: (context, state) => PetNamingScreen(
-        petType: state.pathParameters['petType'] ?? 'cat',
-      ),
+      builder: (context, state) =>
+          PetNamingScreen(petType: state.pathParameters['petType'] ?? 'cat'),
     ),
     GoRoute(
       parentNavigatorKey: rootNavigatorKey,
@@ -108,9 +204,7 @@ final GoRouter appRouter = GoRouter(
           state.pathParameters['id']!,
         );
         if (day == null) {
-          return Scaffold(
-            body: Center(child: Text(tr('router.not_found'))),
-          );
+          return Scaffold(body: Center(child: Text(tr('router.not_found'))));
         }
         return MemorialDayDetailScreen(memorialDay: day);
       },

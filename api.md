@@ -1270,6 +1270,43 @@
     "msg": "删除成功"
 }
 ```
+### 19. 获取组件背景列表
+
+**接口地址**: `/api/pet/getWidgetBackground`
+
+**请求方式**: GET
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+| :--- | :--- | :--- | :--- |
+| app_id | int | 是 | 应用ID |
+| type | int | 否 | 类型：1=组件、2=灵动岛，默认1 |
+
+**返回示例**:
+
+```json
+{
+    "code": 200,
+    "msg": "success",
+    "data": {
+        "list": [
+            {
+                "id": 1,
+                "app_id": 1,
+                "language_id": 0,
+                "category_id": 1,
+                "user_id": 0,
+                "name": "背景1",
+                "image": "https://xxx.jpg",
+                "is_show": 1,
+                "sort": 0,
+                "created_at": "2026-07-17 10:00:00",
+                "updated_at": "2026-07-17 10:00:00"
+            }
+        ]
+    }
+}
 
 #### 20. 图片加文本生成 GIF 动图
 
@@ -1418,7 +1455,123 @@
 **说明**: 无客户端超时；`status` 为 `0`/`1` 时持续轮询；`status=2` 时重新发起生成并继续等待，直至 `status=3`。
 
 ---
+### 22. 获取组件/灵动岛列表
 
+**接口地址**: `/api/pet/getWidgets`
+
+**请求方式**: GET
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+| :--- | :--- | :--- | :--- |
+| app_id | int | 是 | 应用ID |
+| type | int | 否 | 类型：1=组件，2=灵动岛 |
+| language_id | int | 否 | 语言ID |
+
+**返回示例**:
+
+```json
+{
+    "code": 200,
+    "msg": "success",
+    "data": {
+        "list": [
+            {
+                "id": 1,
+                "title": "宠物状态",
+                "image": "https://example.com/image.png",
+                "type": 1,
+                "language_id": 0,
+                "config": ["pet_select", "text_style", "icon"],
+                "widget_row": 1,
+                "widget_column": 1,
+                "sort": 1,
+                "is_show": 1
+            }
+        ]
+    }
+}
+```
+
+### 23. 获取组件/灵动岛详情
+
+**接口地址**: `/api/pet/getWidgetInfo`
+
+**请求方式**: GET
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+| :--- | :--- | :--- | :--- |
+| app_id | int | 是 | 应用ID |
+| id | int | 是 | 组件ID |
+
+**返回示例**:
+
+```json
+{
+    "code": 200,
+    "msg": "success",
+    "data": {
+        "info": {
+            "id": 1,
+            "title": "宠物状态",
+            "image": "https://example.com/image.png",
+            "type": 1,
+            "language_id": 0,
+            "config": ["pet_select", "text_style", "icon"],
+            "widget_row": 1,
+            "widget_column": 1,
+            "sort": 1,
+            "is_show": 1,
+            "template":1,
+            "default_bg":"https://example.com/image.png",
+        },
+        "options": {
+            "pet_select": "宠物选择",
+            "anniversary_select": "纪念日事项选择",
+            "text_style": "文字样式",
+            "text_color": "文字颜色",
+            "number_style": "数字样式",
+            "background": "背景（纯色/图片/图案）",
+            "icon": "图标",
+            "upload_image": "上传图片",
+            "text_size": "文字大小",
+            "custom_text": "自定义文本",
+            "icon_position": "左右图标位",
+            "target_time":"目标时间"
+        }
+    }
+}
+```
+
+### 24. 生成带文字的GIF
+
+**接口地址**: `/api/pet/generateImageWithTextGif`
+
+**请求方式**: POST
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+| :--- | :--- | :--- | :--- |
+| app_id | int | 是 | 应用ID |
+
+### 25. 获取GIF任务结果
+
+**接口地址**: `/api/pet/getGifTaskResult`
+
+**请求方式**: GET
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+| :--- | :--- | :--- | :--- |
+| app_id | int | 是 | 应用ID |
+| task_id | string | 是 | 任务ID |
+
+---
 ### User模块
 
 #### 1. 获取用户信息

@@ -34,6 +34,7 @@ dependencies:
   package_info_plus: ^9.0.1
   flutter_html: ^3.0.0
   connectivity_plus: 6.1.4
+  emoji_picker_flutter: ^2.2.0
 
 dependency_overrides:
   # Xcode 14.2 无法编译 wkwebview 3.18+ 中带泛型特化的 HTTPCookieProxyAPIDelegate

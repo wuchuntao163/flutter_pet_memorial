@@ -132,6 +132,15 @@ class ApiPaths {
   /// 获取纪念日背景列表 · GET（category_id、my_user_id）
   static const getBackgrounds = '/api/pet/getBackgrounds';
 
+  /// 获取组件背景列表 · GET（type：1=小组件、2=灵动岛）
+  static const getWidgetBackground = '/api/pet/getWidgetBackground';
+
+  /// 获取组件/灵动岛列表 · GET（type：1=小组件、2=灵动岛）
+  static const getWidgets = '/api/pet/getWidgets';
+
+  /// 获取组件/灵动岛详情 · GET（id）
+  static const getWidgetInfo = '/api/pet/getWidgetInfo';
+
   /// 获取背景分类列表 · GET
   static const getBackgroundCategories = '/api/pet/getBackgroundCategories';
 

@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../config/colors.dart';
 import '../../utils/banner_util.dart';
+
 /// 我的页 Banner 轮播
 class ProfileBanner extends StatefulWidget {
   final List<Map<String, dynamic>> items;
+  final double height;
 
-  const ProfileBanner({super.key, required this.items});
+  const ProfileBanner({super.key, required this.items, this.height = 72});
 
   @override
   State<ProfileBanner> createState() => _ProfileBannerState();
 }
 
 class _ProfileBannerState extends State<ProfileBanner> {
-  static const _height = 72.0;
-
   late final PageController _pageController;
   int _currentIndex = 0;
 
@@ -47,7 +47,7 @@ class _ProfileBannerState extends State<ProfileBanner> {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: _height,
+          height: widget.height,
           child: PageView.builder(
             controller: _pageController,
             itemCount: items.length,
@@ -87,10 +87,10 @@ class _ProfileBannerState extends State<ProfileBanner> {
         child: Image.network(
           imageUrl,
           width: double.infinity,
-          height: _height,
+          height: widget.height,
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) => Container(
-            height: _height,
+            height: widget.height,
             color: const Color(0xFFF9FAFB),
             alignment: Alignment.center,
             child: const Icon(

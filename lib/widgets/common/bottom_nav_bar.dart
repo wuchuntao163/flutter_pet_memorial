@@ -8,7 +8,7 @@ import '../../l10n/tr.dart';
 import '../../router/app_routes.dart';
 import '../../services/language_service.dart';
 
-/// 底部导航（数据来自 getNav type=2）
+/// 底部导航（接口菜单 + 前端固定的组件菜单）
 class BottomNavBar extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
@@ -21,6 +21,12 @@ class BottomNavBar extends StatelessWidget {
     {'name': '', 'url': AppRoutes.home, 'icon': ''},
     {'name': '', 'url': AppRoutes.profile, 'icon': ''},
   ];
+
+  static const _componentItem = {
+    'name': '组件',
+    'url': AppRoutes.component,
+    'icon': 'component.png',
+  };
 
   /// 接口 name（如「日子」「我的」「组件」）→ nav.{name} 双语文案
   static String _localizedNavName(String rawName) {
@@ -51,6 +57,18 @@ class BottomNavBar extends StatelessWidget {
     return null;
   }
 
+  static List<dynamic> _buildItems(List<dynamic> apiItems) {
+    final items = apiItems.isNotEmpty ? apiItems : _fallback;
+    return [
+      _componentItem,
+      ...items.where((raw) {
+        if (raw is! Map) return true;
+        return _normalizePath(raw['url']?.toString() ?? '') !=
+            AppRoutes.component;
+      }),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -59,9 +77,7 @@ class BottomNavBar extends StatelessWidget {
         LanguageService.instance,
       ]),
       builder: (context, _) {
-        final items = AppCacheStore.instance.navList.isNotEmpty
-            ? AppCacheStore.instance.navList
-            : _fallback;
+        final items = _buildItems(AppCacheStore.instance.navList);
         final currentIndex = navigationShell.currentIndex;
 
         return Material(
@@ -111,8 +127,7 @@ class BottomNavBar extends StatelessWidget {
         ? _localizedNavName(rawName)
         : (url.isEmpty ? '' : _fallbackName(url));
     final itemPath = _normalizePath(url);
-    final branchIndex =
-        url.isEmpty ? listIndex : shellBranchIndexForUrl(url);
+    final branchIndex = url.isEmpty ? listIndex : shellBranchIndexForUrl(url);
     final active = branchIndex != null && currentIndex == branchIndex;
 
     final icon = map['icon']?.toString() ?? '';
@@ -120,8 +135,8 @@ class BottomNavBar extends StatelessWidget {
     final fallback = itemPath == AppRoutes.profile
         ? Icons.cloud
         : (itemPath == AppRoutes.component
-            ? Icons.widgets_outlined
-            : Icons.star_rounded);
+              ? Icons.widgets_outlined
+              : Icons.star_rounded);
     final fallbackColor = itemPath == AppRoutes.profile
         ? const Color(0xFFB8A0D9)
         : AppColors.blue;
@@ -144,23 +159,24 @@ class BottomNavBar extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (icon.isNotEmpty)
+            if (itemPath == AppRoutes.component)
+              Image.asset(
+                'assets/images/$icon',
+                width: 28,
+                height: 28,
+                errorBuilder: (_, _, _) =>
+                    Icon(fallback, size: 26, color: fallbackColor),
+              )
+            else if (icon.isNotEmpty)
               Image.network(
                 icon,
                 width: 28,
                 height: 28,
-                errorBuilder: (_, _, _) => Icon(
-                  fallback,
-                  size: 26,
-                  color: fallbackColor,
-                ),
+                errorBuilder: (_, _, _) =>
+                    Icon(fallback, size: 26, color: fallbackColor),
               )
             else
-              Icon(
-                fallback,
-                size: 26,
-                color: fallbackColor,
-              ),
+              Icon(fallback, size: 26, color: fallbackColor),
             const SizedBox(height: 0),
             Text(
               name,
