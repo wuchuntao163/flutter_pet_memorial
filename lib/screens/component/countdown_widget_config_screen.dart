@@ -1206,7 +1206,10 @@ class _CountdownWidgetConfigScreenState
           child: SizedBox(
             width: 20,
             height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.accent,
+            ),
           ),
         ),
       );
@@ -1390,6 +1393,7 @@ class _CountdownWidgetConfigScreenState
   }
 
   Future<void> _save() async {
+    final definition = WidgetDetailScope.maybeOf(context);
     final prefs = await SharedPreferences.getInstance();
     await Future.wait([
       if (_isMulti)
@@ -1416,6 +1420,7 @@ class _CountdownWidgetConfigScreenState
       else
         prefs.setString('${_prefsPrefix}_background_image', _backgroundImage!),
     ]);
+    await saveWidgetToLibrary(definition);
     if (!mounted) return;
     await showCenterTip(context, '已保存到我的组件');
   }

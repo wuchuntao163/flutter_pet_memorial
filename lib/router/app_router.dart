@@ -16,6 +16,7 @@ import '../screens/pet_type_selection/pet_type_selection_screen.dart';
 import '../screens/privacy_policy/privacy_policy_screen.dart';
 import '../screens/feedback/feedback_screen.dart';
 import '../screens/component/component_page_screen.dart';
+import '../screens/component/my_widgets_screen.dart';
 import '../screens/component/pet_widget_config_screen.dart';
 import '../screens/component/countdown_widget_config_screen.dart';
 import '../screens/component/pet_island_config_screen.dart';
@@ -70,6 +71,11 @@ final GoRouter appRouter = GoRouter(
           ],
         ),
       ],
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.myWidgets,
+      builder: (_, _) => const MyWidgetsScreen(),
     ),
     GoRoute(
       parentNavigatorKey: rootNavigatorKey,

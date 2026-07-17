@@ -163,7 +163,7 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppColors.accentDarker,
+                                color: AppColors.accent,
                               ),
                             )
                           : Text(

@@ -4,6 +4,7 @@ abstract final class AppRoutes {
   static const home = '/page/home';
   static const profile = '/page/profile';
   static const component = '/page/component';
+  static const myWidgets = '/component/my-widgets';
   static const componentPet = '/component/pet';
   static const componentPhotoCountdown = '/component/photo-countdown';
   static const componentSimpleCountdown = '/component/simple-countdown';

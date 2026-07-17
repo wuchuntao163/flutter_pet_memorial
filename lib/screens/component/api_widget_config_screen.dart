@@ -108,7 +108,12 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
     if (item == null) {
       return const Scaffold(
         backgroundColor: Color(0xFFF7F8FB),
-        body: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        body: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.accent,
+          ),
+        ),
       );
     }
     return _buildFixedTemplate(item);
@@ -1052,6 +1057,7 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
   }
 
   Future<void> _save() async {
+    final definition = WidgetDetailScope.maybeOf(context);
     final prefs = await SharedPreferences.getInstance();
     await Future.wait([
       prefs.setInt('${_prefsPrefix}_pet', _selectedPet),
@@ -1074,6 +1080,7 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
       prefs.setString('${_prefsPrefix}_text', _textController.text.trim()),
       prefs.setBool('${_prefsPrefix}_icon_right', _iconOnRight),
     ]);
+    await saveWidgetToLibrary(definition);
     if (mounted) await showCenterTip(context, '已保存');
   }
 }

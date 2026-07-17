@@ -191,7 +191,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppColors.accentDarker,
+                                color: AppColors.accent,
                               ),
                             )
                           : Text(

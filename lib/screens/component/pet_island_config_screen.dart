@@ -149,7 +149,7 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppColors.accentDarker,
+                                color: AppColors.accent,
                               ),
                             )
                           : Text(
@@ -342,7 +342,10 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
         height: 66,
         child: Align(
           alignment: Alignment.centerLeft,
-          child: CircularProgressIndicator(strokeWidth: 2),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.accent,
+          ),
         ),
       );
     }

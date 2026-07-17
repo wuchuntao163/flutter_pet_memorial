@@ -543,6 +543,7 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
   }
 
   Future<void> _save() async {
+    final definition = WidgetDetailScope.maybeOf(context);
     final prefs = await SharedPreferences.getInstance();
     await Future.wait([
       prefs.setInt(_petKey, _selectedPet),
@@ -556,6 +557,7 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
       else
         prefs.setString(_backgroundImageKey, _selectedBackgroundImage!),
     ]);
+    await saveWidgetToLibrary(definition);
     if (!mounted) return;
     await showCenterTip(context, '已保存到我的组件');
   }

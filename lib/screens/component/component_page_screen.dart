@@ -113,20 +113,27 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
           ],
         ),
         const Spacer(),
-        Container(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.82),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.push(AppRoutes.myWidgets),
             borderRadius: BorderRadius.circular(15),
-          ),
-          child: const Text(
-            '我的组件',
-            style: TextStyle(
-              color: AppColors.textPlaceholder,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+            child: Container(
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.82),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Text(
+                '我的组件',
+                style: TextStyle(
+                  color: AppColors.textPlaceholder,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ),
@@ -185,7 +192,12 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
   Widget _buildDynamicIslandContent() {
     final store = WidgetStore.instance;
     if (store.isLoading(2) && store.items(2).isEmpty) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return const Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: AppColors.accent,
+        ),
+      );
     }
     if (store.items(2).isNotEmpty) {
       return ListView(
@@ -223,7 +235,12 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
     if (store.isLoading(type) && items.isEmpty) {
       return const SizedBox(
         height: 180,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        child: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.accent,
+          ),
+        ),
       );
     }
     if (items.isEmpty) {

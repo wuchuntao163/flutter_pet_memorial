@@ -192,7 +192,7 @@ class _MemorialIslandConfigScreenState
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppColors.accentDarker,
+                                color: AppColors.accent,
                               ),
                             )
                           : Text(
@@ -400,7 +400,12 @@ class _MemorialIslandConfigScreenState
 
   Widget _buildMemorialList() {
     if (MemorialStore.instance.isLoadingList && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return const Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: AppColors.accent,
+        ),
+      );
     }
     if (_items.isEmpty) {
       return Container(

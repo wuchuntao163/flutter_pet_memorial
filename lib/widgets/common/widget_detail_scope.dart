@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../models/widget_definition.dart';
+import '../../data/saved_widget_store.dart';
 
 class WidgetDetailScope extends InheritedWidget {
   const WidgetDetailScope({
@@ -46,4 +47,9 @@ DecorationImage? widgetDefaultBackgroundDecoration(BuildContext context) {
       ? NetworkImage(value)
       : AssetImage(value) as ImageProvider;
   return DecorationImage(image: provider, fit: BoxFit.cover);
+}
+
+Future<void> saveWidgetToLibrary(WidgetDefinition? definition) async {
+  if (definition == null || definition.isIsland) return;
+  await SavedWidgetStore.instance.saveDefinition(definition);
 }
