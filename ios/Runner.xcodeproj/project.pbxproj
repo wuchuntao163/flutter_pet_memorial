@@ -18,6 +18,7 @@
 		AABB00011234567890ABCDEF /* PetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00021234567890ABCDEF /* PetWidget.swift */; };
 		AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00041234567890ABCDEF /* PetWidgetBundle.swift */; };
 		DDAA00011234567890ABCDEF /* SavedWidgetRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */; };
+		DDAA00031234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */; };
 		AABB00071234567890ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AABB00081234567890ABCDEF /* Assets.xcassets */; };
 		BBAACC011234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
 		BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
@@ -84,6 +85,7 @@
 		AABB00021234567890ABCDEF /* PetWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetWidget.swift; sourceTree = "<group>"; };
 		AABB00041234567890ABCDEF /* PetWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetWidgetBundle.swift; sourceTree = "<group>"; };
 		DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedWidgetRenderer.swift; sourceTree = "<group>"; };
+		DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */ = {isa = PBXFileReference; lastKnownFileType = file.intentdefinition; path = WidgetSelectionIntent.intentdefinition; sourceTree = "<group>"; };
 		AABB00061234567890ABCDEF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AABB00081234567890ABCDEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AABB000C1234567890ABCDEF /* PetWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PetWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -205,6 +207,7 @@
 				AABB00021234567890ABCDEF /* PetWidget.swift */,
 				AABB00041234567890ABCDEF /* PetWidgetBundle.swift */,
 				DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */,
+				DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */,
 				CCBB00071234567890ABCDEF /* PetLiveActivityWidget.swift */,
 				AABB00061234567890ABCDEF /* Info.plist */,
 				AABB00081234567890ABCDEF /* Assets.xcassets */,
@@ -518,6 +521,7 @@
 				AABB00011234567890ABCDEF /* PetWidget.swift in Sources */,
 				AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */,
 				DDAA00011234567890ABCDEF /* SavedWidgetRenderer.swift in Sources */,
+				DDAA00031234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */,
 				BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */,
 				CCBB00021234567890ABCDEF /* PetLiveActivityAttributes.swift in Sources */,
 				CCBB00061234567890ABCDEF /* PetLiveActivityWidget.swift in Sources */,

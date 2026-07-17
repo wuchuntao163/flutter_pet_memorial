@@ -413,8 +413,28 @@ enum WidgetChannelHandler {
         let args = call.arguments as? [String: Any] ?? [:]
         let raw = args["configs"] as? String ?? "[]"
         if WidgetSync.saveWidgetConfigs(raw) {
-          WidgetSync.reloadTimelines()
-          result(nil)
+          let authToken = args["authToken"] as? String ?? ""
+          let data = raw.data(using: .utf8)
+          let configs = data.flatMap {
+            try? JSONSerialization.jsonObject(with: $0) as? [[String: Any]]
+          } ?? []
+          let firstSettings = configs.first?["settings"] as? [String: Any]
+          let petImageUrl = firstSettings?["pet_image"] as? String ?? ""
+          if !petImageUrl.isEmpty,
+             petImageUrl.hasPrefix("http://") || petImageUrl.hasPrefix("https://") {
+            WidgetSync.downloadWidgetImage(
+              from: petImageUrl,
+              authToken: authToken
+            ) { _ in
+              DispatchQueue.main.async {
+                WidgetSync.reloadTimelines()
+                result(nil)
+              }
+            }
+          } else {
+            WidgetSync.reloadTimelines()
+            result(nil)
+          }
         } else {
           result(
             FlutterError(

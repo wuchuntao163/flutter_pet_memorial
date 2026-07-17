@@ -138,7 +138,9 @@ struct SavedWidgetTemplateView: View {
   private var petTemplate: some View {
     let value = config.string("pet_image")
     return Group {
-      if let url = URL(string: value), !value.isEmpty {
+      if let image = cachedPetImage() {
+        Image(uiImage: image).resizable().scaledToFit().padding(12)
+      } else if let url = URL(string: value), !value.isEmpty {
         CompatibleRemoteImage(url: url, contentMode: .fit).padding(12)
       } else {
         Image(systemName: "pawprint.fill")
@@ -146,6 +148,15 @@ struct SavedWidgetTemplateView: View {
           .foregroundColor(.pink.opacity(0.75))
       }
     }
+  }
+
+  private func cachedPetImage() -> UIImage? {
+    guard let container = FileManager.default.containerURL(
+      forSecurityApplicationGroupIdentifier: AppGroupConfig.id
+    ) else { return nil }
+    let url = container.appendingPathComponent("petWidgetImage.png")
+    guard let data = try? Data(contentsOf: url) else { return nil }
+    return UIImage(data: data)
   }
 
   private var photoCountdownTemplate: some View {

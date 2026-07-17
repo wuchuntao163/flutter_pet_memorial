@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/saved_widget.dart';
 import '../models/widget_definition.dart';
+import 'auth_session_store.dart';
 
 class SavedWidgetStore extends ChangeNotifier {
   SavedWidgetStore._();
@@ -87,6 +88,7 @@ class SavedWidgetStore extends ChangeNotifier {
       try {
         await _channel.invokeMethod<void>('syncWidgetConfigs', {
           'configs': jsonEncode(_items.map((item) => item.toJson()).toList()),
+          'authToken': AuthSessionStore.instance.token ?? '',
         });
       } catch (error) {
         debugPrint('[SavedWidgetStore] iOS sync failed: $error');

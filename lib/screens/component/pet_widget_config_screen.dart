@@ -10,6 +10,7 @@ import '../../data/app_cache_store.dart';
 import '../../data/background_store.dart';
 import '../../services/live_activity_service.dart';
 import '../../services/pet_image_service.dart';
+import '../../services/widget_service.dart';
 import '../../utils/app_permission_util.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/pet_display_image.dart';
@@ -568,6 +569,7 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
         'background_image': _selectedBackgroundImage ?? '',
       },
     );
+    await WidgetService.instance.updateWidget();
     if (!mounted) return;
     await showCenterTip(context, '已保存到我的组件');
   }

@@ -86,7 +86,7 @@ struct Provider: TimelineProvider {
         completion(timeline)
     }
 
-    private func loadWidgetData() -> PetWidgetData? {
+    fileprivate func loadWidgetData() -> PetWidgetData? {
         loadWidgetDataFromFile()
     }
 
@@ -132,21 +132,67 @@ struct SimpleEntry: TimelineEntry {
     let config: SavedWidgetConfiguration?
 }
 
+struct IntentProvider: IntentTimelineProvider {
+    typealias Intent = WidgetSelectionIntent
+    typealias Entry = SimpleEntry
+
+    func placeholder(in context: Context) -> SimpleEntry {
+        SimpleEntry(date: Date(), data: .preview, config: SavedWidgetConfiguration.loadAll().first)
+    }
+
+    func getSnapshot(
+        for configuration: WidgetSelectionIntent,
+        in context: Context,
+        completion: @escaping (SimpleEntry) -> Void
+    ) {
+        completion(makeEntry(configuration: configuration, preview: context.isPreview))
+    }
+
+    func getTimeline(
+        for configuration: WidgetSelectionIntent,
+        in context: Context,
+        completion: @escaping (Timeline<SimpleEntry>) -> Void
+    ) {
+        let entry = makeEntry(configuration: configuration, preview: false)
+        let refresh = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
+        completion(Timeline(entries: [entry], policy: .after(refresh)))
+    }
+
+    private func makeEntry(
+        configuration: WidgetSelectionIntent,
+        preview: Bool
+    ) -> SimpleEntry {
+        let configs = SavedWidgetConfiguration.loadAll()
+        let query = configuration.currentWidget?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let selected: SavedWidgetConfiguration?
+        if query.isEmpty || query == "跟随App内设置" {
+            selected = configs.first
+        } else {
+            selected = configs.first {
+                String($0.widgetId) == query ||
+                $0.title.compare(query, options: .caseInsensitive) == .orderedSame
+            } ?? configs.first
+        }
+        let data = preview ? PetWidgetData.preview : (Provider().loadWidgetData() ?? .empty)
+        return SimpleEntry(date: Date(), data: data, config: selected)
+    }
+}
+
 struct PetWidgetEntryView: View {
     @Environment(\.widgetFamily) private var family
     var entry: Provider.Entry
 
     var body: some View {
-        Group {
-            if let config = entry.config {
-                SavedWidgetTemplateView(config: config)
-            } else {
-                petContent
-            }
+        if let config = entry.config {
+            SavedWidgetTemplateView(config: config)
+                .id("\(config.widgetId)-\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            petContent
+                .id("\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(widgetPadding)
         }
-            .id("\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(widgetPadding)
     }
 
     private var widgetPadding: EdgeInsets {
@@ -211,27 +257,37 @@ struct PetWidgetEntryView: View {
 }
 
 struct PetWidget: Widget {
-    let kind: String = "PetWidget"
+    let kind: String
+    let displayName: String
+    let family: WidgetFamily
 
     var body: some WidgetConfiguration {
         if #available(iOS 17.0, *) {
-            return StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            return IntentConfiguration(
+                kind: kind,
+                intent: WidgetSelectionIntent.self,
+                provider: IntentProvider()
+            ) { entry in
                 PetWidgetEntryView(entry: entry)
                     .containerBackground(for: .widget) {
                         Color.clear
                     }
             }
-            .configurationDisplayName("萌宠")
-            .description("在桌面展示你的宠物")
-            .supportedFamilies([.systemSmall, .systemMedium])
+            .configurationDisplayName(displayName)
+            .description("选择保存在我的组件中的样式")
+            .supportedFamilies([family])
             .contentMarginsDisabled()
         } else {
-            return StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            return IntentConfiguration(
+                kind: kind,
+                intent: WidgetSelectionIntent.self,
+                provider: IntentProvider()
+            ) { entry in
                 PetWidgetEntryView(entry: entry)
             }
-            .configurationDisplayName("萌宠")
-            .description("在桌面展示你的宠物")
-            .supportedFamilies([.systemSmall, .systemMedium])
+            .configurationDisplayName(displayName)
+            .description("选择保存在我的组件中的样式")
+            .supportedFamilies([family])
         }
     }
 }

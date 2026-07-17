@@ -12,7 +12,16 @@ import SwiftUI
 struct PetWidgetBundle: WidgetBundle {
     @WidgetBundleBuilder
     var body: some Widget {
-        PetWidget()
+        PetWidget(
+            kind: "PetWidgetSmall",
+            displayName: "小号",
+            family: .systemSmall
+        )
+        PetWidget(
+            kind: "PetWidgetMedium",
+            displayName: "中号",
+            family: .systemMedium
+        )
         if #available(iOS 16.2, *) {
             PetLiveActivityWidget()
         }
