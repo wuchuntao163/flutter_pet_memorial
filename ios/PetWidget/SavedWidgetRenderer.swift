@@ -1,6 +1,47 @@
 import SwiftUI
 import WidgetKit
 import AppIntents
+import UIKit
+
+private final class CompatibleImageLoader: ObservableObject {
+  @Published var image: UIImage?
+  private let url: URL
+
+  init(url: URL) {
+    self.url = url
+  }
+
+  func load() {
+    guard image == nil else { return }
+    URLSession.shared.dataTask(with: url) { data, _, _ in
+      guard let data = data, let value = UIImage(data: data) else { return }
+      DispatchQueue.main.async { self.image = value }
+    }.resume()
+  }
+}
+
+private struct CompatibleRemoteImage: View {
+  @StateObject private var loader: CompatibleImageLoader
+  let contentMode: ContentMode
+
+  init(url: URL, contentMode: ContentMode) {
+    _loader = StateObject(wrappedValue: CompatibleImageLoader(url: url))
+    self.contentMode = contentMode
+  }
+
+  var body: some View {
+    Group {
+      if let image = loader.image {
+        Image(uiImage: image)
+          .resizable()
+          .aspectRatio(contentMode: contentMode)
+      } else {
+        Color.clear
+      }
+    }
+    .onAppear { loader.load() }
+  }
+}
 
 struct SavedWidgetConfiguration {
   let widgetId: Int
@@ -77,11 +118,7 @@ struct SavedWidgetTemplateView: View {
   @ViewBuilder private var backgroundImage: some View {
     let value = config.string("background_image")
     if let url = URL(string: value), !value.isEmpty {
-      AsyncImage(url: url) { image in
-        image.resizable().scaledToFill()
-      } placeholder: {
-        Color.clear
-      }
+      CompatibleRemoteImage(url: url, contentMode: .fill)
     }
   }
 
@@ -102,11 +139,7 @@ struct SavedWidgetTemplateView: View {
     let value = config.string("pet_image")
     return Group {
       if let url = URL(string: value), !value.isEmpty {
-        AsyncImage(url: url) { image in
-          image.resizable().scaledToFit().padding(12)
-        } placeholder: {
-          ProgressView().tint(.pink)
-        }
+        CompatibleRemoteImage(url: url, contentMode: .fit).padding(12)
       } else {
         Image(systemName: "pawprint.fill")
           .font(.system(size: 42))
@@ -191,9 +224,9 @@ struct SavedWidgetTemplateView: View {
 
   private var calendarTemplate: some View {
     let now = Date()
-    let month = now.formatted(.dateTime.month(.wide))
+    let month = Self.format(now, pattern: "LLLL")
     let day = Calendar.current.component(.day, from: now)
-    let weekday = now.formatted(.dateTime.weekday(.wide))
+    let weekday = Self.format(now, pattern: "EEEE")
     return VStack(spacing: 4) {
       Text(month).font(.system(size: 13, weight: .semibold))
       Spacer(minLength: 0)
@@ -225,7 +258,14 @@ struct SavedWidgetTemplateView: View {
   private var dateText: String {
     let raw = config.string("memorial_date")
     guard let date = ISO8601DateFormatter().date(from: raw) else { return "" }
-    return date.formatted(.dateTime.year().month(.twoDigits).day(.twoDigits).weekday(.wide))
+    return Self.format(date, pattern: "yyyy-MM-dd EEEE")
+  }
+
+  private static func format(_ date: Date, pattern: String) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US")
+    formatter.dateFormat = pattern
+    return formatter.string(from: date)
   }
 }
 
