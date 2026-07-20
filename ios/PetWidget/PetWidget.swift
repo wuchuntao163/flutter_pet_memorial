@@ -270,35 +270,24 @@ struct PetWidget: Widget {
     let displayName: String
     let family: WidgetFamily
 
-    @WidgetConfigurationBuilder
     var body: some WidgetConfiguration {
-        if #available(iOS 17.0, *) {
-            IntentConfiguration(
-                kind: kind,
-                intent: WidgetSelectionIntent.self,
-                provider: IntentProvider()
-            ) { entry in
+        IntentConfiguration(
+            kind: kind,
+            intent: WidgetSelectionIntent.self,
+            provider: IntentProvider()
+        ) { entry in
+            if #available(iOS 17.0, *) {
                 PetWidgetEntryView(entry: entry)
                     .containerBackground(for: .widget) {
                         Color.clear
                     }
-            }
-            .configurationDisplayName(displayName)
-            .description("选择保存在我的组件中的样式")
-            .supportedFamilies([family])
-            .contentMarginsDisabled()
-        } else {
-            IntentConfiguration(
-                kind: kind,
-                intent: WidgetSelectionIntent.self,
-                provider: IntentProvider()
-            ) { entry in
+            } else {
                 PetWidgetEntryView(entry: entry)
             }
-            .configurationDisplayName(displayName)
-            .description("选择保存在我的组件中的样式")
-            .supportedFamilies([family])
         }
+        .configurationDisplayName(displayName)
+        .description("选择保存在我的组件中的样式")
+        .supportedFamilies([family])
     }
 }
 
