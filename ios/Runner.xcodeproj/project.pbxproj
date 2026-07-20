@@ -18,7 +18,7 @@
 		AABB00011234567890ABCDEF /* PetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00021234567890ABCDEF /* PetWidget.swift */; };
 		AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00041234567890ABCDEF /* PetWidgetBundle.swift */; };
 		DDAA00011234567890ABCDEF /* SavedWidgetRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */; };
-		DDAA00031234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */; };
+		DDAA00031234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */; settings = {ATTRIBUTES = (no_codegen, ); }; };
 		AABB00071234567890ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AABB00081234567890ABCDEF /* Assets.xcassets */; };
 		BBAACC011234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
 		BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };

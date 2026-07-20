@@ -1,5 +1,14 @@
 import WidgetKit
 import SwiftUI
+import Intents
+
+// Keep this declaration in source control instead of relying on Xcode's
+// intentdefinition code generation, which is not consistent across cloud
+// build environments.
+@objc(WidgetSelectionIntent)
+final class WidgetSelectionIntent: INIntent {
+    @NSManaged var currentWidget: String?
+}
 
 private enum WidgetShared {
     static let appGroupId = AppGroupConfig.id
