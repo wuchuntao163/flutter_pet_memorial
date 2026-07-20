@@ -141,52 +141,6 @@ struct SimpleEntry: TimelineEntry {
     let config: SavedWidgetConfiguration?
 }
 
-struct IntentProvider: IntentTimelineProvider {
-    typealias Intent = WidgetSelectionIntent
-    typealias Entry = SimpleEntry
-
-    func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), data: .preview, config: SavedWidgetConfiguration.loadAll().first)
-    }
-
-    func getSnapshot(
-        for configuration: WidgetSelectionIntent,
-        in context: Context,
-        completion: @escaping (SimpleEntry) -> Void
-    ) {
-        completion(makeEntry(configuration: configuration, preview: context.isPreview))
-    }
-
-    func getTimeline(
-        for configuration: WidgetSelectionIntent,
-        in context: Context,
-        completion: @escaping (Timeline<SimpleEntry>) -> Void
-    ) {
-        let entry = makeEntry(configuration: configuration, preview: false)
-        let refresh = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
-        completion(Timeline(entries: [entry], policy: .after(refresh)))
-    }
-
-    private func makeEntry(
-        configuration: WidgetSelectionIntent,
-        preview: Bool
-    ) -> SimpleEntry {
-        let configs = SavedWidgetConfiguration.loadAll()
-        let query = configuration.currentWidget?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let selected: SavedWidgetConfiguration?
-        if query.isEmpty || query == "跟随App内设置" {
-            selected = configs.first
-        } else {
-            selected = configs.first {
-                String($0.widgetId) == query ||
-                $0.title.compare(query, options: .caseInsensitive) == .orderedSame
-            } ?? configs.first
-        }
-        let data = preview ? PetWidgetData.preview : (Provider().loadWidgetData() ?? .empty)
-        return SimpleEntry(date: Date(), data: data, config: selected)
-    }
-}
-
 struct PetWidgetEntryView: View {
     @Environment(\.widgetFamily) private var family
     var entry: Provider.Entry
@@ -265,25 +219,33 @@ struct PetWidgetEntryView: View {
     }
 }
 
+private struct WidgetClearBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOSApplicationExtension 17.0, *) {
+            content.containerBackground(for: .widget) { Color.clear }
+        } else {
+            content
+        }
+    }
+}
+
 struct PetWidget: Widget {
     let kind: String
     let displayName: String
     let family: WidgetFamily
 
+    init(kind: String, displayName: String, family: WidgetFamily) {
+        self.kind = kind
+        self.displayName = displayName
+        self.family = family
+    }
+
     var body: some WidgetConfiguration {
-        IntentConfiguration(
-            kind: kind,
-            intent: WidgetSelectionIntent.self,
-            provider: IntentProvider()
-        ) { entry in
-            if #available(iOS 17.0, *) {
-                PetWidgetEntryView(entry: entry)
-                    .containerBackground(for: .widget) {
-                        Color.clear
-                    }
-            } else {
-                PetWidgetEntryView(entry: entry)
-            }
+        // StaticConfiguration avoids cloud-build failures from IntentConfiguration
+        // + manually declared WidgetSelectionIntent not conforming cleanly.
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            PetWidgetEntryView(entry: entry)
+                .modifier(WidgetClearBackground())
         }
         .configurationDisplayName(displayName)
         .description("选择保存在我的组件中的样式")
