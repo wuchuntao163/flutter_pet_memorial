@@ -270,6 +270,7 @@ struct PetWidget: Widget {
     let displayName: String
     let family: WidgetFamily
 
+    @WidgetConfigurationBuilder
     var body: some WidgetConfiguration {
         if #available(iOS 17.0, *) {
             IntentConfiguration(
