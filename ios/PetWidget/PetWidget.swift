@@ -1,14 +1,10 @@
 import WidgetKit
 import SwiftUI
-import Intents
 
-// Keep this declaration in source control instead of relying on Xcode's
-// intentdefinition code generation, which is not consistent across cloud
-// build environments.
-@objc(WidgetSelectionIntent)
-final class WidgetSelectionIntent: INIntent {
-    @NSManaged var currentWidget: String?
-}
+// NOTE: Do NOT name any Widget type `PetWidget`.
+// The extension target/module is already named PetWidget; a same-named type
+// shadows the module and Codemagic/Xcode report:
+//   "Type 'PetWidget' does not conform to protocol 'Widget'"
 
 private enum WidgetShared {
     static let appGroupId = AppGroupConfig.id
@@ -76,7 +72,7 @@ struct Provider: TimelineProvider {
         ))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
+    func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
         let data = loadWidgetData() ?? PetWidgetData.empty
         let currentDate = Date()
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate)!
@@ -91,15 +87,10 @@ struct Provider: TimelineProvider {
             data: data,
             config: SavedWidgetConfiguration.loadAll().first
         )
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-        completion(timeline)
+        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
     }
 
-    fileprivate func loadWidgetData() -> PetWidgetData? {
-        loadWidgetDataFromFile()
-    }
-
-    private func loadWidgetDataFromFile() -> PetWidgetData? {
+    func loadWidgetData() -> PetWidgetData? {
         guard let container = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: WidgetShared.appGroupId
         ) else {
@@ -112,11 +103,7 @@ struct Provider: TimelineProvider {
             return nil
         }
 
-        return parseWidgetData(dict)
-    }
-
-    private func parseWidgetData(_ dict: [String: Any]) -> PetWidgetData {
-        PetWidgetData(
+        return PetWidgetData(
             petName: dict["petName"] as? String ?? "",
             petType: dict["petType"] as? String ?? "",
             petAge: dict["petAge"] as? String ?? "",
@@ -143,19 +130,20 @@ struct SimpleEntry: TimelineEntry {
 
 struct PetWidgetEntryView: View {
     @Environment(\.widgetFamily) private var family
-    var entry: Provider.Entry
+    var entry: SimpleEntry
 
     var body: some View {
-        if let config = entry.config {
-            SavedWidgetTemplateView(config: config)
-                .id("\(config.widgetId)-\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            petContent
-                .id("\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(widgetPadding)
+        Group {
+            if let config = entry.config {
+                SavedWidgetTemplateView(config: config)
+                    .id("\(config.widgetId)-\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
+            } else {
+                petContent
+                    .id("\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
+                    .padding(widgetPadding)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var widgetPadding: EdgeInsets {
@@ -170,19 +158,13 @@ struct PetWidgetEntryView: View {
     @ViewBuilder
     private var petContent: some View {
         if let image = loadCachedPetImage() {
-            petImage(Image(uiImage: image))
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            // iOS 17+ 小组件无法对鉴权 URL 使用 AsyncImage，只展示缓存图或昵称
             placeholderPet
         }
-    }
-
-    private func petImage(_ image: Image) -> some View {
-        image
-            .resizable()
-            .scaledToFit()
-            .scaleEffect(1.0)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var placeholderPet: some View {
@@ -207,59 +189,26 @@ struct PetWidgetEntryView: View {
     }
 
     private func loadCachedPetImage() -> UIImage? {
-        guard let path = cachedImagePath(),
+        guard let path = WidgetShared.cachedImagePath(),
               let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
             return nil
         }
         return UIImage(data: data)
     }
-
-    private func cachedImagePath() -> String? {
-        WidgetShared.cachedImagePath()
-    }
 }
 
-private struct WidgetClearBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOSApplicationExtension 17.0, *) {
-            content.containerBackground(for: .widget) { Color.clear }
-        } else {
-            content
-        }
-    }
-}
-
-struct PetWidget: Widget {
+/// Home-screen widget. Named differently from the PetWidget module on purpose.
+struct HomeScreenPetWidget: Widget {
     let kind: String
     let displayName: String
     let family: WidgetFamily
 
-    init(kind: String, displayName: String, family: WidgetFamily) {
-        self.kind = kind
-        self.displayName = displayName
-        self.family = family
-    }
-
     var body: some WidgetConfiguration {
-        // StaticConfiguration avoids cloud-build failures from IntentConfiguration
-        // + manually declared WidgetSelectionIntent not conforming cleanly.
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             PetWidgetEntryView(entry: entry)
-                .modifier(WidgetClearBackground())
         }
         .configurationDisplayName(displayName)
         .description("选择保存在我的组件中的样式")
         .supportedFamilies([family])
-    }
-}
-
-struct PetWidget_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            PetWidgetEntryView(entry: SimpleEntry(date: Date(), data: PetWidgetData.preview, config: nil))
-                .previewContext(WidgetPreviewContext(family: .systemSmall))
-            PetWidgetEntryView(entry: SimpleEntry(date: Date(), data: PetWidgetData.preview, config: nil))
-                .previewContext(WidgetPreviewContext(family: .systemMedium))
-        }
     }
 }

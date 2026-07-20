@@ -521,7 +521,6 @@
 				AABB00011234567890ABCDEF /* PetWidget.swift in Sources */,
 				AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */,
 				DDAA00011234567890ABCDEF /* SavedWidgetRenderer.swift in Sources */,
-				DDAA00031234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */,
 				BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */,
 				CCBB00021234567890ABCDEF /* PetLiveActivityAttributes.swift in Sources */,
 				CCBB00061234567890ABCDEF /* PetLiveActivityWidget.swift in Sources */,
@@ -866,7 +865,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PetWidget/Info.plist;
 				INTENTS_CODEGEN_LANGUAGE = Swift;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -893,7 +892,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PetWidget/Info.plist;
 				INTENTS_CODEGEN_LANGUAGE = Swift;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -920,7 +919,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PetWidget/Info.plist;
 				INTENTS_CODEGEN_LANGUAGE = Swift;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

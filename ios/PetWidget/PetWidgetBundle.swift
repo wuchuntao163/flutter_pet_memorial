@@ -2,8 +2,6 @@
 //  PetWidgetBundle.swift
 //  PetWidget
 //
-//  Created by Mac on 2026/6/17.
-//
 
 import WidgetKit
 import SwiftUI
@@ -12,12 +10,12 @@ import SwiftUI
 struct PetWidgetBundle: WidgetBundle {
     @WidgetBundleBuilder
     var body: some Widget {
-        PetWidget(
+        HomeScreenPetWidget(
             kind: "PetWidgetSmall",
             displayName: "小号",
             family: .systemSmall
         )
-        PetWidget(
+        HomeScreenPetWidget(
             kind: "PetWidgetMedium",
             displayName: "中号",
             family: .systemMedium

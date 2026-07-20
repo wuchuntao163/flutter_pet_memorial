@@ -1,6 +1,5 @@
 import SwiftUI
 import WidgetKit
-import AppIntents
 import UIKit
 
 private final class CompatibleImageLoader: ObservableObject {
@@ -277,98 +276,5 @@ struct SavedWidgetTemplateView: View {
     formatter.locale = Locale(identifier: "en_US")
     formatter.dateFormat = pattern
     return formatter.string(from: date)
-  }
-}
-
-@available(iOSApplicationExtension 17.0, *)
-struct SavedWidgetEntity: AppEntity, Identifiable {
-  static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "当前组件")
-  static var defaultQuery = SavedWidgetEntityQuery()
-
-  let id: Int
-  let title: String
-
-  var displayRepresentation: DisplayRepresentation {
-    DisplayRepresentation(title: "\(title)")
-  }
-}
-
-@available(iOSApplicationExtension 17.0, *)
-struct SavedWidgetEntityQuery: EntityQuery {
-  func entities(for identifiers: [Int]) async throws -> [SavedWidgetEntity] {
-    SavedWidgetConfiguration.loadAll()
-      .filter { identifiers.contains($0.widgetId) }
-      .map { SavedWidgetEntity(id: $0.widgetId, title: $0.title) }
-  }
-
-  func suggestedEntities() async throws -> [SavedWidgetEntity] {
-    SavedWidgetConfiguration.loadAll().map {
-      SavedWidgetEntity(id: $0.widgetId, title: $0.title)
-    }
-  }
-
-  func defaultResult() async -> SavedWidgetEntity? {
-    guard let first = SavedWidgetConfiguration.loadAll().first else { return nil }
-    return SavedWidgetEntity(id: first.widgetId, title: first.title)
-  }
-}
-
-@available(iOSApplicationExtension 17.0, *)
-struct SelectSavedWidgetIntent: WidgetConfigurationIntent {
-  static var title: LocalizedStringResource = "编辑小组件"
-  static var description = IntentDescription("选择在桌面显示的组件")
-
-  @Parameter(title: "当前组件")
-  var widget: SavedWidgetEntity?
-}
-
-@available(iOSApplicationExtension 17.0, *)
-struct SavedWidgetIntentProvider: AppIntentTimelineProvider {
-  func placeholder(in context: Context) -> SimpleEntry {
-    SimpleEntry(date: Date(), data: .preview, config: SavedWidgetConfiguration.loadAll().first)
-  }
-
-  func snapshot(
-    for configuration: SelectSavedWidgetIntent,
-    in context: Context
-  ) async -> SimpleEntry {
-    entry(for: configuration)
-  }
-
-  func timeline(
-    for configuration: SelectSavedWidgetIntent,
-    in context: Context
-  ) async -> Timeline<SimpleEntry> {
-    let entry = entry(for: configuration)
-    let refresh = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
-    return Timeline(entries: [entry], policy: .after(refresh))
-  }
-
-  private func entry(for intent: SelectSavedWidgetIntent) -> SimpleEntry {
-    let configs = SavedWidgetConfiguration.loadAll()
-    let selected = intent.widget.flatMap { entity in
-      configs.first { $0.widgetId == entity.id }
-    } ?? configs.first
-    return SimpleEntry(date: Date(), data: .empty, config: selected)
-  }
-}
-
-@available(iOSApplicationExtension 17.0, *)
-struct ConfigurableSavedWidget: Widget {
-  let kind = "PetWidget"
-
-  var body: some WidgetConfiguration {
-    AppIntentConfiguration(
-      kind: kind,
-      intent: SelectSavedWidgetIntent.self,
-      provider: SavedWidgetIntentProvider()
-    ) { entry in
-      PetWidgetEntryView(entry: entry)
-        .containerBackground(for: .widget) { Color.clear }
-    }
-    .configurationDisplayName("萌宠组件")
-    .description("从我的组件中选择桌面样式")
-    .supportedFamilies([.systemSmall, .systemMedium])
-    .contentMarginsDisabled()
   }
 }
