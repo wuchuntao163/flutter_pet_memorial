@@ -1,10 +1,8 @@
 import WidgetKit
 import SwiftUI
+import UIKit
 
-// NOTE: Do NOT name any Widget type `PetWidget`.
-// The extension target/module is already named PetWidget; a same-named type
-// shadows the module and Codemagic/Xcode report:
-//   "Type 'PetWidget' does not conform to protocol 'Widget'"
+// Extension module is named PetWidget — do not declare a type with that name.
 
 private enum WidgetShared {
     static let appGroupId = AppGroupConfig.id
@@ -31,7 +29,7 @@ private enum WidgetShared {
     }
 }
 
-struct PetWidgetData: Codable {
+struct PetWidgetData: Codable, Sendable {
     let petName: String
     let petType: String
     let petAge: String
@@ -58,62 +56,64 @@ struct PetWidgetData: Codable {
     )
 }
 
-struct Provider: TimelineProvider {
+/// Entry must be Sendable. Do not embed `[String: Any]` configs here.
+struct SimpleEntry: TimelineEntry, Sendable {
+    let date: Date
+    let data: PetWidgetData
+    let widgetId: Int?
+}
+
+struct PetWidgetTimelineProvider: TimelineProvider {
+    typealias Entry = SimpleEntry
+
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), data: PetWidgetData.preview, config: nil)
+        SimpleEntry(date: Date(), data: .preview, widgetId: nil)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        let data = context.isPreview ? PetWidgetData.preview : (loadWidgetData() ?? PetWidgetData.empty)
+    func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> Void) {
+        let data = context.isPreview ? PetWidgetData.preview : (loadWidgetData() ?? .empty)
         completion(SimpleEntry(
             date: Date(),
             data: data,
-            config: SavedWidgetConfiguration.loadAll().first
+            widgetId: SavedWidgetConfiguration.loadAll().first?.widgetId
         ))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
-        let data = loadWidgetData() ?? PetWidgetData.empty
-        let currentDate = Date()
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate)!
-
-        let hasImage = WidgetShared.cachedImagePath() != nil
-        NSLog(
-            "[PetWidget] timeline pet=\(data.petName) url=\(data.petImageUrl.isEmpty ? "-" : "set") image=\(hasImage)"
-        )
-
+    func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> Void) {
+        let data = loadWidgetData() ?? .empty
+        let now = Date()
+        let next = Calendar.current.date(byAdding: .minute, value: 15, to: now)
+            ?? now.addingTimeInterval(900)
         let entry = SimpleEntry(
-            date: currentDate,
+            date: now,
             data: data,
-            config: SavedWidgetConfiguration.loadAll().first
+            widgetId: SavedWidgetConfiguration.loadAll().first?.widgetId
         )
-        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
+        completion(Timeline(entries: [entry], policy: .after(next)))
     }
 
-    func loadWidgetData() -> PetWidgetData? {
+    private func loadWidgetData() -> PetWidgetData? {
         guard let container = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: WidgetShared.appGroupId
         ) else {
             return nil
         }
-
         let url = container.appendingPathComponent(WidgetShared.widgetDataFileName)
         guard let raw = try? Data(contentsOf: url),
               let dict = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
             return nil
         }
-
         return PetWidgetData(
             petName: dict["petName"] as? String ?? "",
             petType: dict["petType"] as? String ?? "",
             petAge: dict["petAge"] as? String ?? "",
             petImageUrl: dict["petImageUrl"] as? String ?? "",
             memorials: dict["memorials"] as? String ?? "[]",
-            updatedAt: parseUpdatedAt(dict["updatedAt"])
+            updatedAt: Self.parseUpdatedAt(dict["updatedAt"])
         )
     }
 
-    private func parseUpdatedAt(_ value: Any?) -> Int64 {
+    private static func parseUpdatedAt(_ value: Any?) -> Int64 {
         if let value = value as? Int64 { return value }
         if let value = value as? Int { return Int64(value) }
         if let value = value as? Double { return Int64(value) }
@@ -122,19 +122,13 @@ struct Provider: TimelineProvider {
     }
 }
 
-struct SimpleEntry: TimelineEntry {
-    let date: Date
-    let data: PetWidgetData
-    let config: SavedWidgetConfiguration?
-}
-
 struct PetWidgetEntryView: View {
     @Environment(\.widgetFamily) private var family
-    var entry: SimpleEntry
+    let entry: SimpleEntry
 
     var body: some View {
         Group {
-            if let config = entry.config {
+            if let config = resolvedConfig {
                 SavedWidgetTemplateView(config: config)
                     .id("\(config.widgetId)-\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
             } else {
@@ -146,13 +140,19 @@ struct PetWidgetEntryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var widgetPadding: EdgeInsets {
-        switch family {
-        case .systemMedium:
-            return EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
-        default:
-            return EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10)
+    private var resolvedConfig: SavedWidgetConfiguration? {
+        let all = SavedWidgetConfiguration.loadAll()
+        if let widgetId = entry.widgetId {
+            return all.first { $0.widgetId == widgetId } ?? all.first
         }
+        return all.first
+    }
+
+    private var widgetPadding: EdgeInsets {
+        if family == .systemMedium {
+            return EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
+        }
+        return EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10)
     }
 
     @ViewBuilder
@@ -172,17 +172,16 @@ struct PetWidgetEntryView: View {
             Image(systemName: "pawprint.fill")
                 .font(.system(size: 30))
                 .foregroundColor(.orange.opacity(0.7))
-
-            if !entry.data.petName.isEmpty {
-                Text(entry.data.petName)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-            } else {
+            if entry.data.petName.isEmpty {
                 Text("打开应用同步宠物")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+            } else {
+                Text(entry.data.petName)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
             }
         }
         .padding(8)
@@ -197,18 +196,30 @@ struct PetWidgetEntryView: View {
     }
 }
 
-/// Home-screen widget. Named differently from the PetWidget module on purpose.
-struct HomeScreenPetWidget: Widget {
-    let kind: String
-    let displayName: String
-    let family: WidgetFamily
-
+struct HomeScreenPetWidgetSmall: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+        StaticConfiguration(
+            kind: "PetWidgetSmall",
+            provider: PetWidgetTimelineProvider()
+        ) { entry in
             PetWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName(displayName)
+        .configurationDisplayName("小号")
         .description("选择保存在我的组件中的样式")
-        .supportedFamilies([family])
+        .supportedFamilies([.systemSmall])
+    }
+}
+
+struct HomeScreenPetWidgetMedium: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(
+            kind: "PetWidgetMedium",
+            provider: PetWidgetTimelineProvider()
+        ) { entry in
+            PetWidgetEntryView(entry: entry)
+        }
+        .configurationDisplayName("中号")
+        .description("选择保存在我的组件中的样式")
+        .supportedFamilies([.systemMedium])
     }
 }

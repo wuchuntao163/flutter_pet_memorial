@@ -1,6 +1,7 @@
+import Combine
 import SwiftUI
-import WidgetKit
 import UIKit
+import WidgetKit
 
 private final class CompatibleImageLoader: ObservableObject {
   @Published var image: UIImage?
@@ -12,16 +13,16 @@ private final class CompatibleImageLoader: ObservableObject {
 
   func load() {
     guard image == nil else { return }
-    URLSession.shared.dataTask(with: url) { data, _, _ in
+    URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
       guard let data = data, let value = UIImage(data: data) else { return }
-      DispatchQueue.main.async { self.image = value }
+      DispatchQueue.main.async { self?.image = value }
     }.resume()
   }
 }
 
 private struct CompatibleRemoteImage: View {
   @StateObject private var loader: CompatibleImageLoader
-  let contentMode: ContentMode
+  private let contentMode: ContentMode
 
   init(url: URL, contentMode: ContentMode) {
     _loader = StateObject(wrappedValue: CompatibleImageLoader(url: url))
@@ -47,7 +48,7 @@ struct SavedWidgetConfiguration {
   let title: String
   let image: String
   let template: Int
-  let settings: [String: Any]
+  let settings: [String: String]
 
   static func loadAll() -> [SavedWidgetConfiguration] {
     guard let container = FileManager.default.containerURL(
@@ -62,30 +63,47 @@ struct SavedWidgetConfiguration {
       let id = value["widget_id"] as? Int ?? Int(value["widget_id"] as? String ?? "") ?? 0
       let template = value["template"] as? Int ?? Int(value["template"] as? String ?? "") ?? 0
       guard id > 0, (1...7).contains(template) else { return nil }
+      let rawSettings = value["settings"] as? [String: Any] ?? [:]
+      var settings: [String: String] = [:]
+      for (key, item) in rawSettings {
+        if let text = item as? String {
+          settings[key] = text
+        } else if let number = item as? NSNumber {
+          settings[key] = number.stringValue
+        } else {
+          settings[key] = String(describing: item)
+        }
+      }
       return SavedWidgetConfiguration(
         widgetId: id,
         title: value["title"] as? String ?? "小组件",
         image: value["image"] as? String ?? "",
         template: template,
-        settings: value["settings"] as? [String: Any] ?? [:]
+        settings: settings
       )
     }
   }
 
   func string(_ key: String, fallback: String = "") -> String {
-    if let value = settings[key] as? String { return value }
-    return settings[key].map(String.init(describing:)) ?? fallback
+    settings[key] ?? fallback
   }
 
   func int(_ key: String, fallback: Int = 0) -> Int {
-    if let value = settings[key] as? Int { return value }
-    if let value = settings[key] as? NSNumber { return value.intValue }
-    return Int(string(key)) ?? fallback
+    if let value = settings[key], let parsed = Int(value) { return parsed }
+    return fallback
   }
 
-  var textColor: Color { Color(argb: UInt32(int("text_color", fallback: Int(0xFF000000)))) }
+  func argb(_ key: String, fallback: UInt32) -> UInt32 {
+    guard let raw = settings[key], !raw.isEmpty else { return fallback }
+    if let value = UInt32(raw) { return value }
+    if let value = Int64(raw) { return UInt32(truncatingIfNeeded: value) }
+    return fallback
+  }
+
+  var textColor: Color { Color(argb: argb("text_color", fallback: 0xFF000000)) }
+
   var backgroundColor: Color {
-    Color(argb: UInt32(int("background_color", fallback: Int(0xFFF1F2F5))))
+    Color(argb: argb("background_color", fallback: 0xFFF1F2F5))
   }
 }
 
@@ -115,37 +133,43 @@ struct SavedWidgetTemplateView: View {
   }
 
   @ViewBuilder private var backgroundImage: some View {
-    let value = config.string("background_image")
-    if let url = URL(string: value), !value.isEmpty {
+    if let url = URL(string: config.string("background_image")),
+       !config.string("background_image").isEmpty {
       CompatibleRemoteImage(url: url, contentMode: .fill)
     }
   }
 
   @ViewBuilder private var content: some View {
     switch config.template {
-    case 1: petTemplate
-    case 2: photoCountdownTemplate
-    case 3: simpleTemplate
-    case 4: multiMemorialTemplate
-    case 5: birthdayTemplate
-    case 6: calendarTemplate
-    case 7: mediumTemplate
-    default: Text(config.title)
+    case 1:
+      petTemplate
+    case 2:
+      photoCountdownTemplate
+    case 3:
+      simpleTemplate
+    case 4:
+      multiMemorialTemplate
+    case 5:
+      birthdayTemplate
+    case 6:
+      calendarTemplate
+    case 7:
+      mediumTemplate
+    default:
+      Text(config.title)
     }
   }
 
-  private var petTemplate: some View {
-    let value = config.string("pet_image")
-    return Group {
-      if let image = cachedPetImage() {
-        Image(uiImage: image).resizable().scaledToFit().padding(12)
-      } else if let url = URL(string: value), !value.isEmpty {
-        CompatibleRemoteImage(url: url, contentMode: .fit).padding(12)
-      } else {
-        Image(systemName: "pawprint.fill")
-          .font(.system(size: 42))
-          .foregroundColor(.pink.opacity(0.75))
-      }
+  @ViewBuilder private var petTemplate: some View {
+    if let image = cachedPetImage() {
+      Image(uiImage: image).resizable().scaledToFit().padding(12)
+    } else if let url = URL(string: config.string("pet_image")),
+              !config.string("pet_image").isEmpty {
+      CompatibleRemoteImage(url: url, contentMode: .fit).padding(12)
+    } else {
+      Image(systemName: "pawprint.fill")
+        .font(.system(size: 42))
+        .foregroundColor(.pink.opacity(0.75))
     }
   }
 
