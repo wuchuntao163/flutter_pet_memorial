@@ -22,27 +22,6 @@
     "组件": "Components",
     "page_coming_soon": "Coming soon"
   },
-  "widget_manager": {
-    "size_small": "Small",
-    "size_medium": "Medium",
-    "size_large": "Large",
-    "picker_subtitle": "Choose a widget size to add to your Home Screen",
-    "tap_below": "Tap below",
-    "add_widget": "Add Widget",
-    "add_to_desktop": "to add the widget to Home Screen",
-    "small_widget_title": "Small Widget",
-    "medium_widget_title": "Medium Widget",
-    "large_widget_title": "Large Widget",
-    "step1": "Long press to enter edit mode",
-    "step2": "Tap Edit Widget",
-    "step3": "Choose the widget you want",
-    "preview_tip": "Long-press the widget above to edit or remove",
-    "menu_edit_widget": "Edit Widget",
-    "menu_edit_home": "Edit Home Screen",
-    "menu_remove": "Remove Widget",
-    "edit_widget_hint": "On the Home Screen, long-press the widget, choose Edit Widget, then pick a style from My Widgets.",
-    "edit_home_hint": "This opens Home Screen editing. Long-press an empty area on the Home Screen to rearrange or remove widgets."
-  },
   "language": {
     "title": "Switch Language",
     "empty_list": "No languages available",

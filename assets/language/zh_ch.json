@@ -22,27 +22,6 @@
     "组件": "组件",
     "page_coming_soon": "页面建设中"
   },
-  "widget_manager": {
-    "size_small": "小号",
-    "size_medium": "中号",
-    "size_large": "大号",
-    "picker_subtitle": "选择你要添加的组件尺寸添加到桌面",
-    "tap_below": "点击下方",
-    "add_widget": "添加小组件",
-    "add_to_desktop": "将组件添加到桌面",
-    "small_widget_title": "小号组件",
-    "medium_widget_title": "中号组件",
-    "large_widget_title": "大号组件",
-    "step1": "长按进入编辑模式",
-    "step2": "点击编辑小组件",
-    "step3": "选择所需的小组件",
-    "preview_tip": "长按上方小组件可编辑或移除",
-    "menu_edit_widget": "编辑小组件",
-    "menu_edit_home": "编辑主屏幕",
-    "menu_remove": "移除小组件",
-    "edit_widget_hint": "请在桌面长按小组件，选择「编辑小组件」，再挑选「我的组件」中已保存的样式。",
-    "edit_home_hint": "此操作为系统主屏幕编辑。请在手机桌面空白处长按，进入编辑模式后可调整位置或移除。"
-  },
   "language": {
     "title": "切换语言",
     "empty_list": "暂无语言列表",

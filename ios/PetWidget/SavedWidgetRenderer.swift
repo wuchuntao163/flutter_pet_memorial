@@ -1,3 +1,4 @@
+import AppIntents
 import Combine
 import SwiftUI
 import UIKit
@@ -20,7 +21,7 @@ private final class CompatibleImageLoader: ObservableObject {
   }
 }
 
-private struct CompatibleRemoteImage: View {
+struct CompatibleRemoteImage: View {
   @StateObject private var loader: CompatibleImageLoader
   private let contentMode: ContentMode
 
@@ -300,5 +301,123 @@ struct SavedWidgetTemplateView: View {
     formatter.locale = Locale(identifier: "en_US")
     formatter.dateFormat = pattern
     return formatter.string(from: date)
+  }
+}
+
+// MARK: - App Intent：系统长按「编辑小组件」时选择「我的组件」
+
+@available(iOSApplicationExtension 17.0, *)
+struct SavedWidgetEntity: AppEntity {
+  static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "我的组件")
+  static var defaultQuery = SavedWidgetEntityQuery()
+
+  var id: Int
+  var title: String
+
+  var displayRepresentation: DisplayRepresentation {
+    DisplayRepresentation(title: "\(title)")
+  }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct SavedWidgetEntityQuery: EntityQuery {
+  func entities(for identifiers: [Int]) async throws -> [SavedWidgetEntity] {
+    SavedWidgetConfiguration.loadAll()
+      .filter { identifiers.contains($0.widgetId) }
+      .map { SavedWidgetEntity(id: $0.widgetId, title: $0.title) }
+  }
+
+  func suggestedEntities() async throws -> [SavedWidgetEntity] {
+    SavedWidgetConfiguration.loadAll().map {
+      SavedWidgetEntity(id: $0.widgetId, title: $0.title)
+    }
+  }
+
+  func defaultResult() async -> SavedWidgetEntity? {
+    guard let first = SavedWidgetConfiguration.loadAll().first else { return nil }
+    return SavedWidgetEntity(id: first.widgetId, title: first.title)
+  }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct SelectSavedWidgetIntent: WidgetConfigurationIntent {
+  static var title: LocalizedStringResource = "编辑小组件"
+  static var description = IntentDescription("选择在桌面显示的「我的组件」样式")
+
+  @Parameter(title: "当前组件")
+  var widget: SavedWidgetEntity?
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct SavedWidgetIntentProvider: AppIntentTimelineProvider {
+  func placeholder(in context: Context) -> SimpleEntry {
+    .setup(preview: true)
+  }
+
+  func snapshot(
+    for configuration: SelectSavedWidgetIntent,
+    in context: Context
+  ) async -> SimpleEntry {
+    if context.isPreview {
+      return .setup(preview: true)
+    }
+    return makeEntry(configuration: configuration)
+  }
+
+  func timeline(
+    for configuration: SelectSavedWidgetIntent,
+    in context: Context
+  ) async -> Timeline<SimpleEntry> {
+    let entry = makeEntry(configuration: configuration)
+    let refresh = Calendar.current.date(byAdding: .minute, value: 15, to: Date())
+      ?? Date().addingTimeInterval(900)
+    return Timeline(entries: [entry], policy: .after(refresh))
+  }
+
+  private func makeEntry(configuration: SelectSavedWidgetIntent) -> SimpleEntry {
+    // 未选择时保持 nil → 显示图二引导，不自动套用第一个
+    let selectedId = configuration.widget?.id
+    return SimpleEntry(
+      date: Date(),
+      data: PetWidgetDataLoader.load(),
+      widgetId: selectedId,
+      isGalleryPreview: false
+    )
+  }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct ConfigurableHomeWidgetSmall: Widget {
+  var body: some WidgetConfiguration {
+    AppIntentConfiguration(
+      kind: "PetWidgetSmall",
+      intent: SelectSavedWidgetIntent.self,
+      provider: SavedWidgetIntentProvider()
+    ) { entry in
+      PetWidgetEntryView(entry: entry)
+        .containerBackground(for: .widget) { Color.clear }
+    }
+    .configurationDisplayName("小号")
+    .description("选择你要添加的组件尺寸添加到桌面")
+    .supportedFamilies([.systemSmall])
+    .contentMarginsDisabled()
+  }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct ConfigurableHomeWidgetMedium: Widget {
+  var body: some WidgetConfiguration {
+    AppIntentConfiguration(
+      kind: "PetWidgetMedium",
+      intent: SelectSavedWidgetIntent.self,
+      provider: SavedWidgetIntentProvider()
+    ) { entry in
+      PetWidgetEntryView(entry: entry)
+        .containerBackground(for: .widget) { Color.clear }
+    }
+    .configurationDisplayName("中号")
+    .description("选择你要添加的组件尺寸添加到桌面")
+    .supportedFamilies([.systemMedium])
+    .contentMarginsDisabled()
   }
 }

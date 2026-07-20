@@ -5,7 +5,6 @@ import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../data/saved_widget_store.dart';
 import '../../models/saved_widget.dart';
-import '../../widgets/widget_manager/widget_picker_sheet.dart';
 
 class MyWidgetsScreen extends StatefulWidget {
   const MyWidgetsScreen({super.key});
@@ -67,27 +66,7 @@ class _MyWidgetsScreenState extends State<MyWidgetsScreen> {
             ),
           ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(
-              right: 12,
-              top: AppLayout.memorialDetailTopPadding,
-            ),
-            child: Center(
-              child: TextButton(
-                onPressed: () => WidgetPickerSheet.show(context),
-                child: const Text(
-                  '添加小组件',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF007AFF),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        actions: const [SizedBox(width: 72)],
         centerTitle: true,
         title: const Padding(
           padding: EdgeInsets.only(top: AppLayout.memorialDetailTopPadding),

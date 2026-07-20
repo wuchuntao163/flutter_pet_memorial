@@ -9,7 +9,6 @@ import '../../data/widget_store.dart';
 import '../../models/widget_definition.dart';
 import '../../router/app_routes.dart';
 import '../../widgets/common/profile_banner.dart';
-import '../../widgets/widget_manager/widget_picker_sheet.dart';
 
 class ComponentPageScreen extends StatefulWidget {
   const ComponentPageScreen({super.key});
@@ -114,31 +113,6 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
           ],
         ),
         const Spacer(),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => WidgetPickerSheet.show(context),
-            borderRadius: BorderRadius.circular(15),
-            child: Container(
-              height: 30,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: const Color(0xFF007AFF),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: const Text(
-                '添加小组件',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
         Material(
           color: Colors.transparent,
           child: InkWell(
