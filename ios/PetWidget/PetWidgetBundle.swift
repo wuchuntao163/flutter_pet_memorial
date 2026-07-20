@@ -9,16 +9,9 @@ import SwiftUI
 @main
 struct PetWidgetBundle: WidgetBundle {
     var body: some Widget {
-        // iOS 17+：系统长按「编辑小组件」可选「我的组件」
-        if #available(iOSApplicationExtension 17.0, *) {
-            ConfigurableHomeWidgetSmall()
-            ConfigurableHomeWidgetMedium()
-        } else {
-            HomeScreenPetWidgetSmall()
-            HomeScreenPetWidgetMedium()
-        }
-        if #available(iOS 16.2, *) {
-            PetLiveActivityWidget()
-        }
+        // WidgetBundleBuilder 不支持 if/else；部署目标已为 17.0，直接注册可配置组件
+        ConfigurableHomeWidgetSmall()
+        ConfigurableHomeWidgetMedium()
+        PetLiveActivityWidget()
     }
 }
