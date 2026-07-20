@@ -272,7 +272,7 @@ struct PetWidget: Widget {
 
     var body: some WidgetConfiguration {
         if #available(iOS 17.0, *) {
-            return IntentConfiguration(
+            IntentConfiguration(
                 kind: kind,
                 intent: WidgetSelectionIntent.self,
                 provider: IntentProvider()
@@ -287,7 +287,7 @@ struct PetWidget: Widget {
             .supportedFamilies([family])
             .contentMarginsDisabled()
         } else {
-            return IntentConfiguration(
+            IntentConfiguration(
                 kind: kind,
                 intent: WidgetSelectionIntent.self,
                 provider: IntentProvider()
