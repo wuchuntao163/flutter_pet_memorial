@@ -168,23 +168,40 @@ struct PetWidgetEntryView: View {
     }
 
     private var placeholderPet: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "pawprint.fill")
-                .font(.system(size: 30))
-                .foregroundColor(.orange.opacity(0.7))
-            if entry.data.petName.isEmpty {
-                Text("打开应用同步宠物")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            } else {
-                Text(entry.data.petName)
-                    .font(.caption)
-                    .fontWeight(.medium)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "pawprint.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.orange)
+                Text(family == .systemMedium ? "中号组件" : "小号组件")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.primary)
                     .lineLimit(1)
             }
+            instructionalStep(1, "长按进入编辑模式")
+            instructionalStep(2, "点击编辑小组件")
+            instructionalStep(3, "选择所需的小组件")
+            Spacer(minLength: 0)
         }
-        .padding(8)
+        .padding(10)
+    }
+
+    private func instructionalStep(_ number: Int, _ text: String) -> some View {
+        HStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(Color(red: 1, green: 0.84, blue: 0.04))
+                    .frame(width: 16, height: 16)
+                Text("\(number)")
+                    .font(.system(size: 10, weight: .bold).italic())
+                    .foregroundColor(.black)
+            }
+            Text(text)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
     }
 
     private func loadCachedPetImage() -> UIImage? {
