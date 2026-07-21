@@ -104,6 +104,7 @@ class WidgetService {
           (day) => {
             'id': day.id,
             'title': day.title,
+            'date': day.date.toIso8601String(),
             'days': '${day.displayDayCount}',
             'status': day.statusLabel,
           },

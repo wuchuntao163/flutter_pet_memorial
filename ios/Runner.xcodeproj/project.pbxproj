@@ -17,8 +17,6 @@
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		AABB00011234567890ABCDEF /* PetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00021234567890ABCDEF /* PetWidget.swift */; };
 		AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00041234567890ABCDEF /* PetWidgetBundle.swift */; };
-		DDAA00011234567890ABCDEF /* SavedWidgetRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */; };
-		DDAA00031234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */; settings = {ATTRIBUTES = (no_codegen, ); }; };
 		AABB00071234567890ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AABB00081234567890ABCDEF /* Assets.xcassets */; };
 		BBAACC011234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
 		BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
@@ -27,7 +25,19 @@
 		CCBB00021234567890ABCDEF /* PetLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBB00041234567890ABCDEF /* PetLiveActivityAttributes.swift */; };
 		CCBB00031234567890ABCDEF /* LiveActivitySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBB00051234567890ABCDEF /* LiveActivitySync.swift */; };
 		CCBB00061234567890ABCDEF /* PetLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBB00071234567890ABCDEF /* PetLiveActivityWidget.swift */; };
+		DDAA00011234567890ABCDEF /* SavedWidgetRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */; };
+		DDAA00051234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */; };
+		DDAA00061234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */; };
+		DDAA00081234567890ABCDEF /* WidgetSelectionIntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00071234567890ABCDEF /* WidgetSelectionIntentHandler.swift */; };
 		E386036260F4EACA864DBB9A /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E87997C20F6B559F261E4F8D /* Pods_RunnerTests.framework */; };
+
+		EEFF00011234567890ABCDEF /* IntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEFF00021234567890ABCDEF /* IntentHandler.swift */; };
+		EEFF00051234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */ = {isa = PBXBuildFile; fileRef = DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */; };
+		EEFF00071234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
+		EEFF00091234567890ABCDEF /* SavedWidgetOptionsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEFF00081234567890ABCDEF /* SavedWidgetOptionsProvider.swift */; };
+		EEFF000B1234567890ABCDEF /* SavedWidgetOptionsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEFF00081234567890ABCDEF /* SavedWidgetOptionsProvider.swift */; };
+		EEFF000D1234567890ABCDEF /* PetWidgetIntents.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = EEFF000C1234567890ABCDEF /* PetWidgetIntents.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		EEFF000E2234567890ABCDEF /* SavedWidgetOptionsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEFF00081234567890ABCDEF /* SavedWidgetOptionsProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +55,13 @@
 			remoteGlobalIDString = AABB000A1234567890ABCDEF;
 			remoteInfo = PetWidget;
 		};
+		EEFF00161234567890ABCDEF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EEFF000A1234567890ABCDEF;
+			remoteInfo = PetWidgetIntents;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -56,6 +73,18 @@
 			files = (
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		EEFF00101234567890ABCDEF /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				EEFF000D1234567890ABCDEF /* PetWidgetIntents.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -84,8 +113,6 @@
 		A4A74639267546055AE6535D /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		AABB00021234567890ABCDEF /* PetWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetWidget.swift; sourceTree = "<group>"; };
 		AABB00041234567890ABCDEF /* PetWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetWidgetBundle.swift; sourceTree = "<group>"; };
-		DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedWidgetRenderer.swift; sourceTree = "<group>"; };
-		DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */ = {isa = PBXFileReference; lastKnownFileType = file.intentdefinition; path = WidgetSelectionIntent.intentdefinition; sourceTree = "<group>"; };
 		AABB00061234567890ABCDEF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AABB00081234567890ABCDEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AABB000C1234567890ABCDEF /* PetWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PetWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -94,11 +121,20 @@
 		AAD38DD99A61494B723D42B7 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		BBAACC001234567890ABCDEF /* AppGroupConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupConfig.swift; sourceTree = "<group>"; };
 		BBAACC041234567890ABCDEF /* WidgetSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSync.swift; sourceTree = "<group>"; };
+		C6295B647994C34585FEA7D0 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		CCBB00041234567890ABCDEF /* PetLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetLiveActivityAttributes.swift; sourceTree = "<group>"; };
 		CCBB00051234567890ABCDEF /* LiveActivitySync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivitySync.swift; sourceTree = "<group>"; };
 		CCBB00071234567890ABCDEF /* PetLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetLiveActivityWidget.swift; sourceTree = "<group>"; };
-		C6295B647994C34585FEA7D0 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
+		DDAA00021234567890ABCDEF /* SavedWidgetRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedWidgetRenderer.swift; sourceTree = "<group>"; };
+		DDAA00041234567890ABCDEF /* WidgetSelectionIntent.intentdefinition */ = {isa = PBXFileReference; lastKnownFileType = file.intentdefinition; path = WidgetSelectionIntent.intentdefinition; sourceTree = "<group>"; };
+		DDAA00071234567890ABCDEF /* WidgetSelectionIntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSelectionIntentHandler.swift; sourceTree = "<group>"; };
 		E87997C20F6B559F261E4F8D /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+
+		EEFF00021234567890ABCDEF /* IntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHandler.swift; sourceTree = "<group>"; };
+		EEFF00031234567890ABCDEF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		EEFF00041234567890ABCDEF /* PetWidgetIntents.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PetWidgetIntents.entitlements; sourceTree = "<group>"; };
+		EEFF00081234567890ABCDEF /* SavedWidgetOptionsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedWidgetOptionsProvider.swift; sourceTree = "<group>"; };
+		EEFF000C1234567890ABCDEF /* PetWidgetIntents.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PetWidgetIntents.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -119,6 +155,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AABB000D1234567890ABCDEF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		EEFF00111234567890ABCDEF /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -170,6 +214,7 @@
 				93446CCB08CC810A4C933AF9 /* Pods */,
 				FE3061379B262E7B28673AB7 /* Frameworks */,
 				AABB000E1234567890ABCDEF /* PetWidget */,
+				EEFF000E1234567890ABCDEF /* PetWidgetIntents */,
 				BBAACC021234567890ABCDEF /* Shared */,
 			);
 			sourceTree = "<group>";
@@ -180,6 +225,7 @@
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
 				AABB000C1234567890ABCDEF /* PetWidget.appex */,
+				EEFF000C1234567890ABCDEF /* PetWidgetIntents.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -194,6 +240,7 @@
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
+				DDAA00071234567890ABCDEF /* WidgetSelectionIntentHandler.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				AABB00171234567890ABCDEF /* Runner.entitlements */,
 			);
@@ -221,10 +268,21 @@
 			children = (
 				BBAACC001234567890ABCDEF /* AppGroupConfig.swift */,
 				BBAACC041234567890ABCDEF /* WidgetSync.swift */,
+				EEFF00081234567890ABCDEF /* SavedWidgetOptionsProvider.swift */,
 				CCBB00041234567890ABCDEF /* PetLiveActivityAttributes.swift */,
 				CCBB00051234567890ABCDEF /* LiveActivitySync.swift */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		EEFF000E1234567890ABCDEF /* PetWidgetIntents */ = {
+			isa = PBXGroup;
+			children = (
+				EEFF00021234567890ABCDEF /* IntentHandler.swift */,
+				EEFF00031234567890ABCDEF /* Info.plist */,
+				EEFF00041234567890ABCDEF /* PetWidgetIntents.entitlements */,
+			);
+			path = PetWidgetIntents;
 			sourceTree = "<group>";
 		};
 		FE3061379B262E7B28673AB7 /* Frameworks */ = {
@@ -268,6 +326,7 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				EEFF00101234567890ABCDEF /* Embed App Extensions */,
 				144954E8A61F7E04E5937A56 /* [CP] Embed Pods Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				AABB00191234567890ABCDEF /* Embed PetWidget (Archive) */,
@@ -276,6 +335,7 @@
 			);
 			dependencies = (
 				AABB000F1234567890ABCDEF /* PBXTargetDependency */,
+				EEFF000F1234567890ABCDEF /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
@@ -297,6 +357,24 @@
 			name = PetWidget;
 			productName = PetWidget;
 			productReference = AABB000C1234567890ABCDEF /* PetWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+
+		EEFF000A1234567890ABCDEF /* PetWidgetIntents */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EEFF00151234567890ABCDEF /* Build configuration list for PBXNativeTarget "PetWidgetIntents" */;
+			buildPhases = (
+				EEFF00121234567890ABCDEF /* Sources */,
+				EEFF00111234567890ABCDEF /* Frameworks */,
+				EEFF00131234567890ABCDEF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PetWidgetIntents;
+			productName = PetWidgetIntents;
+			productReference = EEFF000C1234567890ABCDEF /* PetWidgetIntents.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -331,6 +409,15 @@
 							};
 						};
 					};
+					EEFF000A1234567890ABCDEF = {
+						CreatedOnToolsVersion = 14.2;
+						LastSwiftMigration = 1420;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
+					};
 				};
 			};
 			buildConfigurationList = 97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */;
@@ -349,6 +436,7 @@
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
 				AABB000A1234567890ABCDEF /* PetWidget */,
+				EEFF000A1234567890ABCDEF /* PetWidgetIntents */,
 			);
 		};
 /* End PBXProject section */
@@ -377,6 +465,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				AABB00071234567890ABCDEF /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		EEFF00131234567890ABCDEF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -460,21 +556,6 @@
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"${SRCROOT}/scripts/embed_widget.sh\"\n";
 		};
-		AABB00191234567890ABCDEF /* Embed PetWidget (Archive) */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Embed PetWidget (Archive)";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"${SRCROOT}/scripts/embed_widget.sh\"\n";
-		};
 		9740EEB61CF901F6004384FC /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -489,6 +570,21 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
+		};
+		AABB00191234567890ABCDEF /* Embed PetWidget (Archive) */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Embed PetWidget (Archive)";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+			shellPath = /bin/sh;
+			shellScript = "/bin/sh \"${SRCROOT}/scripts/embed_widget.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -506,6 +602,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
+				DDAA00081234567890ABCDEF /* WidgetSelectionIntentHandler.swift in Sources */,
+				DDAA00061234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */,
+				EEFF000B1234567890ABCDEF /* SavedWidgetOptionsProvider.swift in Sources */,
 				BBAACC011234567890ABCDEF /* AppGroupConfig.swift in Sources */,
 				BBAACC051234567890ABCDEF /* WidgetSync.swift in Sources */,
 				CCBB00011234567890ABCDEF /* PetLiveActivityAttributes.swift in Sources */,
@@ -521,9 +620,23 @@
 				AABB00011234567890ABCDEF /* PetWidget.swift in Sources */,
 				AABB00031234567890ABCDEF /* PetWidgetBundle.swift in Sources */,
 				DDAA00011234567890ABCDEF /* SavedWidgetRenderer.swift in Sources */,
+				DDAA00051234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */,
+				EEFF000E2234567890ABCDEF /* SavedWidgetOptionsProvider.swift in Sources */,
 				BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */,
 				CCBB00021234567890ABCDEF /* PetLiveActivityAttributes.swift in Sources */,
 				CCBB00061234567890ABCDEF /* PetLiveActivityWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		EEFF00121234567890ABCDEF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EEFF00011234567890ABCDEF /* IntentHandler.swift in Sources */,
+				EEFF00051234567890ABCDEF /* WidgetSelectionIntent.intentdefinition in Sources */,
+				EEFF00071234567890ABCDEF /* AppGroupConfig.swift in Sources */,
+				EEFF00091234567890ABCDEF /* SavedWidgetOptionsProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -539,6 +652,12 @@
 			isa = PBXTargetDependency;
 			target = AABB000A1234567890ABCDEF /* PetWidget */;
 			targetProxy = AABB00091234567890ABCDEF /* PBXContainerItemProxy */;
+		};
+
+		EEFF000F1234567890ABCDEF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EEFF000A1234567890ABCDEF /* PetWidgetIntents */;
+			targetProxy = EEFF00161234567890ABCDEF /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -626,6 +745,7 @@
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
+				INTENTS_CODEGEN_LANGUAGE = Swift;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -645,7 +765,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(RUNNER_BUNDLE_ID).RunnerTests";
@@ -664,7 +784,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(RUNNER_BUNDLE_ID).RunnerTests";
@@ -681,7 +801,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(RUNNER_BUNDLE_ID).RunnerTests";
@@ -814,6 +934,7 @@
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
+				INTENTS_CODEGEN_LANGUAGE = Swift;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -839,6 +960,7 @@
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
+				INTENTS_CODEGEN_LANGUAGE = Swift;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -865,7 +987,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PetWidget/Info.plist;
 				INTENTS_CODEGEN_LANGUAGE = Swift;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -875,7 +997,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -892,7 +1014,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PetWidget/Info.plist;
 				INTENTS_CODEGEN_LANGUAGE = Swift;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -902,7 +1024,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -919,7 +1041,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PetWidget/Info.plist;
 				INTENTS_CODEGEN_LANGUAGE = Swift;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -929,7 +1051,89 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Profile;
+		};
+
+		EEFF00171234567890ABCDEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = PetWidgetIntents/PetWidgetIntents.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PetWidgetIntents/Info.plist;
+				INTENTS_CODEGEN_LANGUAGE = Swift;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(INTENTS_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EEFF00181234567890ABCDEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = PetWidgetIntents/PetWidgetIntents.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PetWidgetIntents/Info.plist;
+				INTENTS_CODEGEN_LANGUAGE = Swift;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(INTENTS_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		EEFF00191234567890ABCDEF /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = PetWidgetIntents/PetWidgetIntents.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PetWidgetIntents/Info.plist;
+				INTENTS_CODEGEN_LANGUAGE = Swift;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(INTENTS_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Profile;
@@ -973,6 +1177,17 @@
 				AABB00131234567890ABCDEF /* Debug */,
 				AABB00141234567890ABCDEF /* Release */,
 				AABB00151234567890ABCDEF /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+
+		EEFF00151234567890ABCDEF /* Build configuration list for PBXNativeTarget "PetWidgetIntents" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EEFF00171234567890ABCDEF /* Debug */,
+				EEFF00181234567890ABCDEF /* Release */,
+				EEFF00191234567890ABCDEF /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

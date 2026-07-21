@@ -3,15 +3,17 @@
 // =============================================================================
 
 // ----- 远程（Miao Huang，com.example.flutterPetMemorial）-----
-APP_GROUP_ID = group.com.example.flutterPetMemorial
-BUNDLE_ID_PREFIX = com.example.flutterPetMemorial
-RUNNER_BUNDLE_ID = $(BUNDLE_ID_PREFIX)
-WIDGET_BUNDLE_ID = com.example.flutterPetMemorial.widget
-DEVELOPMENT_TEAM = KRAA4XPHNJ
+// APP_GROUP_ID = group.com.example.flutterPetMemorial
+// BUNDLE_ID_PREFIX = com.example.flutterPetMemorial
+// RUNNER_BUNDLE_ID = $(BUNDLE_ID_PREFIX)
+// WIDGET_BUNDLE_ID = com.example.flutterPetMemorial.widget
+// INTENTS_BUNDLE_ID = com.example.flutterPetMemorial.PetWidgetIntents
+// DEVELOPMENT_TEAM = KRAA4XPHNJ
 
 // ----- 本地（com.lzm.petmemorial）-----
-// APP_GROUP_ID = group.com.lzm.petmemorial
-// BUNDLE_ID_PREFIX = com.lzm.petmemorial
-// RUNNER_BUNDLE_ID = $(BUNDLE_ID_PREFIX)
-// WIDGET_BUNDLE_ID = $(BUNDLE_ID_PREFIX).PetWidget
-// DEVELOPMENT_TEAM = 6F6CQ97L3K
+APP_GROUP_ID = group.com.lzm.petmemorial
+BUNDLE_ID_PREFIX = com.lzm.petmemorial
+RUNNER_BUNDLE_ID = $(BUNDLE_ID_PREFIX)
+WIDGET_BUNDLE_ID = $(BUNDLE_ID_PREFIX).PetWidget
+INTENTS_BUNDLE_ID = $(BUNDLE_ID_PREFIX).PetWidgetIntents
+DEVELOPMENT_TEAM = 6F6CQ97L3K

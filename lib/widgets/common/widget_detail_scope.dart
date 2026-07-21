@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../models/widget_definition.dart';
 import '../../data/saved_widget_store.dart';
+import '../../utils/memorial_image_capture.dart';
 
 class WidgetDetailScope extends InheritedWidget {
   const WidgetDetailScope({
@@ -52,10 +54,27 @@ DecorationImage? widgetDefaultBackgroundDecoration(BuildContext context) {
 Future<void> saveWidgetToLibrary(
   WidgetDefinition? definition, {
   Map<String, dynamic> settings = const {},
+  GlobalKey? previewBoundaryKey,
 }) async {
   if (definition == null || definition.isIsland) return;
+
+  Uint8List? previewPng;
+  if (previewBoundaryKey != null) {
+    try {
+      // 等布局与图片绘制完成再截图
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      previewPng = await MemorialImageCapture.capturePng(
+        previewBoundaryKey,
+        pixelRatio: 3,
+      );
+    } catch (error) {
+      debugPrint('[saveWidgetToLibrary] capture failed: $error');
+    }
+  }
+
   await SavedWidgetStore.instance.saveDefinition(
     definition,
     settings: settings,
+    previewPng: previewPng,
   );
 }

@@ -3,10 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/saved_widget.dart';
 import '../models/widget_definition.dart';
+import '../models/font_style_config.dart';
+import '../services/pet_image_service.dart';
 import 'auth_session_store.dart';
 
 class SavedWidgetStore extends ChangeNotifier {
@@ -23,8 +26,8 @@ class SavedWidgetStore extends ChangeNotifier {
 
   List<SavedWidget> get items => List.unmodifiable(_items);
 
-  Future<void> load() async {
-    if (_loaded) return;
+  Future<void> load({bool force = false}) async {
+    if (_loaded && !force) return;
     _loaded = true;
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_storageKey);
@@ -43,6 +46,8 @@ class SavedWidgetStore extends ChangeNotifier {
       } catch (error) {
         debugPrint('[SavedWidgetStore] load failed: $error');
       }
+    } else if (force) {
+      _items.clear();
     }
     notifyListeners();
   }
@@ -50,16 +55,55 @@ class SavedWidgetStore extends ChangeNotifier {
   Future<void> saveDefinition(
     WidgetDefinition definition, {
     Map<String, dynamic> settings = const {},
+    Uint8List? previewPng,
   }) async {
     if (definition.type != 1 || definition.id <= 0) return;
     await load();
+
+    final mergedSettings = <String, dynamic>{
+      ...settings,
+      'widget_column': definition.columnSpan,
+      'widget_row': definition.rowSpan,
+    };
+
+    // 截图 → App Group 本地预览 → 上传拿网络链接
+    var image = definition.image;
+    if (previewPng != null && previewPng.isNotEmpty) {
+      final localPath = await _persistPreviewImage(definition.id, previewPng);
+      if (localPath != null) {
+        await _syncPreviewToAppGroup(definition.id, localPath);
+        try {
+          image = await PetImageService.upload(localPath);
+        } catch (error) {
+          debugPrint('[SavedWidgetStore] upload preview failed: $error');
+          rethrow;
+        }
+      }
+    }
+
+    // 背景图单独缓存到 App Group，桌面实时组件用（不依赖小组件内网络）
+    final bg = '${mergedSettings['background_image'] ?? ''}'.trim();
+    if (bg.isNotEmpty) {
+      await _syncBackgroundToAppGroup(definition.id, bg);
+    }
+
+    // 自定义数字字体 0–9 → 小组件实时天数
+    final fontStyle = '${mergedSettings['font_style'] ?? ''}'.trim();
+    await _syncDigitsToAppGroup(definition.id, fontStyle);
+
+    // 类型图标（照片倒计时标题旁）
+    final iconUrl = '${mergedSettings['icon_url'] ?? ''}'.trim();
+    if (iconUrl.isNotEmpty) {
+      await _syncIconToAppGroup(definition.id, iconUrl);
+    }
+
     final item = SavedWidget(
       widgetId: definition.id,
       title: definition.title,
-      image: definition.image,
+      image: image,
       template: definition.template,
       savedAt: DateTime.now(),
-      settings: settings,
+      settings: mergedSettings,
     );
     final index = _items.indexWhere((value) => value.widgetId == item.widgetId);
     if (index == -1) {
@@ -70,12 +114,109 @@ class SavedWidgetStore extends ChangeNotifier {
         ..insert(0, item);
     }
     await _persist();
+    notifyListeners();
   }
 
   Future<void> remove(int widgetId) async {
     await load();
     _items.removeWhere((item) => item.widgetId == widgetId);
     await _persist();
+    await _deletePreview(widgetId);
+    notifyListeners();
+  }
+
+  Future<String?> _persistPreviewImage(int widgetId, Uint8List bytes) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/saved_widget_preview_$widgetId.png');
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] persist preview failed: $error');
+      return null;
+    }
+  }
+
+  Future<void> _syncPreviewToAppGroup(int widgetId, String localPath) async {
+    if (!Platform.isIOS) return;
+    try {
+      await _channel.invokeMethod<void>('saveWidgetPreview', {
+        'widgetId': widgetId,
+        'localImagePath': localPath,
+      });
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] sync preview failed: $error');
+    }
+  }
+
+  Future<void> _syncBackgroundToAppGroup(int widgetId, String imageUrl) async {
+    if (!Platform.isIOS) return;
+    try {
+      await _channel.invokeMethod<void>('saveWidgetBackground', {
+        'widgetId': widgetId,
+        'imageUrl': imageUrl,
+        'authToken': AuthSessionStore.instance.token ?? '',
+      });
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] sync background failed: $error');
+    }
+  }
+
+  Future<void> _syncDigitsToAppGroup(int widgetId, String fontStyleId) async {
+    if (!Platform.isIOS) return;
+    final urls = FontStyleConfig.digitImageUrls(fontStyleId);
+    try {
+      if (urls == null || urls.length < 10) {
+        // 切回普通数字：清掉旧的自定义数字图，否则桌面仍按图片字体渲染
+        await _channel.invokeMethod<void>('clearWidgetDigits', {
+          'widgetId': widgetId,
+        });
+        return;
+      }
+      await _channel.invokeMethod<void>('saveWidgetDigits', {
+        'widgetId': widgetId,
+        'digitUrls': urls
+            .take(10)
+            .map((u) => PetImageService.resolveUrl(u))
+            .toList(),
+        'authToken': AuthSessionStore.instance.token ?? '',
+      });
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] sync digits failed: $error');
+    }
+  }
+
+  Future<void> _syncIconToAppGroup(int widgetId, String imageUrl) async {
+    if (!Platform.isIOS) return;
+    try {
+      await _channel.invokeMethod<void>('saveWidgetIcon', {
+        'widgetId': widgetId,
+        'imageUrl': PetImageService.resolveUrl(imageUrl),
+        'authToken': AuthSessionStore.instance.token ?? '',
+      });
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] sync icon failed: $error');
+    }
+  }
+
+  Future<void> _deletePreview(int widgetId) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/saved_widget_preview_$widgetId.png');
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] delete local preview failed: $error');
+    }
+    if (!Platform.isIOS) return;
+    try {
+      await _channel.invokeMethod<void>('removeWidgetPreview', {
+        'widgetId': widgetId,
+      });
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] remove iOS preview failed: $error');
+    }
   }
 
   Future<void> _persist() async {
@@ -94,6 +235,5 @@ class SavedWidgetStore extends ChangeNotifier {
         debugPrint('[SavedWidgetStore] iOS sync failed: $error');
       }
     }
-    notifyListeners();
   }
 }

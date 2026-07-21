@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import 'widget_service.dart';
+
 /// 日历日变化时通知 UI 刷新（首页倒计时、已陪伴天数等依赖 DateTime.now() 的展示）
 class DayTickService extends ChangeNotifier with WidgetsBindingObserver {
   DayTickService._();
@@ -37,6 +39,8 @@ class DayTickService extends ChangeNotifier with WidgetsBindingObserver {
   void _onCalendarDayChanged() {
     notifyListeners();
     _scheduleNextMidnight();
+    // 同步桌面小组件倒计时数据（App 在前台时）
+    unawaited(WidgetService.instance.updateWidget());
   }
 
   @override
@@ -44,6 +48,7 @@ class DayTickService extends ChangeNotifier with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       notifyListeners();
       _scheduleNextMidnight();
+      unawaited(WidgetService.instance.updateWidget());
     }
   }
 }

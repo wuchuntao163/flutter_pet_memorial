@@ -4,10 +4,13 @@ import WidgetKit
 
 enum WidgetSync {
   static let kind = "PetWidget"
+  /// 与 PetWidget.swift / ConfigurableHomeWidget 中的 kind 保持一致
+  static let timelineKinds = ["PetWidgetSmall", "PetWidgetMedium", "PetWidget"]
   static let dataFileName = "petWidgetData.json"
   static let configsFileName = "savedWidgetConfigs.json"
   static let imageFileName = "petWidgetImage.png"
   static let imageTempFileName = "petWidgetImage.tmp.png"
+  static let galleryRevisionFileName = "galleryRevision.txt"
   static let liveActivityImageFileName = "petLiveActivityImage.png"
   static let liveActivityImageTempFileName = "petLiveActivityImage.tmp.png"
   static let liveActivityCompactPetFileName = "petLiveActivityCompactPet.png"
@@ -83,6 +86,282 @@ enum WidgetSync {
       tempFileName: imageTempFileName,
       logTag: "PetWidget"
     )
+  }
+
+  /// 「我的组件」编辑后的预览图，供系统组件库缩略图同步显示
+  static func previewFileName(widgetId: Int) -> String {
+    "savedWidgetPreview_\(widgetId).png"
+  }
+
+  static func saveWidgetPreview(widgetId: Int, data: Data) -> Bool {
+    guard widgetId > 0, !data.isEmpty else { return false }
+    return replaceAppGroupImage(
+      with: data,
+      fileName: previewFileName(widgetId: widgetId),
+      tempFileName: "savedWidgetPreview_\(widgetId).tmp.png",
+      logTag: "SavedPreview"
+    )
+  }
+
+  static func saveWidgetPreview(widgetId: Int, fromPath path: String) -> Bool {
+    let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return false }
+    let url: URL
+    if trimmed.hasPrefix("file://"), let parsed = URL(string: trimmed) {
+      url = parsed
+    } else {
+      url = URL(fileURLWithPath: trimmed)
+    }
+    guard let data = try? Data(contentsOf: url) else {
+      NSLog("[SavedPreview] read failed: \(trimmed)")
+      return false
+    }
+    return saveWidgetPreview(widgetId: widgetId, data: data)
+  }
+
+  static func removeWidgetPreview(widgetId: Int) {
+    guard widgetId > 0, let container = appGroupContainer() else { return }
+    let url = container.appendingPathComponent(previewFileName(widgetId: widgetId))
+    try? FileManager.default.removeItem(at: url)
+    let bg = container.appendingPathComponent(backgroundFileName(widgetId: widgetId))
+    try? FileManager.default.removeItem(at: bg)
+    let icon = container.appendingPathComponent(iconFileName(widgetId: widgetId))
+    try? FileManager.default.removeItem(at: icon)
+    if let digits = digitsDirectory(widgetId: widgetId) {
+      try? FileManager.default.removeItem(at: digits)
+    }
+    NSLog("[SavedPreview] removed preview: \(widgetId)")
+  }
+
+  static func iconFileName(widgetId: Int) -> String {
+    "savedWidgetIcon_\(widgetId).png"
+  }
+
+  static func digitsDirectory(widgetId: Int) -> URL? {
+    guard widgetId > 0, let container = appGroupContainer() else { return nil }
+    return container.appendingPathComponent("savedWidgetDigits_\(widgetId)", isDirectory: true)
+  }
+
+  static func digitFileURL(widgetId: Int, digit: Int) -> URL? {
+    guard (0...9).contains(digit), let dir = digitsDirectory(widgetId: widgetId) else { return nil }
+    return dir.appendingPathComponent("\(digit).png")
+  }
+
+  static func clearWidgetDigits(widgetId: Int) {
+    guard widgetId > 0, let dir = digitsDirectory(widgetId: widgetId) else { return }
+    try? FileManager.default.removeItem(at: dir)
+    NSLog("[SavedDigits] cleared digits for widget \(widgetId)")
+  }
+
+  /// 缓存自定义数字字体 0–9（小组件实时天数用）
+  static func saveWidgetDigits(
+    widgetId: Int,
+    urls: [String],
+    authToken: String,
+    completion: @escaping (Bool) -> Void
+  ) {
+    guard widgetId > 0, urls.count >= 10, let dir = digitsDirectory(widgetId: widgetId) else {
+      completion(false)
+      return
+    }
+    // 先清空旧字体，再写入新字体，避免混用
+    try? FileManager.default.removeItem(at: dir)
+    let fm = FileManager.default
+    try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+    let group = DispatchGroup()
+    var okCount = 0
+    let lock = NSLock()
+    for digit in 0..<10 {
+      let raw = urls[digit].trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !raw.isEmpty, let dest = digitFileURL(widgetId: widgetId, digit: digit) else { continue }
+      group.enter()
+      downloadRawImageData(from: raw, authToken: authToken) { data in
+        defer { group.leave() }
+        guard let data = data, let image = UIImage(data: data) else { return }
+        let scaled = resizeDigitImage(image) ?? image
+        guard let png = scaled.pngData() else { return }
+        do {
+          try png.write(to: dest, options: .atomic)
+          lock.lock()
+          okCount += 1
+          lock.unlock()
+        } catch {
+          NSLog("[SavedDigits] write \(digit) failed: \(error)")
+        }
+      }
+    }
+    group.notify(queue: .main) {
+      NSLog("[SavedDigits] widget=\(widgetId) saved \(okCount)/10")
+      if okCount < 10 {
+        // 不完整则整套废弃，避免缺字导致天数「卡住」
+        try? FileManager.default.removeItem(at: dir)
+        completion(false)
+        return
+      }
+      completion(true)
+    }
+  }
+
+  static func saveWidgetIcon(
+    widgetId: Int,
+    remoteUrl urlString: String,
+    authToken: String,
+    completion: @escaping (Bool) -> Void
+  ) {
+    let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard widgetId > 0, !trimmed.isEmpty else {
+      completion(false)
+      return
+    }
+    downloadAppGroupImage(
+      from: trimmed,
+      authToken: authToken,
+      replace: { data in
+        replaceAppGroupImage(
+          with: data,
+          fileName: iconFileName(widgetId: widgetId),
+          tempFileName: "savedWidgetIcon_\(widgetId).tmp.png",
+          logTag: "SavedIcon"
+        )
+      },
+      logTag: "SavedIcon",
+      completion: completion
+    )
+  }
+
+  private static func resizeDigitImage(_ image: UIImage) -> UIImage? {
+    let maxSide: CGFloat = 160
+    let size = image.size
+    let longest = max(size.width, size.height)
+    guard longest > maxSide, longest > 0 else { return image }
+    let scale = maxSide / longest
+    let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+    UIGraphicsBeginImageContextWithOptions(newSize, false, 1)
+    image.draw(in: CGRect(origin: .zero, size: newSize))
+    let result = UIGraphicsGetImageFromCurrentImageContext()
+    UIGraphicsEndImageContext()
+    return result
+  }
+
+  private static func downloadRawImageData(
+    from urlString: String,
+    authToken: String,
+    completion: @escaping (Data?) -> Void
+  ) {
+    let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.hasPrefix("/") || trimmed.hasPrefix("file://") {
+      let path = trimmed.hasPrefix("file://")
+        ? (URL(string: trimmed)?.path ?? trimmed)
+        : trimmed
+      completion(try? Data(contentsOf: URL(fileURLWithPath: path)))
+      return
+    }
+    guard let url = URL(string: trimmed) else {
+      completion(nil)
+      return
+    }
+    var request = URLRequest(
+      url: url,
+      cachePolicy: .reloadIgnoringLocalAndRemoteCacheData,
+      timeoutInterval: 30
+    )
+    request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+    let token = authToken.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !token.isEmpty {
+      let value = token.hasPrefix("Bearer ") ? token : "Bearer \(token)"
+      request.setValue(value, forHTTPHeaderField: "Authorization")
+    }
+    URLSession.shared.dataTask(with: request) { data, response, _ in
+      if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+        completion(nil)
+        return
+      }
+      completion(data)
+    }.resume()
+  }
+
+  /// 桌面实时组件用的背景图（不依赖小组件内网络加载）
+  static func backgroundFileName(widgetId: Int) -> String {
+    "savedWidgetBackground_\(widgetId).png"
+  }
+
+  static func saveWidgetBackground(widgetId: Int, data: Data) -> Bool {
+    guard widgetId > 0, !data.isEmpty else { return false }
+    return replaceAppGroupImage(
+      with: data,
+      fileName: backgroundFileName(widgetId: widgetId),
+      tempFileName: "savedWidgetBackground_\(widgetId).tmp.png",
+      logTag: "SavedBackground"
+    )
+  }
+
+  static func saveWidgetBackground(widgetId: Int, fromPath path: String) -> Bool {
+    let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return false }
+    let url: URL
+    if trimmed.hasPrefix("file://"), let parsed = URL(string: trimmed) {
+      url = parsed
+    } else {
+      url = URL(fileURLWithPath: trimmed)
+    }
+    guard let data = try? Data(contentsOf: url) else {
+      NSLog("[SavedBackground] read failed: \(trimmed)")
+      return false
+    }
+    return saveWidgetBackground(widgetId: widgetId, data: data)
+  }
+
+  /// 从网络 URL 拉取并缓存背景（主 App 保存组件时调用）
+  static func saveWidgetBackground(
+    widgetId: Int,
+    remoteUrl urlString: String,
+    authToken: String,
+    completion: @escaping (Bool) -> Void
+  ) {
+    let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard widgetId > 0, !trimmed.isEmpty else {
+      completion(false)
+      return
+    }
+    if trimmed.hasPrefix("/") || trimmed.hasPrefix("file://") {
+      completion(saveWidgetBackground(widgetId: widgetId, fromPath: trimmed))
+      return
+    }
+    downloadAppGroupImage(
+      from: trimmed,
+      authToken: authToken,
+      replace: { data in saveWidgetBackground(widgetId: widgetId, data: data) },
+      logTag: "SavedBackground",
+      completion: completion
+    )
+  }
+
+  /// 删除已不在「我的组件」列表中的预览图，避免系统组件库仍显示旧缩略图
+  static func pruneWidgetPreviews(keeping ids: Set<Int>) {
+    guard let container = appGroupContainer() else { return }
+    let contents = (try? FileManager.default.contentsOfDirectory(
+      at: container,
+      includingPropertiesForKeys: nil
+    )) ?? []
+    for url in contents {
+      let name = url.lastPathComponent
+      let isPreview = name.hasPrefix("savedWidgetPreview_") && name.hasSuffix(".png")
+      let isBg = name.hasPrefix("savedWidgetBackground_") && name.hasSuffix(".png")
+      let isIcon = name.hasPrefix("savedWidgetIcon_") && name.hasSuffix(".png")
+      let isDigitsDir = name.hasPrefix("savedWidgetDigits_")
+      guard (isPreview || isBg || isIcon || isDigitsDir), !name.contains(".tmp.") else { continue }
+      let idPart = name
+        .replacingOccurrences(of: "savedWidgetPreview_", with: "")
+        .replacingOccurrences(of: "savedWidgetBackground_", with: "")
+        .replacingOccurrences(of: "savedWidgetIcon_", with: "")
+        .replacingOccurrences(of: "savedWidgetDigits_", with: "")
+        .replacingOccurrences(of: ".png", with: "")
+      guard let id = Int(idPart) else { continue }
+      if !ids.contains(id) {
+        try? FileManager.default.removeItem(at: url)
+        NSLog("[SavedPreview] pruned orphan: \(name)")
+      }
+    }
   }
 
   static func replaceLiveActivityImage(with data: Data) -> Bool {
@@ -341,22 +620,51 @@ enum WidgetSync {
     return Int64(modified.timeIntervalSince1970 * 1000)
   }
 
+  /// 主 App 启动时把纪念日 Logo 写入 App Group（覆盖可能残留的旧倒数日图）
+  static func syncBrandLogoFromMainApp() {
+    guard let container = appGroupContainer() else { return }
+    guard let image = UIImage(named: "AppLogo"),
+          let data = image.pngData() else {
+      NSLog("[PetWidget] syncBrandLogo: AppLogo missing in main bundle")
+      return
+    }
+    let dest = container.appendingPathComponent("appBrandLogo.png")
+    do {
+      try? FileManager.default.removeItem(at: dest)
+      try data.write(to: dest, options: .atomic)
+      NSLog("[PetWidget] synced appBrandLogo.png (\(data.count) bytes)")
+    } catch {
+      NSLog("[PetWidget] syncBrandLogo failed: \(error)")
+    }
+  }
+
   static func reloadTimelines() {
     guard #available(iOS 14.0, *) else { return }
-    WidgetCenter.shared.reloadTimelines(ofKind: kind)
-    if #available(iOS 17.0, *) {
-      // iOS 17+ 对 reload 有节流，补两次延迟刷新
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-        WidgetCenter.shared.reloadTimelines(ofKind: kind)
-      }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-        WidgetCenter.shared.reloadTimelines(ofKind: kind)
-      }
+    bumpGalleryRevision()
+    reloadAllKnownTimelines()
+  }
+
+  private static func reloadAllKnownTimelines() {
+    for kind in timelineKinds {
+      WidgetCenter.shared.reloadTimelines(ofKind: kind)
     }
     WidgetCenter.shared.reloadAllTimelines()
   }
 
-  private static let widgetImageMaxSide: CGFloat = 512
+  /// 写入可被 Widget Extension 立即读到的版本戳，迫使 gallery snapshot 失效
+  static func bumpGalleryRevision() {
+    guard let container = appGroupContainer() else { return }
+    let stamp = "\(Int(Date().timeIntervalSince1970 * 1000))"
+    let url = container.appendingPathComponent(galleryRevisionFileName)
+    try? stamp.write(to: url, atomically: true, encoding: .utf8)
+    if let defaults = UserDefaults(suiteName: AppGroupConfig.id) {
+      defaults.set(stamp, forKey: "galleryRevision")
+      defaults.synchronize()
+    }
+    NSLog("[PetWidget] bumped galleryRevision=\(stamp)")
+  }
+
+  private static let widgetImageMaxSide: CGFloat = 1200
   /// 灵动岛紧凑区约 28pt，3x 下 84px；超过此尺寸系统会显示灰色占位
   private static let liveActivityCompactSide: CGFloat = 84
 
@@ -413,28 +721,20 @@ enum WidgetChannelHandler {
         let args = call.arguments as? [String: Any] ?? [:]
         let raw = args["configs"] as? String ?? "[]"
         if WidgetSync.saveWidgetConfigs(raw) {
-          let authToken = args["authToken"] as? String ?? ""
           let data = raw.data(using: .utf8)
           let configs = data.flatMap {
             try? JSONSerialization.jsonObject(with: $0) as? [[String: Any]]
           } ?? []
-          let firstSettings = configs.first?["settings"] as? [String: Any]
-          let petImageUrl = firstSettings?["pet_image"] as? String ?? ""
-          if !petImageUrl.isEmpty,
-             petImageUrl.hasPrefix("http://") || petImageUrl.hasPrefix("https://") {
-            WidgetSync.downloadWidgetImage(
-              from: petImageUrl,
-              authToken: authToken
-            ) { _ in
-              DispatchQueue.main.async {
-                WidgetSync.reloadTimelines()
-                result(nil)
-              }
-            }
-          } else {
-            WidgetSync.reloadTimelines()
-            result(nil)
+          var keepIds = Set<Int>()
+          for item in configs {
+            let id = item["widget_id"] as? Int
+              ?? Int(item["widget_id"] as? String ?? "")
+              ?? 0
+            if id > 0 { keepIds.insert(id) }
           }
+          WidgetSync.pruneWidgetPreviews(keeping: keepIds)
+          WidgetSync.reloadTimelines()
+          result(nil)
         } else {
           result(
             FlutterError(
@@ -448,12 +748,233 @@ enum WidgetChannelHandler {
         handleReloadWidget(call: call, result: result)
       case "updateWidget":
         handleSyncWidget(call: call, result: result)
+      case "saveWidgetPreview":
+        handleSaveWidgetPreview(call: call, result: result)
+      case "saveWidgetBackground":
+        handleSaveWidgetBackground(call: call, result: result)
+      case "saveWidgetDigits":
+        handleSaveWidgetDigits(call: call, result: result)
+      case "clearWidgetDigits":
+        handleClearWidgetDigits(call: call, result: result)
+      case "saveWidgetIcon":
+        handleSaveWidgetIcon(call: call, result: result)
+      case "removeWidgetPreview":
+        handleRemoveWidgetPreview(call: call, result: result)
       default:
         result(FlutterMethodNotImplemented)
       }
     }
 
     NSLog("[PetWidget] Method channel registered")
+    WidgetSync.syncBrandLogoFromMainApp()
+  }
+
+  private static func handleRemoveWidgetPreview(
+    call: FlutterMethodCall,
+    result: @escaping FlutterResult
+  ) {
+    let args = call.arguments as? [String: Any] ?? [:]
+    let widgetId = args["widgetId"] as? Int
+      ?? Int(args["widgetId"] as? String ?? "")
+      ?? 0
+    WidgetSync.removeWidgetPreview(widgetId: widgetId)
+    WidgetSync.reloadTimelines()
+    result(true)
+  }
+
+  private static func handleClearWidgetDigits(
+    call: FlutterMethodCall,
+    result: @escaping FlutterResult
+  ) {
+    let args = call.arguments as? [String: Any] ?? [:]
+    let widgetId = args["widgetId"] as? Int
+      ?? Int(args["widgetId"] as? String ?? "")
+      ?? 0
+    WidgetSync.clearWidgetDigits(widgetId: widgetId)
+    WidgetSync.reloadTimelines()
+    result(true)
+  }
+
+  private static func handleSaveWidgetDigits(
+    call: FlutterMethodCall,
+    result: @escaping FlutterResult
+  ) {
+    guard WidgetSync.appGroupContainer() != nil else {
+      result(
+        FlutterError(
+          code: "APP_GROUP_UNAVAILABLE",
+          message: "App Group 未配置",
+          details: nil
+        )
+      )
+      return
+    }
+    let args = call.arguments as? [String: Any] ?? [:]
+    let widgetId = args["widgetId"] as? Int
+      ?? Int(args["widgetId"] as? String ?? "")
+      ?? 0
+    let token = args["authToken"] as? String ?? ""
+    let urls = (args["digitUrls"] as? [String]) ?? []
+    WidgetSync.saveWidgetDigits(
+      widgetId: widgetId,
+      urls: urls,
+      authToken: token
+    ) { ok in
+      if ok {
+        result(true)
+      } else {
+        // 字体下载失败不阻断保存；桌面回退系统字体
+        NSLog("[SavedDigits] incomplete for widget \(widgetId)")
+        result(true)
+      }
+    }
+  }
+
+  private static func handleSaveWidgetIcon(
+    call: FlutterMethodCall,
+    result: @escaping FlutterResult
+  ) {
+    guard WidgetSync.appGroupContainer() != nil else {
+      result(
+        FlutterError(
+          code: "APP_GROUP_UNAVAILABLE",
+          message: "App Group 未配置",
+          details: nil
+        )
+      )
+      return
+    }
+    let args = call.arguments as? [String: Any] ?? [:]
+    let widgetId = args["widgetId"] as? Int
+      ?? Int(args["widgetId"] as? String ?? "")
+      ?? 0
+    let token = args["authToken"] as? String ?? ""
+    let remote = args["imageUrl"] as? String ?? ""
+    if remote.isEmpty {
+      result(true)
+      return
+    }
+    WidgetSync.saveWidgetIcon(
+      widgetId: widgetId,
+      remoteUrl: remote,
+      authToken: token
+    ) { _ in
+      result(true)
+    }
+  }
+
+  private static func handleSaveWidgetBackground(
+    call: FlutterMethodCall,
+    result: @escaping FlutterResult
+  ) {
+    guard WidgetSync.appGroupContainer() != nil else {
+      result(
+        FlutterError(
+          code: "APP_GROUP_UNAVAILABLE",
+          message: "App Group 未配置",
+          details: nil
+        )
+      )
+      return
+    }
+
+    let args = call.arguments as? [String: Any] ?? [:]
+    let widgetId = args["widgetId"] as? Int
+      ?? Int(args["widgetId"] as? String ?? "")
+      ?? 0
+    let path = args["localImagePath"] as? String ?? ""
+    let remote = args["imageUrl"] as? String ?? ""
+    let base64 = args["imageBase64"] as? String ?? ""
+    let token = args["authToken"] as? String ?? ""
+
+    if !path.isEmpty {
+      let ok = WidgetSync.saveWidgetBackground(widgetId: widgetId, fromPath: path)
+      result(ok ? true : FlutterError(
+        code: "WRITE_BACKGROUND_FAILED",
+        message: "写入组件背景图失败",
+        details: nil
+      ))
+      return
+    }
+    if !base64.isEmpty, let data = Data(base64Encoded: base64) {
+      let ok = WidgetSync.saveWidgetBackground(widgetId: widgetId, data: data)
+      result(ok ? true : FlutterError(
+        code: "WRITE_BACKGROUND_FAILED",
+        message: "写入组件背景图失败",
+        details: nil
+      ))
+      return
+    }
+    if !remote.isEmpty {
+      WidgetSync.saveWidgetBackground(
+        widgetId: widgetId,
+        remoteUrl: remote,
+        authToken: token
+      ) { ok in
+        if ok {
+          result(true)
+        } else {
+          result(
+            FlutterError(
+              code: "WRITE_BACKGROUND_FAILED",
+              message: "下载并写入组件背景图失败",
+              details: nil
+            )
+          )
+        }
+      }
+      return
+    }
+    result(
+      FlutterError(
+        code: "WRITE_BACKGROUND_FAILED",
+        message: "缺少背景图数据",
+        details: nil
+      )
+    )
+  }
+
+  private static func handleSaveWidgetPreview(
+    call: FlutterMethodCall,
+    result: @escaping FlutterResult
+  ) {
+    guard WidgetSync.appGroupContainer() != nil else {
+      result(
+        FlutterError(
+          code: "APP_GROUP_UNAVAILABLE",
+          message: "App Group 未配置",
+          details: nil
+        )
+      )
+      return
+    }
+
+    let args = call.arguments as? [String: Any] ?? [:]
+    let widgetId = args["widgetId"] as? Int
+      ?? Int(args["widgetId"] as? String ?? "")
+      ?? 0
+    let path = args["localImagePath"] as? String ?? ""
+    let base64 = args["imageBase64"] as? String ?? ""
+
+    var ok = false
+    if !path.isEmpty {
+      ok = WidgetSync.saveWidgetPreview(widgetId: widgetId, fromPath: path)
+    } else if !base64.isEmpty, let data = Data(base64Encoded: base64) {
+      ok = WidgetSync.saveWidgetPreview(widgetId: widgetId, data: data)
+    }
+
+    if ok {
+      // 不在这里 reload：等 syncWidgetConfigs 写完列表后再统一刷新，避免读到旧 configs
+      result(true)
+    } else {
+      result(
+        FlutterError(
+          code: "WRITE_PREVIEW_FAILED",
+          message: "写入组件预览图失败",
+          details: nil
+        )
+      )
+    }
   }
 
   private static func handleSyncWidget(call: FlutterMethodCall, result: @escaping FlutterResult) {

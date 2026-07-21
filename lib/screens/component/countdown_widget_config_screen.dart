@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import '../../services/pet_image_service.dart';
 import '../../utils/app_permission_util.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/pet_image_picker.dart';
+import '../../utils/saving_overlay.dart';
 import '../../widgets/common/day_number_display.dart';
 import '../../widgets/common/memorial_type_info.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
@@ -58,11 +60,26 @@ class _CountdownWidgetConfigScreenState
   bool _fontSelectionInitialized = false;
   bool _apiDetailMode = false;
   bool _hasSelectedTextColor = false;
+  final GlobalKey _previewBoundaryKey = GlobalKey();
 
   void _applyOverallTextColor(Color color) {
     _textColor = color;
-    _multiTitleTextColor = color;
+    // 多纪念日名称保持黑色，不随整体文字色变化
+    if (!_isMulti) {
+      _multiTitleTextColor = color;
+    }
     _hasSelectedTextColor = true;
+  }
+
+  /// 默认勾选纪念列表前 N 条（最多 3 条）
+  void _syncDefaultMultiSelection() {
+    if (!_isMulti || !MemorialStore.instance.listLoaded) return;
+    final days = MemorialStore.instance.items;
+    final validIds = days.map((item) => item.id).toSet();
+    _selectedMemorialIds.removeWhere((id) => !validIds.contains(id));
+    if (_selectedMemorialIds.isEmpty && days.isNotEmpty) {
+      _selectedMemorialIds.addAll(days.take(3).map((item) => item.id));
+    }
   }
 
   String? get _effectiveBackgroundImage {
@@ -114,7 +131,7 @@ class _CountdownWidgetConfigScreenState
     if (FontStyleStore.instance.items.isEmpty) {
       FontStyleStore.instance.fetchList();
     }
-    BackgroundStore.instance.fetchWidgetList(type: 1, forceRefresh: true);
+    BackgroundStore.instance.fetchWidgetList(type: 1);
     _restore();
   }
 
@@ -143,15 +160,7 @@ class _CountdownWidgetConfigScreenState
     }
     final days = MemorialStore.instance.items;
     if (_isMulti) {
-      if (!MemorialStore.instance.listLoaded) {
-        setState(() {});
-        return;
-      }
-      final validIds = days.map((item) => item.id).toSet();
-      _selectedMemorialIds.removeWhere((id) => !validIds.contains(id));
-      if (_selectedMemorialIds.isEmpty) {
-        _selectedMemorialIds.addAll(days.take(3).map((item) => item.id));
-      }
+      _syncDefaultMultiSelection();
       setState(() {});
       return;
     }
@@ -185,16 +194,20 @@ class _CountdownWidgetConfigScreenState
 
   void _onBackgroundChanged() {
     if (!mounted) return;
-    if (!_apiDetailMode &&
-        !_backgroundReady &&
-        !BackgroundStore.instance.widgetListLoading(1) &&
-        BackgroundStore.instance.widgetItems(1).isNotEmpty) {
-      _backgroundImage = _backgroundUrl(
-        BackgroundStore.instance.widgetItems(1).first,
-      );
-      _backgroundReady = true;
-    }
-    setState(() {});
+    // 避免 notifyListeners 落在 build 中触发 setState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final store = BackgroundStore.instance;
+      final items = store.widgetItems(1);
+      final loading = store.widgetListLoading(1);
+      if (!_apiDetailMode && !_backgroundReady && !loading) {
+        if (items.isNotEmpty && _backgroundImage == null) {
+          _backgroundImage = _backgroundUrl(items.first);
+        }
+        _backgroundReady = true;
+      }
+      setState(() {});
+    });
   }
 
   MemorialDay? get _selectedMemorial {
@@ -231,7 +244,12 @@ class _CountdownWidgetConfigScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(child: _buildPreview()),
+                  Center(
+                    child: RepaintBoundary(
+                      key: _previewBoundaryKey,
+                      child: _buildPreview(),
+                    ),
+                  ),
                   if (!_isCalendar &&
                       widgetOptionEnabled(context, 'anniversary_select')) ...[
                     const SizedBox(height: 24),
@@ -688,6 +706,7 @@ class _CountdownWidgetConfigScreenState
                       months[now.month - 1],
                       style: TextStyle(
                         fontSize: 13,
+                        // 未选文字样式时白色；选中后与文字色同步
                         color: _hasSelectedTextColor
                             ? _textColor
                             : Colors.white,
@@ -789,7 +808,8 @@ class _CountdownWidgetConfigScreenState
       height: _isMedium ? 29 : 32,
       padding: const EdgeInsets.only(right: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
+        // 不透明浅灰，避免半透明白底
+        color: const Color(0xFFEEF0F2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -979,6 +999,12 @@ class _CountdownWidgetConfigScreenState
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '${date.year}-$month-$day  周${weekdays[date.weekday - 1]}';
+  }
+
+  String _memorialIconUrl(MemorialDay? memorial) {
+    if (memorial == null) return '';
+    final type = MemorialStore.instance.typeById(memorial.typeId);
+    return type?['icon']?.toString().trim() ?? '';
   }
 
   String _simpleDateLabel() {
@@ -1197,8 +1223,10 @@ class _CountdownWidgetConfigScreenState
   }
 
   Widget _buildBackgroundPicker() {
-    final items = BackgroundStore.instance.widgetItems(1);
-    if (!_backgroundReady) {
+    final store = BackgroundStore.instance;
+    final items = store.widgetItems(1);
+    final loading = store.widgetListLoading(1);
+    if (!_backgroundReady && loading && items.isEmpty) {
       return const SizedBox(
         height: 48,
         child: Align(
@@ -1394,49 +1422,86 @@ class _CountdownWidgetConfigScreenState
 
   Future<void> _save() async {
     final definition = WidgetDetailScope.maybeOf(context);
-    final prefs = await SharedPreferences.getInstance();
-    await Future.wait([
-      if (_isMulti)
-        prefs.setStringList(
-          '${_prefsPrefix}_memorials',
-          _selectedMemorialIds.toList(),
-        )
-      else if (_selectedMemorialId == null)
-        prefs.remove('${_prefsPrefix}_memorial')
-      else
-        prefs.setString('${_prefsPrefix}_memorial', _selectedMemorialId!),
-      prefs.setString('${_prefsPrefix}_font', _selectedFontStyleId),
-      prefs.setInt('${_prefsPrefix}_text_color', _textColor.toARGB32()),
-      prefs.setInt(
-        '${_prefsPrefix}_background_color',
-        _backgroundColor.toARGB32(),
-      ),
-      prefs.setString(
-        '${_prefsPrefix}_background_mode',
-        _backgroundImage == null ? 'palette' : 'image',
-      ),
-      if (_backgroundImage == null)
-        prefs.remove('${_prefsPrefix}_background_image')
-      else
-        prefs.setString('${_prefsPrefix}_background_image', _backgroundImage!),
-    ]);
     final memorial = _selectedMemorial;
-    await saveWidgetToLibrary(
-      definition,
-      settings: {
-        'memorial_id': _selectedMemorialId ?? '',
-        'memorial_ids': _selectedMemorialIds.toList(),
-        'memorial_title': memorial?.title ?? '',
-        'memorial_days': memorial?.displayDayCount ?? 0,
-        'memorial_date': memorial?.date.toIso8601String() ?? '',
-        'font_style': _selectedFontStyleId,
-        'text_color': _textColor.toARGB32(),
-        'background_color': _backgroundColor.toARGB32(),
-        'background_image': _backgroundImage ?? '',
-      },
-    );
-    if (!mounted) return;
-    await showCenterTip(context, '已保存到我的组件');
+    try {
+      await withSavingOverlay(context, () async {
+        final prefs = await SharedPreferences.getInstance();
+        await Future.wait([
+          if (_isMulti)
+            prefs.setStringList(
+              '${_prefsPrefix}_memorials',
+              _selectedMemorialIds.toList(),
+            )
+          else if (_selectedMemorialId == null)
+            prefs.remove('${_prefsPrefix}_memorial')
+          else
+            prefs.setString('${_prefsPrefix}_memorial', _selectedMemorialId!),
+          prefs.setString('${_prefsPrefix}_font', _selectedFontStyleId),
+          prefs.setInt('${_prefsPrefix}_text_color', _textColor.toARGB32()),
+          prefs.setInt(
+            '${_prefsPrefix}_background_color',
+            _backgroundColor.toARGB32(),
+          ),
+          prefs.setString(
+            '${_prefsPrefix}_background_mode',
+            _backgroundImage == null ? 'palette' : 'image',
+          ),
+          if (_backgroundImage == null)
+            prefs.remove('${_prefsPrefix}_background_image')
+          else
+            prefs.setString(
+              '${_prefsPrefix}_background_image',
+              _backgroundImage!,
+            ),
+        ]);
+        await saveWidgetToLibrary(
+          definition,
+          settings: {
+            'memorial_id': _selectedMemorialId ?? '',
+            'memorial_ids': _selectedMemorialIds.toList(),
+            'memorial_items': jsonEncode(
+              _selectedMemorialIds.isEmpty
+                  ? <Map<String, dynamic>>[]
+                  : MemorialStore.instance.items
+                        .where((item) => _selectedMemorialIds.contains(item.id))
+                        .take(3)
+                        .map(
+                          (item) => {
+                            'id': item.id,
+                            'title': item.title,
+                            'date': item.date.toIso8601String(),
+                            'days': '${item.displayDayCount}',
+                            'badge_bg': MemorialTypeInfo.daysBackground(
+                              item,
+                            ).toARGB32(),
+                            'badge_text': MemorialTypeInfo.daysText(
+                              item,
+                            ).toARGB32(),
+                            'type_label': MemorialTypeInfo.label(item),
+                          },
+                        )
+                        .toList(),
+            ),
+            'memorial_title': memorial?.title ?? '',
+            'memorial_days': memorial?.displayDayCount ?? 0,
+            'memorial_date': memorial?.date.toIso8601String() ?? '',
+            'icon_url': _memorialIconUrl(memorial),
+            'font_style': _selectedFontStyleId,
+            'text_color': _textColor.toARGB32(),
+            'text_color_selected': _hasSelectedTextColor ? '1' : '0',
+            'background_color': _backgroundColor.toARGB32(),
+            'background_image': _effectiveBackgroundImage ?? '',
+          },
+          previewBoundaryKey: _previewBoundaryKey,
+        );
+      });
+      if (!mounted) return;
+      await showCenterTip(context, '已保存到我的组件');
+      if (mounted) context.pop();
+    } catch (error) {
+      debugPrint('[CountdownWidgetConfig] save failed: $error');
+      if (mounted) await showCenterTip(context, '保存失败，请检查网络后重试');
+    }
   }
 
   Future<void> _restore() async {
@@ -1459,17 +1524,43 @@ class _CountdownWidgetConfigScreenState
         _selectedMemorialIds
           ..clear()
           ..addAll(savedMemorials ?? const []);
-        if (_selectedMemorialIds.isEmpty && memorials.isNotEmpty) {
-          _selectedMemorialIds.addAll(memorials.take(3).map((item) => item.id));
-        }
+        _multiTitleTextColor = Colors.black;
+        _syncDefaultMultiSelection();
       } else {
         _selectedMemorialId = effectiveMemorialId;
+      }
+      // 波点日历：特效页不恢复上次文字/背景样式，重进月份仍为白色
+      if (_isCalendar) {
+        _textColor = Colors.black;
+        _hasSelectedTextColor = false;
+        _selectedFontStyleId = FontStyleConfig.normalStyleId;
+        _fontSelectionInitialized = false;
+        _backgroundColor = const Color(0xFF98CBF2);
+        if (_apiDetailMode) {
+          _backgroundImage = null;
+          _backgroundReady = true;
+        } else if (!BackgroundStore.instance.widgetListLoading(1)) {
+          final bgItems = BackgroundStore.instance.widgetItems(1);
+          if (bgItems.isNotEmpty) {
+            _backgroundImage = _backgroundUrl(bgItems.first);
+          }
+          _backgroundReady = true;
+        }
+        return;
       }
       if (font != null && font.isNotEmpty) {
         _selectedFontStyleId = font;
         _fontSelectionInitialized = true;
       }
-      if (textColor != null) _applyOverallTextColor(Color(textColor));
+      if (textColor != null) {
+        if (_isMulti) {
+          // 多纪念日：整体色只影响其它文案，名称保持黑色
+          _textColor = Color(textColor);
+          _hasSelectedTextColor = true;
+        } else {
+          _applyOverallTextColor(Color(textColor));
+        }
+      }
       if (backgroundColor != null) _backgroundColor = Color(backgroundColor);
       if (_apiDetailMode) {
         _backgroundImage = null;
@@ -1480,6 +1571,12 @@ class _CountdownWidgetConfigScreenState
           _backgroundReady = true;
         } else if (backgroundImage != null && backgroundImage.isNotEmpty) {
           _backgroundImage = backgroundImage;
+          _backgroundReady = true;
+        } else if (!BackgroundStore.instance.widgetListLoading(1)) {
+          final bgItems = BackgroundStore.instance.widgetItems(1);
+          if (bgItems.isNotEmpty) {
+            _backgroundImage = _backgroundUrl(bgItems.first);
+          }
           _backgroundReady = true;
         }
       }

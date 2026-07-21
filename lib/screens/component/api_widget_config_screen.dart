@@ -19,6 +19,7 @@ import '../../services/pet_image_service.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/pet_display_image.dart';
 import '../../utils/pet_image_picker.dart';
+import '../../utils/saving_overlay.dart';
 import '../../widgets/common/day_number_display.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 import 'pet_widget_config_screen.dart';
@@ -60,6 +61,7 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
   double _textSize = 16;
   bool _iconOnRight = false;
   final _textController = TextEditingController(text: '每天都要开心');
+  final GlobalKey _previewBoundaryKey = GlobalKey();
 
   String get _prefsPrefix => 'api_widget_${widget.widgetId}';
 
@@ -172,7 +174,12 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(child: _buildTemplatePreview(item)),
+                  Center(
+                    child: RepaintBoundary(
+                      key: _previewBoundaryKey,
+                      child: _buildTemplatePreview(item),
+                    ),
+                  ),
                   const SizedBox(height: 26),
                   for (final key in item.config) ...[
                     _buildOption(item, key),
@@ -775,7 +782,24 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
   );
 
   Widget _backgroundPicker(int type) {
-    final items = BackgroundStore.instance.widgetItems(type);
+    final store = BackgroundStore.instance;
+    final items = store.widgetItems(type);
+    if (store.widgetListLoading(type) && items.isEmpty) {
+      return const SizedBox(
+        height: 48,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.accent,
+            ),
+          ),
+        ),
+      );
+    }
     return SizedBox(
       height: 48,
       child: ListView.separated(
@@ -1058,48 +1082,58 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
 
   Future<void> _save() async {
     final definition = WidgetDetailScope.maybeOf(context);
-    final prefs = await SharedPreferences.getInstance();
-    await Future.wait([
-      prefs.setInt('${_prefsPrefix}_pet', _selectedPet),
-      if (_selectedMemorialId != null)
-        prefs.setString('${_prefsPrefix}_memorial', _selectedMemorialId!),
-      prefs.setString('${_prefsPrefix}_font', _fontStyleId),
-      prefs.setInt('${_prefsPrefix}_text_color', _textColor.toARGB32()),
-      prefs.setInt(
-        '${_prefsPrefix}_background_color',
-        _backgroundColor.toARGB32(),
-      ),
-      if (_selectedBackground != null)
-        prefs.setString('${_prefsPrefix}_background', _selectedBackground!),
-      if (_uploadedImage != null)
-        prefs.setString('${_prefsPrefix}_upload', _uploadedImage!),
-      if (_iconImage != null)
-        prefs.setString('${_prefsPrefix}_icon_image', _iconImage!),
-      prefs.setString('${_prefsPrefix}_icon', _icon),
-      prefs.setDouble('${_prefsPrefix}_text_size', _textSize),
-      prefs.setString('${_prefsPrefix}_text', _textController.text.trim()),
-      prefs.setBool('${_prefsPrefix}_icon_right', _iconOnRight),
-    ]);
-    await saveWidgetToLibrary(
-      definition,
-      settings: {
-        'pet_index': _selectedPet,
-        'pet_image': _petImages.isNotEmpty
-            ? _petImages[_selectedPet.clamp(0, _petImages.length - 1)]
-            : '',
-        'memorial_id': _selectedMemorialId ?? '',
-        'font_style': _fontStyleId,
-        'text_color': _textColor.toARGB32(),
-        'background_color': _backgroundColor.toARGB32(),
-        'background_image': _selectedBackground ?? '',
-        'upload_image': _uploadedImage ?? '',
-        'icon_image': _iconImage ?? '',
-        'icon': _icon,
-        'text_size': _textSize,
-        'text': _textController.text.trim(),
-        'icon_right': _iconOnRight,
-      },
-    );
-    if (mounted) await showCenterTip(context, '已保存');
+    try {
+      await withSavingOverlay(context, () async {
+        final prefs = await SharedPreferences.getInstance();
+        await Future.wait([
+          prefs.setInt('${_prefsPrefix}_pet', _selectedPet),
+          if (_selectedMemorialId != null)
+            prefs.setString('${_prefsPrefix}_memorial', _selectedMemorialId!),
+          prefs.setString('${_prefsPrefix}_font', _fontStyleId),
+          prefs.setInt('${_prefsPrefix}_text_color', _textColor.toARGB32()),
+          prefs.setInt(
+            '${_prefsPrefix}_background_color',
+            _backgroundColor.toARGB32(),
+          ),
+          if (_selectedBackground != null)
+            prefs.setString('${_prefsPrefix}_background', _selectedBackground!),
+          if (_uploadedImage != null)
+            prefs.setString('${_prefsPrefix}_upload', _uploadedImage!),
+          if (_iconImage != null)
+            prefs.setString('${_prefsPrefix}_icon_image', _iconImage!),
+          prefs.setString('${_prefsPrefix}_icon', _icon),
+          prefs.setDouble('${_prefsPrefix}_text_size', _textSize),
+          prefs.setString('${_prefsPrefix}_text', _textController.text.trim()),
+          prefs.setBool('${_prefsPrefix}_icon_right', _iconOnRight),
+        ]);
+        await saveWidgetToLibrary(
+          definition,
+          settings: {
+            'pet_index': _selectedPet,
+            'pet_image': _petImages.isNotEmpty
+                ? _petImages[_selectedPet.clamp(0, _petImages.length - 1)]
+                : '',
+            'memorial_id': _selectedMemorialId ?? '',
+            'font_style': _fontStyleId,
+            'text_color': _textColor.toARGB32(),
+            'background_color': _backgroundColor.toARGB32(),
+            'background_image': _selectedBackground ?? '',
+            'upload_image': _uploadedImage ?? '',
+            'icon_image': _iconImage ?? '',
+            'icon': _icon,
+            'text_size': _textSize,
+            'text': _textController.text.trim(),
+            'icon_right': _iconOnRight,
+          },
+          previewBoundaryKey: _previewBoundaryKey,
+        );
+      });
+      if (!mounted) return;
+      await showCenterTip(context, '已保存');
+      if (mounted) context.pop();
+    } catch (error) {
+      debugPrint('[ApiWidgetConfig] save failed: $error');
+      if (mounted) await showCenterTip(context, '保存失败，请检查网络后重试');
+    }
   }
 }

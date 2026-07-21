@@ -49,6 +49,11 @@
 	<string>$(APP_GROUP_ID)</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>INIntentsSupported</key>
+	<array>
+		<string>SelectSmallSavedWidgetIntent</string>
+		<string>SelectMediumSavedWidgetIntent</string>
+	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问相册以选择宠物照片</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

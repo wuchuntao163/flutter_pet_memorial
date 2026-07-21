@@ -15,6 +15,7 @@ import '../../utils/app_permission_util.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/pet_display_image.dart';
 import '../../utils/pet_image_picker.dart';
+import '../../utils/saving_overlay.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 
@@ -49,6 +50,7 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
   bool _backgroundSelectionInitialized = false;
   bool _apiDetailMode = false;
   final List<String> _petImages = [];
+  final GlobalKey _previewBoundaryKey = GlobalKey();
 
   String? get _effectiveBackgroundImage {
     if (_selectedBackgroundImage != null) return _selectedBackgroundImage;
@@ -60,7 +62,7 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
   void initState() {
     super.initState();
     BackgroundStore.instance.addListener(_onBackgroundsChanged);
-    BackgroundStore.instance.fetchWidgetList(type: 1, forceRefresh: true);
+    BackgroundStore.instance.fetchWidgetList(type: 1);
     _restoreBackgroundSelection();
     _preparePetChoices();
   }
@@ -82,15 +84,22 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
 
   void _onBackgroundsChanged() {
     if (!mounted) return;
-    final items = BackgroundStore.instance.widgetItems(1);
-    if (!_apiDetailMode &&
-        _backgroundPrefsLoaded &&
-        !_backgroundSelectionInitialized &&
-        items.isNotEmpty) {
-      _selectedBackgroundImage = _backgroundImageFor(items.first);
-      _backgroundSelectionInitialized = true;
-    }
-    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final store = BackgroundStore.instance;
+      final items = store.widgetItems(1);
+      final loading = store.widgetListLoading(1);
+      if (!_apiDetailMode &&
+          _backgroundPrefsLoaded &&
+          !_backgroundSelectionInitialized &&
+          !loading) {
+        if (items.isNotEmpty) {
+          _selectedBackgroundImage = _backgroundImageFor(items.first);
+        }
+        _backgroundSelectionInitialized = true;
+      }
+      setState(() {});
+    });
   }
 
   @override
@@ -292,35 +301,38 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
   }
 
   Widget _buildPreview() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: 132,
-        height: 132,
-        decoration: BoxDecoration(
-          color: _customColor,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (_effectiveBackgroundImage != null)
-              Image.network(
-                _effectiveBackgroundImage!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    return RepaintBoundary(
+      key: _previewBoundaryKey,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: 132,
+          height: 132,
+          decoration: BoxDecoration(
+            color: _customColor,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (_effectiveBackgroundImage != null)
+                Image.network(
+                  _effectiveBackgroundImage!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: _petImages.isEmpty
+                    ? const Icon(
+                        Icons.pets,
+                        size: 52,
+                        color: AppColors.accentDark,
+                      )
+                    : _petImage(_petImages[_selectedPet]),
               ),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: _petImages.isEmpty
-                  ? const Icon(
-                      Icons.pets,
-                      size: 52,
-                      color: AppColors.accentDark,
-                    )
-                  : _petImage(_petImages[_selectedPet]),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -361,7 +373,10 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
   Widget _buildBackgroundPicker() {
     final store = BackgroundStore.instance;
     final items = store.widgetItems(1);
-    if (!_backgroundPrefsLoaded || !_backgroundSelectionInitialized) {
+    final loading = store.widgetListLoading(1);
+    // 仅在首屏且无缓存时转圈；请求结束（哪怕为空）也展示相册/色盘，避免卡死
+    if (!_backgroundPrefsLoaded ||
+        (!_backgroundSelectionInitialized && loading && items.isEmpty)) {
       return const SizedBox(
         height: 48,
         child: Align(
@@ -545,33 +560,42 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
 
   Future<void> _save() async {
     final definition = WidgetDetailScope.maybeOf(context);
-    final prefs = await SharedPreferences.getInstance();
-    await Future.wait([
-      prefs.setInt(_petKey, _selectedPet),
-      prefs.setInt(_customColorKey, _customColor.toARGB32()),
-      prefs.setString(
-        _backgroundModeKey,
-        _selectedBackgroundImage == null ? 'palette' : 'image',
-      ),
-      if (_selectedBackgroundImage == null)
-        prefs.remove(_backgroundImageKey)
-      else
-        prefs.setString(_backgroundImageKey, _selectedBackgroundImage!),
-    ]);
-    await saveWidgetToLibrary(
-      definition,
-      settings: {
-        'pet_index': _selectedPet,
-        'pet_image': _petImages.isNotEmpty
-            ? _petImages[_selectedPet.clamp(0, _petImages.length - 1)]
-            : '',
-        'background_color': _customColor.toARGB32(),
-        'background_image': _selectedBackgroundImage ?? '',
-      },
-    );
-    await WidgetService.instance.updateWidget();
-    if (!mounted) return;
-    await showCenterTip(context, '已保存到我的组件');
+    try {
+      await withSavingOverlay(context, () async {
+        final prefs = await SharedPreferences.getInstance();
+        await Future.wait([
+          prefs.setInt(_petKey, _selectedPet),
+          prefs.setInt(_customColorKey, _customColor.toARGB32()),
+          prefs.setString(
+            _backgroundModeKey,
+            _selectedBackgroundImage == null ? 'palette' : 'image',
+          ),
+          if (_selectedBackgroundImage == null)
+            prefs.remove(_backgroundImageKey)
+          else
+            prefs.setString(_backgroundImageKey, _selectedBackgroundImage!),
+        ]);
+        await saveWidgetToLibrary(
+          definition,
+          settings: {
+            'pet_index': _selectedPet,
+            'pet_image': _petImages.isNotEmpty
+                ? _petImages[_selectedPet.clamp(0, _petImages.length - 1)]
+                : '',
+            'background_color': _customColor.toARGB32(),
+            'background_image': _selectedBackgroundImage ?? '',
+          },
+          previewBoundaryKey: _previewBoundaryKey,
+        );
+        await WidgetService.instance.updateWidget();
+      });
+      if (!mounted) return;
+      await showCenterTip(context, '已保存到我的组件');
+      if (mounted) context.pop();
+    } catch (error) {
+      debugPrint('[PetWidgetConfig] save failed: $error');
+      if (mounted) await showCenterTip(context, '保存失败，请检查网络后重试');
+    }
   }
 
   Future<void> _preparePetChoices() async {

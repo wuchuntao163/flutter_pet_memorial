@@ -17,6 +17,7 @@ class BackgroundStore extends ChangeNotifier {
   final Map<int, List<Map<String, dynamic>>> _widgetItemsByType = {};
   final Set<int> _widgetLoadingTypes = {};
   final Map<int, int> _widgetRequestSeq = {};
+  final Map<int, Future<void>> _widgetFetchFutures = {};
   final Map<String, Map<String, dynamic>> _itemById = {};
 
   List<Map<String, dynamic>> _currentItems = [];
@@ -278,6 +279,22 @@ class BackgroundStore extends ChangeNotifier {
       return;
     }
 
+    // 同一 type 已在请求中：合并为一次，避免短时间双请求触发「请求异常」
+    final inFlight = _widgetFetchFutures[type];
+    if (inFlight != null) return inFlight;
+
+    final future = _fetchWidgetListOnce(type: type);
+    _widgetFetchFutures[type] = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_widgetFetchFutures[type], future)) {
+        _widgetFetchFutures.remove(type);
+      }
+    }
+  }
+
+  Future<void> _fetchWidgetListOnce({required int type}) async {
     final seq = (_widgetRequestSeq[type] ?? 0) + 1;
     _widgetRequestSeq[type] = seq;
     _widgetLoadingTypes.add(type);
@@ -289,14 +306,21 @@ class BackgroundStore extends ChangeNotifier {
       );
       if (_widgetRequestSeq[type] != seq) return;
       final parsed = _parseList(res.data, categoryId: null);
-      _widgetItemsByType[type] = parsed;
-      _mergeItems(parsed);
+      // 新数据为空时保留旧缓存，避免列表「有时不显示」
+      if (parsed.isNotEmpty) {
+        _widgetItemsByType[type] = parsed;
+        _mergeItems(parsed);
+      } else if (!_hasUsableCache(_widgetItemsByType[type])) {
+        _widgetItemsByType[type] = [];
+      }
     } on ApiException catch (e) {
       if (_widgetRequestSeq[type] != seq) return;
       if (kDebugMode) {
         debugPrint('[BackgroundStore] fetchWidgetList(type=$type) failed: $e');
       }
-      _widgetItemsByType[type] = [];
+      if (!_hasUsableCache(_widgetItemsByType[type])) {
+        _widgetItemsByType[type] = [];
+      }
     } finally {
       if (_widgetRequestSeq[type] == seq) {
         _widgetLoadingTypes.remove(type);

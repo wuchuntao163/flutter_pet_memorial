@@ -1,6 +1,7 @@
 import WidgetKit
 import SwiftUI
 import UIKit
+import Intents
 
 // Extension module is named PetWidget — do not declare a type with that same name.
 
@@ -59,12 +60,29 @@ struct PetWidgetData: Codable, Sendable {
 struct SimpleEntry: TimelineEntry, Sendable {
     let date: Date
     let data: PetWidgetData
-    /// Selected「我的组件」id；nil = 未配置，显示图二引导
+    /// Selected「我的组件」id；nil = 未配置，显示引导
     let widgetId: Int?
     let isGalleryPreview: Bool
+    /// 「透明位置」：关闭 / 位置名；用于壁纸透明叠加
+    let transparentPosition: String?
 
     static func setup(date: Date = Date(), preview: Bool = false) -> SimpleEntry {
-        SimpleEntry(date: date, data: .empty, widgetId: nil, isGalleryPreview: preview)
+        let revision = preview ? SavedWidgetConfiguration.galleryRevision() : 0
+        let data = PetWidgetData(
+            petName: "",
+            petType: "",
+            petAge: "",
+            petImageUrl: "",
+            memorials: "[]",
+            updatedAt: revision
+        )
+        return SimpleEntry(
+            date: Date(),
+            data: data,
+            widgetId: nil,
+            isGalleryPreview: preview,
+            transparentPosition: nil
+        )
     }
 }
 
@@ -101,6 +119,42 @@ enum PetWidgetDataLoader {
 
 // MARK: - 图二：未配置时的桌面占位引导
 
+struct AppBrandLogo: View {
+    var size: CGFloat = 16
+
+    var body: some View {
+        Group {
+            if let image = Self.resolveLogo() {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                // 资源未打进 appex 时的兜底，避免空白
+                RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                    .fill(Color.orange.opacity(0.85))
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+    }
+
+    /// Bundle AppLogo 优先（纪念日），App Group 仅作兜底，避免旧缓存闪出倒数日
+    private static func resolveLogo() -> UIImage? {
+        if let image = UIImage(named: "AppLogo") {
+            return image
+        }
+        if let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: AppGroupConfig.id
+        ) {
+            let path = container.appendingPathComponent("appBrandLogo.png").path
+            if let image = UIImage(contentsOfFile: path) {
+                return image
+            }
+        }
+        return nil
+    }
+}
+
 struct WidgetSetupGuideView: View {
     @Environment(\.widgetFamily) private var family
 
@@ -118,25 +172,31 @@ struct WidgetSetupGuideView: View {
         "选择所需的小组件",
     ]
 
+    private var isMedium: Bool { family == .systemMedium }
+
+    /// 小号宽度紧，步骤文案必须单行；字号与边距略收
+    private var stepFontSize: CGFloat { isMedium ? 12 : 10 }
+    private var stepCircle: CGFloat { isMedium ? 18 : 16 }
+    private var hPadding: CGFloat { isMedium ? 18 : 12 }
+    private var stepSpacing: CGFloat { isMedium ? 8 : 6 }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
-                Image(systemName: "pawprint.circle.fill")
-                    .font(.system(size: 15))
-                    .foregroundColor(.orange)
+                AppBrandLogo(size: 16)
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
                 Spacer(minLength: 0)
             }
-            .padding(.bottom, 10)
+            .padding(.bottom, isMedium ? 10 : 8)
 
             GeometryReader { geo in
                 let rowH = geo.size.height / CGFloat(steps.count)
                 ZStack(alignment: .topLeading) {
                     Path { path in
-                        let x = CGFloat(9)
+                        let x = stepCircle / 2
                         path.move(to: CGPoint(x: x, y: rowH * 0.35))
                         path.addLine(to: CGPoint(x: x, y: rowH * (CGFloat(steps.count) - 0.35)))
                     }
@@ -144,20 +204,21 @@ struct WidgetSetupGuideView: View {
 
                     VStack(spacing: 0) {
                         ForEach(Array(steps.enumerated()), id: \.offset) { index, text in
-                            HStack(alignment: .center, spacing: 8) {
+                            HStack(alignment: .center, spacing: stepSpacing) {
                                 ZStack {
                                     Circle()
                                         .fill(stepYellow)
-                                        .frame(width: 18, height: 18)
+                                        .frame(width: stepCircle, height: stepCircle)
                                     Text("\(index + 1)")
-                                        .font(.system(size: 11, weight: .bold).italic())
+                                        .font(.system(size: isMedium ? 11 : 10, weight: .bold).italic())
                                         .foregroundColor(.black)
                                 }
                                 Text(text)
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.system(size: stepFontSize, weight: .medium))
                                     .foregroundColor(stepText)
-                                    .lineLimit(2)
-                                    .minimumScaleFactor(0.85)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                                    .allowsTightening(true)
                                 Spacer(minLength: 0)
                             }
                             .frame(height: rowH, alignment: .center)
@@ -166,104 +227,185 @@ struct WidgetSetupGuideView: View {
                 }
             }
         }
-        .padding(12)
+        .padding(.horizontal, hPadding)
+        .padding(.top, isMedium ? 20 : 16)
+        .padding(.bottom, isMedium ? 20 : 14)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white)
     }
 }
 
 // MARK: - 图一：系统组件库里的预览内容（最多 2 个「我的组件」缩略图）
+// 小号：方块缩略图；中号：长条缩略图（与中号组件比例一致）
 
 struct WidgetGalleryPreviewView: View {
     let thumbs: [SavedWidgetConfiguration]
+    @Environment(\.widgetFamily) private var family
+
+    private let accentBlue = Color(red: 0.23, green: 0.51, blue: 0.96)
+
+    private var isMedium: Bool { family == .systemMedium }
+
+    /// 中号约 2.1:1；小号正方形
+    private var thumbSize: CGSize {
+        isMedium ? CGSize(width: 118, height: 56) : CGSize(width: 44, height: 44)
+    }
+
+    private var thumbCorner: CGFloat { isMedium ? 12 : 10 }
+
+    private var thumbStackOffset: CGFloat { isMedium ? 36 : 26 }
+
+    private var thumbsRowHeight: CGFloat { thumbSize.height + 4 }
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "pawprint.circle.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(.orange)
-                Text("哈基米纪念日")
-                    .font(.system(size: 12, weight: .semibold))
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-            }
+        ZStack(alignment: .top) {
+            Color.white
+            VStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    AppBrandLogo(size: 16)
+                    Text("哈基米纪念日")
+                        .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .padding(.bottom, 10)
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 6)
 
-            Text("点击下方")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
+                Group {
+                    if isMedium {
+                        // 中号：引导文案同一行
+                        HStack(spacing: 4) {
+                            Text("点击下方")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                            HStack(spacing: 2) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 9, weight: .bold))
+                                Text("添加小组件")
+                                    .font(.system(size: 11, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.leading, 5)
+                            .padding(.trailing, 6)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(accentBlue))
+                            Text("将组件添加到桌面")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    } else {
+                        VStack(spacing: 6) {
+                            HStack(spacing: 4) {
+                                Text("点击下方")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: true, vertical: false)
+                                HStack(spacing: 2) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 9, weight: .bold))
+                                    Text("添加小组件")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .fixedSize(horizontal: true, vertical: false)
+                                }
+                                .foregroundColor(.white)
+                                .padding(.leading, 5)
+                                .padding(.trailing, 6)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(accentBlue))
+                                .fixedSize(horizontal: true, vertical: false)
+                            }
+                            .lineLimit(1)
 
-            HStack(spacing: 4) {
-                Image(systemName: "plus.circle")
-                    .font(.system(size: 12, weight: .semibold))
-                Text("添加小组件")
-                    .font(.system(size: 12, weight: .semibold))
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(Color.blue))
-
-            Text("将组件添加到桌面")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-
-            Spacer(minLength: 0)
-
-            if !thumbs.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(Array(thumbs.prefix(2).enumerated()), id: \.offset) { _, item in
-                        galleryThumb(item)
+                            Text("将组件添加到桌面")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
                     }
+                }
+
+                Spacer(minLength: 8)
+
+                galleryThumbsRow
+                    .frame(height: thumbsRowHeight)
+                    .padding(.top, 4)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+            .padding(.bottom, isMedium ? 14 : 16)
+        }
+    }
+
+    @ViewBuilder
+    private var galleryThumbsRow: some View {
+        let items = Array(thumbs.prefix(2))
+        if items.isEmpty {
+            Color.clear.frame(height: thumbSize.height)
+        } else {
+            ZStack {
+                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                    galleryThumb(item)
+                        .offset(
+                            x: CGFloat(index) * thumbStackOffset
+                                - (items.count > 1 ? thumbStackOffset / 2 : 0)
+                        )
+                        .zIndex(Double(index))
                 }
             }
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.white)
     }
 
     @ViewBuilder
     private func galleryThumb(_ item: SavedWidgetConfiguration) -> some View {
         Group {
-            if let url = URL(string: item.image), !item.image.isEmpty {
+            if let image = item.previewUIImage() {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else if let url = item.remoteImageURL {
                 CompatibleRemoteImage(url: url, contentMode: .fill)
             } else {
                 ZStack {
                     Color(white: 0.93)
                     Text(String(item.title.prefix(1)))
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: isMedium ? 16 : 14, weight: .bold))
                         .foregroundColor(.secondary)
                 }
             }
         }
-        .frame(width: 44, height: 44)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .frame(width: thumbSize.width, height: thumbSize.height)
+        .clipShape(RoundedRectangle(cornerRadius: thumbCorner, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: thumbCorner, style: .continuous)
                 .stroke(Color.white, lineWidth: 2)
         )
+        .shadow(color: Color.black.opacity(0.12), radius: 2, x: 0, y: 1)
     }
 }
 
 // MARK: - Entry view
 
 struct PetWidgetEntryView: View {
+    @Environment(\.widgetFamily) private var family
     let entry: SimpleEntry
 
     var body: some View {
         Group {
             if entry.isGalleryPreview {
                 WidgetGalleryPreviewView(
-                    thumbs: Array(SavedWidgetConfiguration.loadAll().prefix(2))
+                    thumbs: Array(SavedWidgetConfiguration.loadForFamily(family).prefix(2))
                 )
+                .id("\(entry.data.updatedAt)-\(family)")
             } else if let config = resolvedConfig {
-                SavedWidgetTemplateView(config: config)
-                    .id("\(config.widgetId)-\(entry.data.updatedAt)-\(WidgetShared.cachedImageRevision())")
+                // 与 App「我的组件」一致：优先显示保存时截取的预览图
+                SavedWidgetHomeView(
+                    config: config,
+                    transparentPosition: entry.transparentPosition
+                )
+                .id("\(config.widgetId)-\(entry.data.updatedAt)-\(entry.transparentPosition ?? "")-\(Calendar.current.startOfDay(for: entry.date).timeIntervalSince1970)-\(WidgetShared.cachedImageRevision())")
             } else {
-                // 图二：已放到桌面但尚未「编辑小组件」选择样式
                 WidgetSetupGuideView()
             }
         }
@@ -276,46 +418,159 @@ struct PetWidgetEntryView: View {
     }
 }
 
-// MARK: - Static provider (iOS 16.2 fallback：无法系统配置时用首个「我的组件」)
+/// 桌面已配置组件：倒计时类 = 本地背景 + 自定义数字字体 + 实时天数（与常见组件 App 一致）
+/// 系统组件库缩略图仍用完整预览图
+struct SavedWidgetHomeView: View {
+    let config: SavedWidgetConfiguration
+    let transparentPosition: String?
 
-struct PetWidgetTimelineProvider: TimelineProvider {
+    private var isTransparent: Bool {
+        SavedWidgetOptionsProvider.isTransparentEnabled(transparentPosition)
+    }
+
+    private var resolvedPosition: String? {
+        SavedWidgetOptionsProvider.resolvedTransparentPosition(transparentPosition)
+    }
+
+    var body: some View {
+        ZStack {
+            if isTransparent {
+                if let wall = Self.wallpaperImage(for: resolvedPosition) {
+                    Image(uiImage: wall)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    Color.clear
+                }
+            }
+
+            if config.needsLiveDayRender {
+                SavedWidgetTemplateView(config: config)
+            } else if let preview = config.previewUIImage() {
+                Image(uiImage: preview)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else if let url = config.remoteImageURL {
+                CompatibleRemoteImage(url: url, contentMode: .fill)
+            } else {
+                SavedWidgetTemplateView(config: config)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .background(isTransparent ? Color.clear : Color.white)
+    }
+
+    private static func wallpaperImage(for position: String?) -> UIImage? {
+        guard let key = SavedWidgetOptionsProvider.transparentFileKey(position),
+              let container = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: AppGroupConfig.id
+              ) else {
+            return nil
+        }
+        let path = container.appendingPathComponent("widgetTransparent_\(key).png").path
+        return UIImage(contentsOfFile: path)
+    }
+}
+
+// MARK: - Intent provider（长按「编辑小组件」可选「我的组件」；未选中时显示引导）
+
+struct PetWidgetSmallIntentProvider: IntentTimelineProvider {
+    typealias Intent = SelectSmallSavedWidgetIntent
     typealias Entry = SimpleEntry
 
     func placeholder(in context: Context) -> SimpleEntry {
         .setup(preview: true)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> Void) {
+    func getSnapshot(
+        for configuration: SelectSmallSavedWidgetIntent,
+        in context: Context,
+        completion: @escaping (SimpleEntry) -> Void
+    ) {
         if context.isPreview {
             completion(.setup(preview: true))
             return
         }
-        let id = SavedWidgetConfiguration.loadAll().first?.widgetId
-        completion(SimpleEntry(
-            date: Date(),
-            data: PetWidgetDataLoader.load(),
-            widgetId: id,
-            isGalleryPreview: false
+        completion(makeEntry(
+            configuration.currentWidget,
+            transparent: configuration.transparentPosition
         ))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> Void) {
-        let id = SavedWidgetConfiguration.loadAll().first?.widgetId
-        let entry = SimpleEntry(
-            date: Date(),
-            data: PetWidgetDataLoader.load(),
-            widgetId: id,
-            isGalleryPreview: false
+    func getTimeline(
+        for configuration: SelectSmallSavedWidgetIntent,
+        in context: Context,
+        completion: @escaping (Timeline<SimpleEntry>) -> Void
+    ) {
+        let entry = makeEntry(
+            configuration.currentWidget,
+            transparent: configuration.transparentPosition
         )
-        let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date())
-            ?? Date().addingTimeInterval(900)
-        completion(Timeline(entries: [entry], policy: .after(next)))
+        completion(Timeline(
+            entries: [entry],
+            policy: .after(SavedWidgetConfiguration.nextTimelineRefreshDate())
+        ))
     }
+}
+
+struct PetWidgetMediumIntentProvider: IntentTimelineProvider {
+    typealias Intent = SelectMediumSavedWidgetIntent
+    typealias Entry = SimpleEntry
+
+    func placeholder(in context: Context) -> SimpleEntry {
+        .setup(preview: true)
+    }
+
+    func getSnapshot(
+        for configuration: SelectMediumSavedWidgetIntent,
+        in context: Context,
+        completion: @escaping (SimpleEntry) -> Void
+    ) {
+        if context.isPreview {
+            completion(.setup(preview: true))
+            return
+        }
+        completion(makeEntry(
+            configuration.currentWidget,
+            transparent: configuration.transparentPosition
+        ))
+    }
+
+    func getTimeline(
+        for configuration: SelectMediumSavedWidgetIntent,
+        in context: Context,
+        completion: @escaping (Timeline<SimpleEntry>) -> Void
+    ) {
+        let entry = makeEntry(
+            configuration.currentWidget,
+            transparent: configuration.transparentPosition
+        )
+        completion(Timeline(
+            entries: [entry],
+            policy: .after(SavedWidgetConfiguration.nextTimelineRefreshDate())
+        ))
+    }
+}
+
+private func makeEntry(_ selected: String?, transparent: String?) -> SimpleEntry {
+    let selectedId = SavedWidgetOptionsProvider.widgetId(from: selected)
+    return SimpleEntry(
+        date: Date(),
+        data: PetWidgetDataLoader.load(),
+        widgetId: selectedId,
+        isGalleryPreview: false,
+        transparentPosition: transparent
+    )
 }
 
 struct HomeScreenPetWidgetSmall: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "PetWidgetSmall", provider: PetWidgetTimelineProvider()) { entry in
+        IntentConfiguration(
+            kind: "PetWidgetSmall",
+            intent: SelectSmallSavedWidgetIntent.self,
+            provider: PetWidgetSmallIntentProvider()
+        ) { entry in
             PetWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("小号")
@@ -326,7 +581,11 @@ struct HomeScreenPetWidgetSmall: Widget {
 
 struct HomeScreenPetWidgetMedium: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "PetWidgetMedium", provider: PetWidgetTimelineProvider()) { entry in
+        IntentConfiguration(
+            kind: "PetWidgetMedium",
+            intent: SelectMediumSavedWidgetIntent.self,
+            provider: PetWidgetMediumIntentProvider()
+        ) { entry in
             PetWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("中号")

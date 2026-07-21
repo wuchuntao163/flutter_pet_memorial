@@ -9,9 +9,12 @@ import SwiftUI
 @main
 struct PetWidgetBundle: WidgetBundle {
     var body: some Widget {
-        // WidgetBundleBuilder 不支持 if/else；部署目标已为 17.0，直接注册可配置组件
-        ConfigurableHomeWidgetSmall()
-        ConfigurableHomeWidgetMedium()
+        // IntentConfiguration：添加后先显示引导，长按可「编辑小组件」
+        HomeScreenPetWidgetSmall()
+        HomeScreenPetWidgetMedium()
+#if swift(>=5.9)
+        // Live Activity 需 iOS 16.2+；仅在较新工具链注册
         PetLiveActivityWidget()
+#endif
     }
 }

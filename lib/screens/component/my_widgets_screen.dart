@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,7 +21,7 @@ class _MyWidgetsScreenState extends State<MyWidgetsScreen> {
   @override
   void initState() {
     super.initState();
-    SavedWidgetStore.instance.load();
+    SavedWidgetStore.instance.load(force: true);
   }
 
   @override
@@ -169,14 +171,7 @@ class _SavedWidgetTile extends StatelessWidget {
             ),
             child: item.image.isEmpty
                 ? const Icon(Icons.widgets_outlined, color: AppColors.accent)
-                : Image.network(
-                    item.image,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Icon(
-                      Icons.widgets_outlined,
-                      color: AppColors.accent,
-                    ),
-                  ),
+                : _SavedWidgetThumb(image: item.image),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -201,6 +196,33 @@ class _SavedWidgetTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SavedWidgetThumb extends StatelessWidget {
+  const _SavedWidgetThumb({required this.image});
+
+  final String image;
+
+  @override
+  Widget build(BuildContext context) {
+    const fallback = Icon(Icons.widgets_outlined, color: AppColors.accent);
+    final src = image.trim();
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      return Image.network(
+        src,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      );
+    }
+    final path = src.startsWith('file://')
+        ? Uri.parse(src).toFilePath()
+        : src;
+    return Image.file(
+      File(path),
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => fallback,
     );
   }
 }

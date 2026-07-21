@@ -1,4 +1,5 @@
 import Flutter
+import Intents
 import UIKit
 
 @main
@@ -19,6 +20,17 @@ import UIKit
   override func applicationDidBecomeActive(_ application: UIApplication) {
     super.applicationDidBecomeActive(application)
     setupWidgetChannelIfNeeded()
+  }
+
+  /// 系统「编辑小组件」时由主 App 提供「我的组件」选项列表（Intents Extension 为主）
+  override func application(
+    _ application: UIApplication,
+    handlerFor intent: INIntent
+  ) -> Any? {
+    if intent is SelectSmallSavedWidgetIntent || intent is SelectMediumSavedWidgetIntent {
+      return WidgetSelectionIntentHandler()
+    }
+    return nil
   }
 
   private func setupWidgetChannelIfNeeded() {

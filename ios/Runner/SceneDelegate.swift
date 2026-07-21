@@ -101,6 +101,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
   private func reloadWidgetTimelines() {
     if #available(iOS 14.0, *) {
+      for kind in ["PetWidgetSmall", "PetWidgetMedium", "PetWidget"] {
+        WidgetCenter.shared.reloadTimelines(ofKind: kind)
+      }
       WidgetCenter.shared.reloadAllTimelines()
     }
   }
