@@ -461,9 +461,13 @@ struct SavedWidgetHomeView: View {
         ZStack {
             if isTransparent {
                 if let wall = Self.wallpaperImage(for: resolvedPosition) {
-                    Image(uiImage: wall)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+                    Color.clear
+                        .overlay(
+                            Image(uiImage: wall)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        )
+                        .clipped()
                 } else {
                     Color.clear
                 }
@@ -472,9 +476,13 @@ struct SavedWidgetHomeView: View {
             if config.needsLiveDayRender {
                 SavedWidgetTemplateView(config: config)
             } else if let preview = config.previewUIImage() {
-                Image(uiImage: preview)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
+                Color.clear
+                    .overlay(
+                        Image(uiImage: preview)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    )
+                    .clipped()
             } else if let url = config.remoteImageURL {
                 CompatibleRemoteImage(url: url, contentMode: .fill)
             } else {
@@ -483,7 +491,6 @@ struct SavedWidgetHomeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
-        .background(isTransparent ? Color.clear : Color.white)
     }
 
     private static func wallpaperImage(for position: String?) -> UIImage? {

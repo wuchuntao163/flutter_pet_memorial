@@ -39,9 +39,20 @@ struct CompatibleRemoteImage: View {
   var body: some View {
     Group {
       if let image = loader.image {
-        Image(uiImage: image)
-          .resizable()
-          .aspectRatio(contentMode: contentMode)
+        if contentMode == .fill {
+          // fill 用 overlay，避免图片理想尺寸撑破父布局（条宽/文字跑偏）
+          Color.clear
+            .overlay(
+              Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+            )
+            .clipped()
+        } else {
+          Image(uiImage: image)
+            .resizable()
+            .aspectRatio(contentMode: contentMode)
+        }
       } else {
         Color.clear
       }
@@ -456,7 +467,7 @@ struct SavedWidgetTemplateView: View {
       content
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    // 圆角交给系统小组件裁剪，避免内层再 clip 露出底色白边（看起来像左右间距变了）
   }
 
   private var hasBackgroundImage: Bool {
@@ -464,17 +475,18 @@ struct SavedWidgetTemplateView: View {
   }
 
   @ViewBuilder private var backgroundLayer: some View {
+    // 背景图只做装饰层，不参与布局测宽；否则 fill 图会撑破 ZStack，导致条形变窄/中号文字跑出可视区
     if let image = config.backgroundUIImage() {
-      Image(uiImage: image)
-        .resizable()
-        .aspectRatio(contentMode: .fill)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+      Color.clear
+        .overlay(
+          Image(uiImage: image)
+            .resizable()
+            .aspectRatio(contentMode: .fill)
+        )
         .clipped()
     } else if let url = URL(string: config.string("background_image")),
               !config.string("background_image").isEmpty {
       CompatibleRemoteImage(url: url, contentMode: .fill)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipped()
     }
   }
 
