@@ -149,6 +149,27 @@ class SavedWidgetStore extends ChangeNotifier {
     }
   }
 
+  /// 把相册临时图拷到 Documents，避免保存/同步时原路径已失效。
+  Future<String?> persistLocalBackgroundCopy({
+    required int widgetId,
+    required String sourcePath,
+  }) async {
+    try {
+      final src = sourcePath.startsWith('file://')
+          ? Uri.parse(sourcePath).toFilePath()
+          : sourcePath;
+      final bytes = await File(src).readAsBytes();
+      if (bytes.isEmpty) return null;
+      final dir = await getApplicationDocumentsDirectory();
+      final dest = File('${dir.path}/widget_album_bg_$widgetId.bin');
+      await dest.writeAsBytes(bytes, flush: true);
+      return dest.path;
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] persistLocalBackgroundCopy failed: $error');
+      return null;
+    }
+  }
+
   /// [imageRef] 可为本地路径或 http(s) URL。远程图先下载再写入 App Group。
   Future<void> syncBackgroundImage({
     required int widgetId,

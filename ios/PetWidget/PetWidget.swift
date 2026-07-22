@@ -404,7 +404,7 @@ struct PetWidgetEntryView: View {
                     config: config,
                     transparentPosition: entry.transparentPosition
                 )
-                .id("\(config.widgetId)-\(entry.data.updatedAt)-\(entry.transparentPosition ?? "")-\(Calendar.current.startOfDay(for: entry.date).timeIntervalSince1970)-\(WidgetShared.cachedImageRevision())")
+                .id("\(config.widgetId)-\(entry.data.updatedAt)-\(entry.transparentPosition ?? "")-\(Calendar.current.startOfDay(for: entry.date).timeIntervalSince1970)-\(WidgetShared.cachedImageRevision())-\(SavedWidgetConfiguration.backgroundRevision(widgetId: config.widgetId))")
             } else {
                 WidgetSetupGuideView()
             }

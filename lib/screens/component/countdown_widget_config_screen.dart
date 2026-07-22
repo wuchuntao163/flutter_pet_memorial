@@ -1391,20 +1391,28 @@ class _CountdownWidgetConfigScreenState
       final path = await PetImagePicker.pickFromGallery(context);
       if (path == null || path.isEmpty || !mounted) return;
       await withSavingOverlay(context, () async {
-        // 只走 /api/base/upload；再用本地文件写入 App Group（桌面扩展几乎不能靠网络图）
         final url = await PetImageService.upload(path);
         if (!mounted) return;
         if (url.isEmpty) {
           throw Exception('empty upload url');
         }
         setState(() => _backgroundImage = url);
+
         final definition = WidgetDetailScope.maybeOf(context);
-        if (definition != null && definition.id > 0) {
-          await SavedWidgetStore.instance.syncBackgroundImage(
-            widgetId: definition.id,
-            imageRef: path,
-          );
-        }
+        if (definition == null || definition.id <= 0) return;
+
+        // 相册临时路径可能很快失效：先拷到 Documents 再写入 App Group
+        final stablePath = await SavedWidgetStore.instance
+            .persistLocalBackgroundCopy(widgetId: definition.id, sourcePath: path);
+        await SavedWidgetStore.instance.syncBackgroundImage(
+          widgetId: definition.id,
+          imageRef: stablePath ?? path,
+        );
+        // 再按网络 URL 覆盖一次，保证与线上一致
+        await SavedWidgetStore.instance.syncBackgroundImage(
+          widgetId: definition.id,
+          imageRef: url,
+        );
       });
     } on AppPermissionDeniedException catch (error) {
       if (!mounted) return;

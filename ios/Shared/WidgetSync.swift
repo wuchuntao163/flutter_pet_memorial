@@ -298,17 +298,30 @@ enum WidgetSync {
   static func saveWidgetBackground(widgetId: Int, fromPath path: String) -> Bool {
     let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return false }
-    let url: URL
+    let filePath: String
     if trimmed.hasPrefix("file://"), let parsed = URL(string: trimmed) {
-      url = parsed
+      filePath = parsed.path
     } else {
-      url = URL(fileURLWithPath: trimmed)
+      filePath = trimmed
     }
-    guard let data = try? Data(contentsOf: url) else {
-      NSLog("[SavedBackground] read failed: \(trimmed)")
+    // 相册 HEIC 等优先用 UIImage(contentsOfFile:)，比 Data→UIImage 更稳
+    let image =
+      UIImage(contentsOfFile: filePath)
+      ?? ((try? Data(contentsOf: URL(fileURLWithPath: filePath))).flatMap { UIImage(data: $0) })
+    guard let image else {
+      NSLog("[SavedBackground] decode failed: \(filePath)")
       return false
     }
-    return saveWidgetBackground(widgetId: widgetId, data: data)
+    guard let resized = resizeForWidget(image) else {
+      NSLog("[SavedBackground] resize failed: \(filePath)")
+      return false
+    }
+    return writePng(
+      resized,
+      fileName: backgroundFileName(widgetId: widgetId),
+      tempFileName: "savedWidgetBackground_\(widgetId).tmp.png",
+      logTag: "SavedBackground"
+    )
   }
 
   /// 从网络 URL 拉取并缓存背景（主 App 保存组件时调用）

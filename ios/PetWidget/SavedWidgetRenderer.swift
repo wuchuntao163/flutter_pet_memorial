@@ -287,6 +287,20 @@ struct SavedWidgetConfiguration {
     return UIImage(contentsOfFile: path)
   }
 
+  /// 背景文件修改戳，用于强制桌面刷新
+  static func backgroundRevision(widgetId: Int) -> Int64 {
+    guard widgetId > 0,
+          let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: AppGroupConfig.id
+          ) else { return 0 }
+    let path = container.appendingPathComponent("savedWidgetBackground_\(widgetId).png").path
+    guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+          let modified = attrs[.modificationDate] as? Date else {
+      return 0
+    }
+    return Int64(modified.timeIntervalSince1970 * 1000)
+  }
+
   var remoteImageURL: URL? {
     let raw = image.trimmingCharacters(in: .whitespacesAndNewlines)
     guard raw.hasPrefix("http://") || raw.hasPrefix("https://") else { return nil }
@@ -331,6 +345,7 @@ struct SavedWidgetConfiguration {
         } else {
           rev = rev &* 31 &+ 1
         }
+        rev = rev &* 31 &+ backgroundRevision(widgetId: item.widgetId)
       }
     }
     return rev
@@ -455,39 +470,32 @@ struct SavedWidgetTemplateView: View {
   let config: SavedWidgetConfiguration
 
   var body: some View {
-    ZStack {
-      config.backgroundColor
-      backgroundLayer
-      if config.template == 7 && hasBackgroundImage {
-        Color.black.opacity(0.16)
+    // 内容决定布局；背景用 background 铺满，避免 fill 图撑破测宽，也避免 Color.clear 层尺寸为 0
+    content
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background {
+        ZStack {
+          config.backgroundColor
+          if let image = config.backgroundUIImage() {
+            Image(uiImage: image)
+              .resizable()
+              .scaledToFill()
+              .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+              .clipped()
+          }
+          if config.template == 7 && hasBackgroundImage {
+            Color.black.opacity(0.16)
+          }
+          if config.template == 3 && hasBackgroundImage {
+            Color.white.opacity(0.18)
+          }
+        }
       }
-      if config.template == 3 && hasBackgroundImage {
-        Color.white.opacity(0.18)
-      }
-      content
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    // 圆角交给系统小组件裁剪，避免内层再 clip 露出底色白边（看起来像左右间距变了）
+      .clipped()
   }
 
   private var hasBackgroundImage: Bool {
     config.backgroundUIImage() != nil || !config.string("background_image").isEmpty
-  }
-
-  @ViewBuilder private var backgroundLayer: some View {
-    // 背景图只做装饰层，不参与布局测宽；否则 fill 图会撑破 ZStack，导致条形变窄/中号文字跑出可视区
-    if let image = config.backgroundUIImage() {
-      Color.clear
-        .overlay(
-          Image(uiImage: image)
-            .resizable()
-            .aspectRatio(contentMode: .fill)
-        )
-        .clipped()
-    } else if let url = URL(string: config.string("background_image")),
-              !config.string("background_image").isEmpty {
-      CompatibleRemoteImage(url: url, contentMode: .fill)
-    }
   }
 
   @ViewBuilder private var content: some View {
@@ -594,7 +602,7 @@ struct SavedWidgetTemplateView: View {
         .opacity(0.42)
     }
     .foregroundColor(config.textColor)
-    .padding(EdgeInsets(top: 10, leading: 20, bottom: 11, trailing: 20))
+    .padding(EdgeInsets(top: 10, leading: 16, bottom: 11, trailing: 16))
   }
 
   private var multiMemorialTemplate: some View {
