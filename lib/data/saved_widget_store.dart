@@ -170,7 +170,8 @@ class SavedWidgetStore extends ChangeNotifier {
     }
   }
 
-  /// [imageRef] 可为本地路径或 http(s) URL。远程图先下载再写入 App Group。
+  /// [imageRef] 可为本地路径或 http(s) URL。
+  /// 与背景列表相同：先落到 App 沙盒，再写入 App Group 供桌面读取（扩展内网络不可靠）。
   Future<void> syncBackgroundImage({
     required int widgetId,
     required String imageRef,
@@ -179,46 +180,37 @@ class SavedWidgetStore extends ChangeNotifier {
     final trimmed = imageRef.trim();
     if (trimmed.isEmpty) return;
 
-    var localPath = trimmed;
-    final isLocal =
-        trimmed.startsWith('/') ||
-        trimmed.startsWith('file://') ||
-        RegExp(r'^[A-Za-z]:[\\/]').hasMatch(trimmed);
-    if (!isLocal) {
-      try {
+    try {
+      final isLocal =
+          trimmed.startsWith('/') ||
+          trimmed.startsWith('file://') ||
+          RegExp(r'^[A-Za-z]:[\\/]').hasMatch(trimmed);
+
+      late final String localPath;
+      if (isLocal) {
+        localPath =
+            await persistLocalBackgroundCopy(
+              widgetId: widgetId,
+              sourcePath: trimmed,
+            ) ??
+            (trimmed.startsWith('file://')
+                ? Uri.parse(trimmed).toFilePath()
+                : trimmed);
+      } else {
+        // 相册 upload 得到的 URL 与背景列表 URL 同一处理
         localPath = await PetImageService.downloadToDocuments(
           PetImageService.resolveUrl(trimmed),
-          filename: 'saved_widget_bg_$widgetId.png',
+          filename: 'saved_widget_bg_$widgetId.img',
         );
-      } catch (error) {
-        debugPrint('[SavedWidgetStore] download background failed: $error');
-        // 仍尝试让原生直接拉 URL
-        await _syncBackgroundToAppGroup(widgetId, trimmed);
-        return;
       }
-    } else if (trimmed.startsWith('file://')) {
-      localPath = Uri.parse(trimmed).toFilePath();
-    }
 
-    await _syncBackgroundToAppGroup(widgetId, localPath);
-  }
-
-  Future<void> _syncBackgroundToAppGroup(int widgetId, String imageUrl) async {
-    if (!Platform.isIOS) return;
-    final trimmed = imageUrl.trim();
-    if (trimmed.isEmpty) return;
-    final isLocal =
-        trimmed.startsWith('/') ||
-        trimmed.startsWith('file://') ||
-        RegExp(r'^[A-Za-z]:[\\/]').hasMatch(trimmed);
-    try {
       await _channel.invokeMethod<void>('saveWidgetBackground', {
         'widgetId': widgetId,
-        if (isLocal) 'localImagePath': trimmed else 'imageUrl': PetImageService.resolveUrl(trimmed),
-        'authToken': AuthSessionStore.instance.token ?? '',
+        'localImagePath': localPath,
       });
     } catch (error) {
       debugPrint('[SavedWidgetStore] sync background failed: $error');
+      rethrow;
     }
   }
 

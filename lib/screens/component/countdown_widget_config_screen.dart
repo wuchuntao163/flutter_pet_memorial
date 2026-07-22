@@ -1399,16 +1399,12 @@ class _CountdownWidgetConfigScreenState
         setState(() => _backgroundImage = url);
 
         final definition = WidgetDetailScope.maybeOf(context);
-        if (definition == null || definition.id <= 0) return;
+        if (definition == null || definition.id <= 0) {
+          debugPrint('[CountdownWidget] no widget definition, skip App Group sync');
+          return;
+        }
 
-        // 相册临时路径可能很快失效：先拷到 Documents 再写入 App Group
-        final stablePath = await SavedWidgetStore.instance
-            .persistLocalBackgroundCopy(widgetId: definition.id, sourcePath: path);
-        await SavedWidgetStore.instance.syncBackgroundImage(
-          widgetId: definition.id,
-          imageRef: stablePath ?? path,
-        );
-        // 再按网络 URL 覆盖一次，保证与线上一致
+        // 与点选背景列表相同：把最终网络 URL 下载进 App Group（桌面只认这份缓存）
         await SavedWidgetStore.instance.syncBackgroundImage(
           widgetId: definition.id,
           imageRef: url,

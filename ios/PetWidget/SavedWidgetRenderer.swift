@@ -470,21 +470,13 @@ struct SavedWidgetTemplateView: View {
   let config: SavedWidgetConfiguration
 
   var body: some View {
-    // 内容决定布局；背景铺满且不参与测宽（iOS 14 兼容用 background(View)，不用 iOS 15+ 的 trailing closure）
+    // 内容决定布局；背景铺满且不参与测宽（iOS 14 兼容用 background(View)）
     content
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(
         ZStack {
           config.backgroundColor
-          if let image = config.backgroundUIImage() {
-            GeometryReader { geo in
-              Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(width: geo.size.width, height: geo.size.height)
-                .clipped()
-            }
-          }
+          widgetBackgroundImage
           if config.template == 7 && hasBackgroundImage {
             Color.black.opacity(0.16)
           }
@@ -498,6 +490,26 @@ struct SavedWidgetTemplateView: View {
 
   private var hasBackgroundImage: Bool {
     config.backgroundUIImage() != nil || !config.string("background_image").isEmpty
+  }
+
+  /// 优先 App Group 本地缓存；没有则尝试网络 URL（与背景列表同源）
+  @ViewBuilder private var widgetBackgroundImage: some View {
+    if let image = config.backgroundUIImage() {
+      GeometryReader { geo in
+        Image(uiImage: image)
+          .resizable()
+          .scaledToFill()
+          .frame(width: geo.size.width, height: geo.size.height)
+          .clipped()
+      }
+    } else if let url = URL(string: config.string("background_image")),
+              config.string("background_image").hasPrefix("http") {
+      GeometryReader { geo in
+        CompatibleRemoteImage(url: url, contentMode: .fill)
+          .frame(width: geo.size.width, height: geo.size.height)
+          .clipped()
+      }
+    }
   }
 
   @ViewBuilder private var content: some View {
