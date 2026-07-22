@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -873,7 +874,8 @@ class _CountdownWidgetConfigScreenState
           children: [
             _buildPhotoHeader(),
             const Spacer(),
-            _buildDayNumber(width: 110, height: 48, digitHeight: 44),
+            // 与简约小号天数同级字号
+            _buildDayNumber(width: 96, height: 43, digitHeight: 40),
             const Spacer(),
             Text(
               _photoDateLabel(),
@@ -891,7 +893,7 @@ class _CountdownWidgetConfigScreenState
 
   Widget _buildSimplePreview() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1388,19 +1390,27 @@ class _CountdownWidgetConfigScreenState
     try {
       final path = await PetImagePicker.pickFromGallery(context);
       if (path == null || path.isEmpty || !mounted) return;
-      // 与宠物组件一致：先 /api/base/upload + /api/pet/uploadBackground，再存网络 URL
-      // 仅存本地路径时临时文件会失效，桌面小组件读不到背景
-      final created = await BackgroundStore.instance.uploadCustomBackground(
-        localPath: path,
-        name: '组件背景',
-      );
-      if (!mounted || created == null) return;
-      final image = _backgroundUrl(created);
-      if (image.isEmpty) {
+      // 只走 /api/base/upload 拿网络 URL；同时用本地文件立刻写入 App Group，避免桌面读不到
+      final url = await PetImageService.upload(path);
+      if (!mounted) return;
+      if (url.isEmpty) {
         showCenterTip(context, '背景上传失败');
         return;
       }
-      setState(() => _backgroundImage = image);
+      setState(() => _backgroundImage = url);
+      final definition = WidgetDetailScope.maybeOf(context);
+      if (definition != null && definition.id > 0 && Platform.isIOS) {
+        try {
+          await const MethodChannel(
+            'com.example.flutterPetMemorial/widget',
+          ).invokeMethod<void>('saveWidgetBackground', {
+            'widgetId': definition.id,
+            'localImagePath': path,
+          });
+        } catch (error) {
+          debugPrint('[CountdownWidget] eager background sync failed: $error');
+        }
+      }
     } on AppPermissionDeniedException catch (error) {
       if (!mounted) return;
       await AppPermissionUtil.showDeniedDialog(context, error);

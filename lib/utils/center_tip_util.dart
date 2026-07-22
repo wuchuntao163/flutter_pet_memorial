@@ -14,7 +14,11 @@ Future<void> showCenterTip(
         WidgetsBinding.instance.addPostFrameCallback((_) => onVisible());
       }
       Future.delayed(const Duration(seconds: 2), () {
-        if (ctx.mounted) Navigator.of(ctx).pop();
+        // 只用 tip 自己的 dialog context，避免误关业务页
+        if (ctx.mounted) {
+          final nav = Navigator.of(ctx);
+          if (nav.canPop()) nav.pop();
+        }
       });
       return Center(
         child: Material(

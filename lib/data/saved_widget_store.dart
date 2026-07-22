@@ -151,7 +151,7 @@ class SavedWidgetStore extends ChangeNotifier {
 
   Future<void> _syncBackgroundToAppGroup(int widgetId, String imageUrl) async {
     if (!Platform.isIOS) return;
-    final trimmed = imageUrl.trim();
+    final trimmed = PetImageService.resolveUrl(imageUrl.trim());
     if (trimmed.isEmpty) return;
     final isLocal =
         trimmed.startsWith('/') ||

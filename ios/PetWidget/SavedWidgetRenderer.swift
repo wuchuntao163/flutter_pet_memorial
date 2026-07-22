@@ -534,9 +534,9 @@ struct SavedWidgetTemplateView: View {
       WidgetDigitNumber(
         value: config.liveMemorialDays,
         config: config,
-        digitHeight: family == .systemMedium ? 48 : 44,
-        fontSize: family == .systemMedium ? 42 : 34,
-        weight: .bold,
+        digitHeight: family == .systemMedium ? 48 : 40,
+        fontSize: family == .systemMedium ? 42 : 40,
+        weight: .semibold,
         color: config.textColor
       )
       Spacer(minLength: 0)
@@ -577,7 +577,7 @@ struct SavedWidgetTemplateView: View {
         .opacity(0.42)
     }
     .foregroundColor(config.textColor)
-    .padding(EdgeInsets(top: 10, leading: 12, bottom: 11, trailing: 12))
+    .padding(EdgeInsets(top: 10, leading: 14, bottom: 11, trailing: 14))
   }
 
   private var multiMemorialTemplate: some View {

@@ -889,6 +889,7 @@ enum WidgetChannelHandler {
 
     if !path.isEmpty {
       let ok = WidgetSync.saveWidgetBackground(widgetId: widgetId, fromPath: path)
+      if ok { WidgetSync.reloadTimelines() }
       result(ok ? true : FlutterError(
         code: "WRITE_BACKGROUND_FAILED",
         message: "写入组件背景图失败",
@@ -898,6 +899,7 @@ enum WidgetChannelHandler {
     }
     if !base64.isEmpty, let data = Data(base64Encoded: base64) {
       let ok = WidgetSync.saveWidgetBackground(widgetId: widgetId, data: data)
+      if ok { WidgetSync.reloadTimelines() }
       result(ok ? true : FlutterError(
         code: "WRITE_BACKGROUND_FAILED",
         message: "写入组件背景图失败",
@@ -911,16 +913,19 @@ enum WidgetChannelHandler {
         remoteUrl: remote,
         authToken: token
       ) { ok in
-        if ok {
-          result(true)
-        } else {
-          result(
-            FlutterError(
-              code: "WRITE_BACKGROUND_FAILED",
-              message: "下载并写入组件背景图失败",
-              details: nil
+        DispatchQueue.main.async {
+          if ok {
+            WidgetSync.reloadTimelines()
+            result(true)
+          } else {
+            result(
+              FlutterError(
+                code: "WRITE_BACKGROUND_FAILED",
+                message: "下载并写入组件背景图失败",
+                details: nil
+              )
             )
-          )
+          }
         }
       }
       return
