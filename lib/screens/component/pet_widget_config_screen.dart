@@ -48,6 +48,8 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
   int _selectedPet = 1;
   Color _customColor = const Color(0xFF98CBF2);
   String? _selectedBackgroundImage;
+  /// 相册上传后的网络地址（保存用）；预览优先本地路径避免闪色
+  String? _selectedBackgroundRemoteUrl;
   bool _backgroundPrefsLoaded = false;
   bool _backgroundSelectionInitialized = false;
   bool _apiDetailMode = false;
@@ -58,6 +60,19 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
     if (_selectedBackgroundImage != null) return _selectedBackgroundImage;
     final value = WidgetDetailScope.maybeOf(context)?.defaultBackground.trim();
     return value == null || value.isEmpty ? null : value;
+  }
+
+  String? get _backgroundImageForPersist {
+    final remote = _selectedBackgroundRemoteUrl?.trim();
+    if (remote != null && remote.isNotEmpty) return remote;
+    final current = _selectedBackgroundImage?.trim();
+    if (current == null || current.isEmpty) return null;
+    final isLocal =
+        current.startsWith('/') ||
+        current.startsWith('file://') ||
+        RegExp(r'^[A-Za-z]:[\\/]').hasMatch(current);
+    if (isLocal) return null;
+    return current;
   }
 
   @override
@@ -318,11 +333,7 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
             fit: StackFit.expand,
             children: [
               if (_effectiveBackgroundImage != null)
-                Image.network(
-                  _effectiveBackgroundImage!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                ),
+                _backgroundPreviewImage(_effectiveBackgroundImage!),
               Padding(
                 padding: const EdgeInsets.all(18),
                 child: _petImages.isEmpty
@@ -456,11 +467,34 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
                 ? null
                 : () => setState(() {
                     _selectedBackgroundImage = image;
+                    _selectedBackgroundRemoteUrl = image;
                     _backgroundSelectionInitialized = true;
                   }),
           );
         },
       ),
+    );
+  }
+
+  Widget _backgroundPreviewImage(String source) {
+    final isLocal =
+        source.startsWith('/') ||
+        source.startsWith('file://') ||
+        RegExp(r'^[A-Za-z]:[\\/]').hasMatch(source);
+    if (isLocal) {
+      final path = source.startsWith('file://')
+          ? Uri.parse(source).toFilePath()
+          : source;
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      );
+    }
+    return Image.network(
+      source,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
     );
   }
 
@@ -498,21 +532,31 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
     try {
       final path = await PetImagePicker.pickFromGallery(context);
       if (path == null || path.isEmpty || !mounted) return;
-      final created = await BackgroundStore.instance.uploadCustomBackground(
-        localPath: path,
-        name: '组件背景',
-      );
-      if (!mounted || created == null) return;
-      final image = _backgroundImageFor(created);
-      if (image.isNotEmpty) {
+      await withSavingOverlay(context, () async {
+        final created = await BackgroundStore.instance.uploadCustomBackground(
+          localPath: path,
+          name: '组件背景',
+        );
+        if (!mounted || created == null) return;
+        final image = _backgroundImageFor(created);
+        if (image.isEmpty) return;
+        // 转圈期间缓存网络图，结束后直接显示；保存时已有稳定 URL
+        await precacheImage(NetworkImage(image), context);
+        if (!mounted) return;
         setState(() {
           _selectedBackgroundImage = image;
+          _selectedBackgroundRemoteUrl = image;
           _backgroundSelectionInitialized = true;
         });
-      }
+        await WidgetsBinding.instance.endOfFrame;
+      });
     } on AppPermissionDeniedException catch (error) {
       if (!mounted) return;
       await AppPermissionUtil.showDeniedDialog(context, error);
+    } catch (error) {
+      if (!mounted) return;
+      debugPrint('[PetWidgetConfig] upload background failed: $error');
+      await showCenterTip(context, '背景上传失败');
     }
   }
 
@@ -525,6 +569,7 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
     setState(() {
       _customColor = selected;
       _selectedBackgroundImage = null;
+      _selectedBackgroundRemoteUrl = null;
       _backgroundSelectionInitialized = true;
     });
   }
@@ -565,6 +610,14 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
     try {
       await withSavingOverlay(context, () async {
         final prefs = await SharedPreferences.getInstance();
+        final persistBg = _backgroundImageForPersist;
+        if (persistBg != null &&
+            (persistBg.startsWith('http://') ||
+                persistBg.startsWith('https://'))) {
+          await precacheImage(NetworkImage(persistBg), context);
+          if (!mounted) return;
+          await WidgetsBinding.instance.endOfFrame;
+        }
         await Future.wait([
           prefs.setInt(_petKey, _selectedPet),
           prefs.setInt(_customColorKey, _customColor.toARGB32()),
@@ -572,10 +625,10 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
             _backgroundModeKey,
             _selectedBackgroundImage == null ? 'palette' : 'image',
           ),
-          if (_selectedBackgroundImage == null)
+          if (_backgroundImageForPersist == null)
             prefs.remove(_backgroundImageKey)
           else
-            prefs.setString(_backgroundImageKey, _selectedBackgroundImage!),
+            prefs.setString(_backgroundImageKey, _backgroundImageForPersist!),
         ]);
         await saveWidgetToLibrary(
           definition,
@@ -585,7 +638,7 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
                 ? _petImages[_selectedPet.clamp(0, _petImages.length - 1)]
                 : '',
             'background_color': _customColor.toARGB32(),
-            'background_image': _selectedBackgroundImage ?? '',
+            'background_image': _backgroundImageForPersist ?? '',
           },
           previewBoundaryKey: _previewBoundaryKey,
         );
@@ -643,18 +696,22 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
       _backgroundPrefsLoaded = true;
       if (_apiDetailMode) {
         _selectedBackgroundImage = null;
+        _selectedBackgroundRemoteUrl = null;
         _backgroundSelectionInitialized = true;
       } else if (backgroundMode == 'palette') {
         _selectedBackgroundImage = null;
+        _selectedBackgroundRemoteUrl = null;
         _backgroundSelectionInitialized = true;
       } else if (backgroundImage != null && backgroundImage.isNotEmpty) {
         _selectedBackgroundImage = backgroundImage;
+        _selectedBackgroundRemoteUrl = backgroundImage;
         _backgroundSelectionInitialized = true;
       } else {
         final store = BackgroundStore.instance;
         final items = store.widgetItems(1);
         if (!store.widgetListLoading(1) && items.isNotEmpty) {
           _selectedBackgroundImage = _backgroundImageFor(items.first);
+          _selectedBackgroundRemoteUrl = _selectedBackgroundImage;
           _backgroundSelectionInitialized = true;
         }
       }

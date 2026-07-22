@@ -459,23 +459,22 @@ struct SavedWidgetHomeView: View {
 
     var body: some View {
         ZStack {
-            // 假透明：有壁纸裁切则铺底；没有时依赖容器 clear + 内容无底色透出桌面
             if isTransparent {
-                if let wall = Self.wallpaperImage(for: resolvedPosition) {
-                    Color.clear
-                        .overlay(
-                            Image(uiImage: wall)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        )
-                        .clipped()
-                } else {
-                    Color.clear
+                // iOS 16 及以下才铺壁纸裁切；iOS 17+ 靠 containerBackground(clear) 真透明
+                if #unavailable(iOSApplicationExtension 17.0) {
+                    if let wall = Self.wallpaperImage(for: resolvedPosition) {
+                        Color.clear
+                            .overlay(
+                                Image(uiImage: wall)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            )
+                            .clipped()
+                    } else {
+                        Color.clear
+                    }
                 }
-            }
-
-            if isTransparent {
-                // 透明时不能用整张预览截图（含不透明底），必须实时内容且无背景
+                // 去掉纯色/相册底，才能透出桌面或露出壁纸裁切
                 SavedWidgetTemplateView(config: config, hideBackground: true)
             } else if config.needsLiveDayRender {
                 SavedWidgetTemplateView(config: config)

@@ -56,6 +56,8 @@ class _CountdownWidgetConfigScreenState
   Color _multiTitleTextColor = Colors.black;
   Color _backgroundColor = const Color(0xFF98CBF2);
   String? _backgroundImage;
+  /// 相册上传后的网络地址（与预览同源；保存优先用它）
+  String? _backgroundRemoteUrl;
   /// 用户点了背景色盘后为 true，避免仍被接口 defaultBackground 盖住
   bool _useSolidBackground = false;
   bool _backgroundReady = false;
@@ -91,6 +93,22 @@ class _CountdownWidgetConfigScreenState
     if (_backgroundImage != null) return _backgroundImage;
     final value = WidgetDetailScope.maybeOf(context)?.defaultBackground.trim();
     return value == null || value.isEmpty ? null : value;
+  }
+
+  /// 写入设置/偏好的背景图：优先网络地址
+  String? get _backgroundImageForPersist {
+    if (_useSolidBackground) return null;
+    final remote = _backgroundRemoteUrl?.trim();
+    if (remote != null && remote.isNotEmpty) return remote;
+    final current = _backgroundImage?.trim();
+    if (current == null || current.isEmpty) return null;
+    // 本地临时路径不写入偏好，避免失效
+    final isLocal =
+        current.startsWith('/') ||
+        current.startsWith('file://') ||
+        RegExp(r'^[A-Za-z]:[\\/]').hasMatch(current);
+    if (isLocal) return null;
+    return current;
   }
 
   String get _prefsPrefix => switch (widget.variant) {
@@ -1323,6 +1341,7 @@ class _CountdownWidgetConfigScreenState
                 url == _backgroundImage,
             onTap: () => setState(() {
               _useSolidBackground = false;
+              _backgroundRemoteUrl = url;
               _backgroundImage = url;
             }),
             fill: true,
@@ -1423,6 +1442,7 @@ class _CountdownWidgetConfigScreenState
       setState(() {
         _backgroundColor = color;
         _backgroundImage = null;
+        _backgroundRemoteUrl = null;
         _useSolidBackground = true;
       });
     }
@@ -1442,7 +1462,7 @@ class _CountdownWidgetConfigScreenState
       if (path == null || path.isEmpty || !mounted) return;
       await withSavingOverlay(context, () async {
         final definition = WidgetDetailScope.maybeOf(context);
-        // 倒计时类桌面走实时渲染：必须先把本地图写入 App Group，不能依赖上传后再下载
+        // 倒计时类桌面走实时渲染：先把本地图写入 App Group
         if (definition != null && definition.id > 0) {
           await SavedWidgetStore.instance.syncBackgroundImage(
             widgetId: definition.id,
@@ -1454,7 +1474,7 @@ class _CountdownWidgetConfigScreenState
           );
         }
 
-        // 与宠物组件一致：登记背景库，拿到稳定网络地址供保存
+        // 登记背景库，拿到网络地址
         final created = await BackgroundStore.instance.uploadCustomBackground(
           localPath: path,
           name: '组件背景',
@@ -1469,10 +1489,16 @@ class _CountdownWidgetConfigScreenState
           throw Exception('empty upload url');
         }
         debugPrint('[CountdownWidget] upload background url=$url');
+        // 预览只用网络图：转圈期间先缓存好，结束时直接显示，避免闪底色；
+        // 也保证此时已有可保存的网络链接，不会出现「图没加载完就保存」
+        await precacheImage(NetworkImage(url), context);
+        if (!mounted) return;
         setState(() {
           _useSolidBackground = false;
           _backgroundImage = url;
+          _backgroundRemoteUrl = url;
         });
+        await WidgetsBinding.instance.endOfFrame;
       });
     } on AppPermissionDeniedException catch (error) {
       if (!mounted) return;
@@ -1508,14 +1534,14 @@ class _CountdownWidgetConfigScreenState
     if (!mounted) return;
     await IosDesktopPetGuideDialog.show(context, liveActivityEnabled: enabled);
     if (!mounted) return;
-    // iOS 假透明：需先导入桌面空白页截图，再在「编辑小组件」里选方位
-    if (Platform.isIOS) {
+    // 仅 iOS 16 及以下需要壁纸裁切假透明；iOS 17+ 用系统真透明，选「开启透明背景」即可
+    if (Platform.isIOS && !_isIos17OrAbove) {
       final setup = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('设置透明壁纸'),
           content: const Text(
-            'iOS 无法真正镂空桌面。请先在桌面空白页截图，再选择该截图；然后长按桌面组件，在「透明位置」选择左上/右上等方位。',
+            '当前系统为 iOS 16 及以下，需用与桌面壁纸匹配的裁切图模拟透明。请先在桌面空白页截图，再选择该截图；然后长按桌面组件选择透明方位。',
           ),
           actions: [
             TextButton(
@@ -1533,6 +1559,18 @@ class _CountdownWidgetConfigScreenState
         await _setupTransparentWallpaper();
       }
     }
+  }
+
+  /// iOS 17+ 可用 WidgetKit containerBackground 真透明
+  bool get _isIos17OrAbove {
+    if (!Platform.isIOS) return false;
+    final raw = Platform.operatingSystemVersion;
+    final match = RegExp(r'Version\s+(\d+)').firstMatch(raw);
+    if (match != null) {
+      return (int.tryParse(match.group(1)!) ?? 0) >= 17;
+    }
+    final digits = RegExp(r'(\d+)').firstMatch(raw);
+    return digits != null && (int.tryParse(digits.group(1)!) ?? 0) >= 17;
   }
 
   Future<void> _setupTransparentWallpaper() async {
@@ -1566,6 +1604,15 @@ class _CountdownWidgetConfigScreenState
     try {
       await withSavingOverlay(context, () async {
         final prefs = await SharedPreferences.getInstance();
+        final persistBg = _backgroundImageForPersist;
+        // 列表/相册网络图：截图前确保已解码，避免保存时预览还是底色
+        if (persistBg != null &&
+            (persistBg.startsWith('http://') ||
+                persistBg.startsWith('https://'))) {
+          await precacheImage(NetworkImage(persistBg), context);
+          if (!mounted) return;
+          await WidgetsBinding.instance.endOfFrame;
+        }
         await Future.wait([
           if (_isMulti)
             prefs.setStringList(
@@ -1586,12 +1633,12 @@ class _CountdownWidgetConfigScreenState
             '${_prefsPrefix}_background_mode',
             _useSolidBackground ? 'palette' : 'image',
           ),
-          if (_useSolidBackground || _backgroundImage == null)
+          if (_useSolidBackground || _backgroundImageForPersist == null)
             prefs.remove('${_prefsPrefix}_background_image')
           else
             prefs.setString(
               '${_prefsPrefix}_background_image',
-              _backgroundImage!,
+              _backgroundImageForPersist!,
             ),
         ]);
         await saveWidgetToLibrary(
@@ -1630,7 +1677,7 @@ class _CountdownWidgetConfigScreenState
             'text_color': _textColor.toARGB32(),
             'text_color_selected': _hasSelectedTextColor ? '1' : '0',
             'background_color': _backgroundColor.toARGB32(),
-            'background_image': _effectiveBackgroundImage ?? '',
+            'background_image': _backgroundImageForPersist ?? '',
           },
           previewBoundaryKey: _previewBoundaryKey,
           backgroundBoundaryKey: _previewBackgroundKey,
@@ -1679,12 +1726,14 @@ class _CountdownWidgetConfigScreenState
         _backgroundColor = const Color(0xFF98CBF2);
         if (_apiDetailMode) {
           _backgroundImage = null;
+          _backgroundRemoteUrl = null;
           _useSolidBackground = false;
           _backgroundReady = true;
         } else if (!BackgroundStore.instance.widgetListLoading(1)) {
           final bgItems = BackgroundStore.instance.widgetItems(1);
           if (bgItems.isNotEmpty) {
             _backgroundImage = _backgroundUrl(bgItems.first);
+            _backgroundRemoteUrl = _backgroundImage;
           }
           _useSolidBackground = false;
           _backgroundReady = true;
@@ -1707,21 +1756,25 @@ class _CountdownWidgetConfigScreenState
       if (backgroundColor != null) _backgroundColor = Color(backgroundColor);
       if (_apiDetailMode) {
         _backgroundImage = null;
+        _backgroundRemoteUrl = null;
         _useSolidBackground = false;
         _backgroundReady = true;
       } else {
         if (backgroundMode == 'palette') {
           _backgroundImage = null;
+          _backgroundRemoteUrl = null;
           _useSolidBackground = true;
           _backgroundReady = true;
         } else if (backgroundImage != null && backgroundImage.isNotEmpty) {
           _backgroundImage = backgroundImage;
+          _backgroundRemoteUrl = backgroundImage;
           _useSolidBackground = false;
           _backgroundReady = true;
         } else if (!BackgroundStore.instance.widgetListLoading(1)) {
           final bgItems = BackgroundStore.instance.widgetItems(1);
           if (bgItems.isNotEmpty) {
             _backgroundImage = _backgroundUrl(bgItems.first);
+            _backgroundRemoteUrl = _backgroundImage;
           }
           _useSolidBackground = false;
           _backgroundReady = true;
