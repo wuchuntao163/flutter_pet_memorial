@@ -419,15 +419,27 @@ struct PetWidgetEntryView: View {
     }
 }
 
-/// iOS 17+ 需要显式声明容器背景，否则系统默认浅色底会露在 content margin 里。
+/// iOS 17+：透明容器背景 + 清零系统 content margins，避免高版本白边；低版本无改动。
 private extension View {
     @ViewBuilder
     func petWidgetContainerBackground() -> some View {
         if #available(iOSApplicationExtension 17.0, *) {
-            containerBackground(for: .widget) { Color.clear }
+            modifier(PetWidgetFullBleedModifier())
         } else {
             self
         }
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+private struct PetWidgetFullBleedModifier: ViewModifier {
+    @Environment(\.widgetContentMargins) private var margins
+
+    func body(content: Content) -> some View {
+        content
+            // 用负 padding 抵消系统默认边距（等价于 configuration.contentMarginsDisabled）
+            .padding(-margins)
+            .containerBackground(for: .widget) { Color.clear }
     }
 }
 
@@ -604,40 +616,5 @@ struct HomeScreenPetWidgetMedium: Widget {
         .configurationDisplayName("中号")
         .description("选择你要添加的组件尺寸添加到桌面")
         .supportedFamilies([.systemMedium])
-    }
-}
-
-/// iOS 17+：关闭系统默认 content margins，避免高版本出现白边；kind 与上方一致以保留已添加组件。
-@available(iOSApplicationExtension 17.0, *)
-struct HomeScreenPetWidgetSmallNoMargins: Widget {
-    var body: some WidgetConfiguration {
-        IntentConfiguration(
-            kind: "PetWidgetSmall",
-            intent: SelectSmallSavedWidgetIntent.self,
-            provider: PetWidgetSmallIntentProvider()
-        ) { entry in
-            PetWidgetEntryView(entry: entry)
-        }
-        .configurationDisplayName("小号")
-        .description("选择你要添加的组件尺寸添加到桌面")
-        .supportedFamilies([.systemSmall])
-        .contentMarginsDisabled()
-    }
-}
-
-@available(iOSApplicationExtension 17.0, *)
-struct HomeScreenPetWidgetMediumNoMargins: Widget {
-    var body: some WidgetConfiguration {
-        IntentConfiguration(
-            kind: "PetWidgetMedium",
-            intent: SelectMediumSavedWidgetIntent.self,
-            provider: PetWidgetMediumIntentProvider()
-        ) { entry in
-            PetWidgetEntryView(entry: entry)
-        }
-        .configurationDisplayName("中号")
-        .description("选择你要添加的组件尺寸添加到桌面")
-        .supportedFamilies([.systemMedium])
-        .contentMarginsDisabled()
     }
 }
