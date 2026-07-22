@@ -545,7 +545,7 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
               margin: const EdgeInsets.symmetric(vertical: 2),
               padding: const EdgeInsets.symmetric(horizontal: 9),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .9),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(7),
               ),
               child: Row(

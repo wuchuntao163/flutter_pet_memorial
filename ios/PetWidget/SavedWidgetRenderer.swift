@@ -623,14 +623,15 @@ struct SavedWidgetTemplateView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: rowHeight)
-        .background(Color(red: 0.933, green: 0.941, blue: 0.949))
+        .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 8))
       }
     }
     .padding(
       isMedium
         ? EdgeInsets(top: 12, leading: 10, bottom: 12, trailing: 10)
-        : EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+        // 小号多留边，避免条形框贴齐组件圆角边缘
+        : EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
     )
   }
 

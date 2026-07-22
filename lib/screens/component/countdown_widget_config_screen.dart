@@ -778,7 +778,11 @@ class _CountdownWidgetConfigScreenState
             if (_effectiveBackgroundImage != null)
               _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover),
             Padding(
-              padding: EdgeInsets.all(_isMedium ? 10 : 8),
+              // 小号左右多留边，避免条形框贴齐组件边缘
+              padding: EdgeInsets.symmetric(
+                horizontal: _isMedium ? 10 : 14,
+                vertical: _isMedium ? 10 : 10,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -808,8 +812,8 @@ class _CountdownWidgetConfigScreenState
       height: _isMedium ? 29 : 32,
       padding: const EdgeInsets.only(right: 7),
       decoration: BoxDecoration(
-        // 不透明浅灰，避免半透明白底
-        color: const Color(0xFFEEF0F2),
+        // 名称区域：不透明白底
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
