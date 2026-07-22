@@ -63,77 +63,34 @@ private enum LiveActivityShared {
   }
 }
 
-/// 可在部署目标 < 16.2 的 WidgetBundle 中无条件注册；
-/// 真实 Live Activity UI 仅在 iOS 16.2+ 生效。
+@available(iOS 16.2, *)
 struct PetLiveActivityWidget: Widget {
   var body: some WidgetConfiguration {
-    if #available(iOS 16.2, *) {
-      ActivityConfiguration(for: PetLiveActivityAttributes.self) { context in
-        LiveActivityViews.lockScreenView(context: context)
-          .activityBackgroundTint(Color.orange.opacity(0.12))
-          .activitySystemActionForegroundColor(Color.primary)
-      } dynamicIsland: { context in
-        DynamicIsland {
-          DynamicIslandExpandedRegion(.bottom) {
-            LiveActivityViews.expandedContent(context: context)
-          }
-        } compactLeading: {
-          LiveActivityViews.compactPetImageView(size: 28)
-            .id(context.state.imageRevision)
-        } compactTrailing: {
-          LiveActivityViews.fourCloverImageView(size: 22)
-            .id(context.state.imageRevision)
-        } minimal: {
-          LiveActivityViews.compactPetImageView(size: 22)
-            .id(context.state.imageRevision)
+    ActivityConfiguration(for: PetLiveActivityAttributes.self) { context in
+      lockScreenView(context: context)
+        .activityBackgroundTint(Color.orange.opacity(0.12))
+        .activitySystemActionForegroundColor(Color.primary)
+    } dynamicIsland: { context in
+      DynamicIsland {
+        DynamicIslandExpandedRegion(.bottom) {
+          expandedContent(context: context)
         }
-        .keylineTint(Color.orange.opacity(0.8))
+      } compactLeading: {
+        compactPetImageView(size: 28)
+          .id(context.state.imageRevision)
+      } compactTrailing: {
+        fourCloverImageView(size: 22)
+          .id(context.state.imageRevision)
+      } minimal: {
+        compactPetImageView(size: 22)
+          .id(context.state.imageRevision)
       }
-    } else {
-      // 低版本占位：不进入小组件库可见列表
-      StaticConfiguration(
-        kind: "PetLiveActivityWidget.unsupported",
-        provider: UnsupportedLiveActivityProvider()
-      ) { _ in
-        EmptyView()
-      }
-      .supportedFamilies([])
+      .keylineTint(Color.orange.opacity(0.8))
     }
   }
-}
 
-private struct UnsupportedLiveActivityEntry: TimelineEntry {
-  let date: Date
-}
-
-private struct UnsupportedLiveActivityProvider: TimelineProvider {
-  func placeholder(in context: Context) -> UnsupportedLiveActivityEntry {
-    UnsupportedLiveActivityEntry(date: Date())
-  }
-
-  func getSnapshot(
-    in context: Context,
-    completion: @escaping (UnsupportedLiveActivityEntry) -> Void
-  ) {
-    completion(UnsupportedLiveActivityEntry(date: Date()))
-  }
-
-  func getTimeline(
-    in context: Context,
-    completion: @escaping (Timeline<UnsupportedLiveActivityEntry>) -> Void
-  ) {
-    completion(
-      Timeline(entries: [UnsupportedLiveActivityEntry(date: Date())], policy: .never)
-    )
-  }
-}
-
-@available(iOS 16.2, *)
-private enum LiveActivityViews {
   @ViewBuilder
-  static func expandedContent(
-    context: ActivityViewContext<PetLiveActivityAttributes>
-  ) -> some View {
+  private func expandedContent(context: ActivityViewContext<PetLiveActivityAttributes>) -> some View {
     HStack(alignment: .center, spacing: 12) {
       petImageView(size: 56)
         .id(context.state.imageRevision)
@@ -153,9 +110,7 @@ private enum LiveActivityViews {
   }
 
   @ViewBuilder
-  static func lockScreenView(
-    context: ActivityViewContext<PetLiveActivityAttributes>
-  ) -> some View {
+  private func lockScreenView(context: ActivityViewContext<PetLiveActivityAttributes>) -> some View {
     HStack(alignment: .center, spacing: 14) {
       petImageView(size: 60)
         .id(context.state.imageRevision)
@@ -175,7 +130,7 @@ private enum LiveActivityViews {
   }
 
   @ViewBuilder
-  static func compactPetImageView(size: CGFloat) -> some View {
+  private func compactPetImageView(size: CGFloat) -> some View {
     if let image = LiveActivityShared.loadCompactPetImage() {
       islandCompactImage(uiImage: image, size: size, cornerRadius: size * 0.22)
     } else {
@@ -187,7 +142,7 @@ private enum LiveActivityViews {
   }
 
   @ViewBuilder
-  static func fourCloverImageView(size: CGFloat) -> some View {
+  private func fourCloverImageView(size: CGFloat) -> some View {
     if let image = LiveActivityShared.loadCompactCloverImage() {
       islandCompactImage(uiImage: image, size: size, cornerRadius: size * 0.18)
     } else {
@@ -199,7 +154,7 @@ private enum LiveActivityViews {
   }
 
   @ViewBuilder
-  static func islandCompactImage(
+  private func islandCompactImage(
     uiImage: UIImage,
     size: CGFloat,
     cornerRadius: CGFloat
@@ -214,7 +169,7 @@ private enum LiveActivityViews {
   }
 
   @ViewBuilder
-  static func petImageView(size: CGFloat) -> some View {
+  private func petImageView(size: CGFloat) -> some View {
     if let image = LiveActivityShared.loadCachedPetImage() {
       Image(uiImage: image)
         .resizable()
