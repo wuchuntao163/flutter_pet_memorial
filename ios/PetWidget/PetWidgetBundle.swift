@@ -12,9 +12,9 @@ struct PetWidgetBundle: WidgetBundle {
         // IntentConfiguration：添加后先显示引导，长按可「编辑小组件」
         HomeScreenPetWidgetSmall()
         HomeScreenPetWidgetMedium()
-#if swift(>=5.9)
-        // Live Activity 需 iOS 16.2+；仅在较新工具链注册
-        PetLiveActivityWidget()
-#endif
+        // Live Activity / Dynamic Island 仅 iOS 16.2+
+        if #available(iOS 16.2, *) {
+            PetLiveActivityWidget()
+        }
     }
 }
