@@ -731,7 +731,10 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
                   ? const Center(
                       child: Text('0', style: TextStyle(fontSize: 18)),
                     )
-                  : Image.network(preview, fit: BoxFit.cover),
+                  : Padding(
+                      padding: const EdgeInsets.all(5),
+                      child: Image.network(preview, fit: BoxFit.contain),
+                    ),
             ),
           );
         },
@@ -998,6 +1001,7 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
     final value = await showComponentColorPicker(
       context,
       initialColor: _textColor,
+      title: '选择文字颜色',
     );
     if (value != null && mounted) setState(() => _textColor = value);
   }
@@ -1006,6 +1010,7 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
     final value = await showComponentColorPicker(
       context,
       initialColor: _backgroundColor,
+      title: '选择背景颜色',
     );
     if (value != null && mounted) {
       setState(() {

@@ -477,19 +477,9 @@ struct SavedWidgetTemplateView: View {
         ZStack {
           config.backgroundColor
           widgetBackgroundImage
-          if config.template == 7 && hasBackgroundImage {
-            Color.black.opacity(0.16)
-          }
-          if config.template == 3 && hasBackgroundImage {
-            Color.white.opacity(0.18)
-          }
         }
       )
       .clipped()
-  }
-
-  private var hasBackgroundImage: Bool {
-    config.backgroundUIImage() != nil || !config.string("background_image").isEmpty
   }
 
   /// 优先 App Group 本地缓存；没有则尝试网络 URL（与背景列表同源）

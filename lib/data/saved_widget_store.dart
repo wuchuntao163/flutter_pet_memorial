@@ -82,9 +82,12 @@ class SavedWidgetStore extends ChangeNotifier {
     }
 
     // 背景图：网络地址先由 Flutter 下载到本地，再写入 App Group（Widget 扩展网络不可靠）
+    // 纯色色盘：清空 background_image，并删掉旧的 App Group 背景文件，否则会盖住 background_color
     final bg = '${mergedSettings['background_image'] ?? ''}'.trim();
     if (bg.isNotEmpty) {
       await syncBackgroundImage(widgetId: definition.id, imageRef: bg);
+    } else {
+      await clearBackgroundImage(widgetId: definition.id);
     }
 
     // 自定义数字字体 0–9 → 小组件实时天数
@@ -167,6 +170,17 @@ class SavedWidgetStore extends ChangeNotifier {
     } catch (error) {
       debugPrint('[SavedWidgetStore] persistLocalBackgroundCopy failed: $error');
       return null;
+    }
+  }
+
+  Future<void> clearBackgroundImage({required int widgetId}) async {
+    if (!Platform.isIOS || widgetId <= 0) return;
+    try {
+      await _channel.invokeMethod<void>('clearWidgetBackground', {
+        'widgetId': widgetId,
+      });
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] clear background failed: $error');
     }
   }
 

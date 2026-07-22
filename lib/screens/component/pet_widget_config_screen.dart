@@ -22,10 +22,12 @@ import '../../widgets/common/widget_detail_scope.dart';
 Future<Color?> showComponentColorPicker(
   BuildContext context, {
   required Color initialColor,
+  String title = '选择背景颜色',
 }) {
   return showDialog<Color>(
     context: context,
-    builder: (context) => _ColorPickerDialog(initialColor: initialColor),
+    builder: (context) =>
+        _ColorPickerDialog(initialColor: initialColor, title: title),
   );
 }
 
@@ -662,8 +664,12 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
 
 class _ColorPickerDialog extends StatefulWidget {
   final Color initialColor;
+  final String title;
 
-  const _ColorPickerDialog({required this.initialColor});
+  const _ColorPickerDialog({
+    required this.initialColor,
+    this.title = '选择背景颜色',
+  });
 
   @override
   State<_ColorPickerDialog> createState() => _ColorPickerDialogState();
@@ -699,9 +705,9 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              '选择背景颜色',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            Text(
+              widget.title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 14),
             _buildSaturationValuePanel(),

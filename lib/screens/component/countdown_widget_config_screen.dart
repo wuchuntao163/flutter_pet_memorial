@@ -56,6 +56,8 @@ class _CountdownWidgetConfigScreenState
   Color _multiTitleTextColor = Colors.black;
   Color _backgroundColor = const Color(0xFF98CBF2);
   String? _backgroundImage;
+  /// 用户点了背景色盘后为 true，避免仍被接口 defaultBackground 盖住
+  bool _useSolidBackground = false;
   bool _backgroundReady = false;
   bool _showAllMemorials = false;
   bool _fontSelectionInitialized = false;
@@ -84,6 +86,7 @@ class _CountdownWidgetConfigScreenState
   }
 
   String? get _effectiveBackgroundImage {
+    if (_useSolidBackground) return null;
     if (_backgroundImage != null) return _backgroundImage;
     final value = WidgetDetailScope.maybeOf(context)?.defaultBackground.trim();
     return value == null || value.isEmpty ? null : value;
@@ -327,7 +330,13 @@ class _CountdownWidgetConfigScreenState
                             )
                             ? 'text_style'
                             : 'text_color',
-                        '文字样式',
+                        widgetOptionEnabled(
+                              context,
+                              'text_style',
+                              fallback: false,
+                            )
+                            ? '文字样式'
+                            : '选择文字颜色',
                       ),
                       style: const TextStyle(
                         fontSize: 15,
@@ -544,9 +553,6 @@ class _CountdownWidgetConfigScreenState
           children: [
             if (_effectiveBackgroundImage != null)
               _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover),
-            Container(
-              color: simple ? Colors.white.withValues(alpha: 0.18) : null,
-            ),
             if (simple) _buildSimplePreview() else _buildPhotoPreview(),
           ],
         ),
@@ -569,7 +575,6 @@ class _CountdownWidgetConfigScreenState
           children: [
             if (_effectiveBackgroundImage != null)
               _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover),
-            Container(color: Colors.black.withValues(alpha: 0.16)),
             Padding(
               padding: const EdgeInsets.fromLTRB(15, 10, 15, 8),
               child: Column(
@@ -1171,10 +1176,18 @@ class _CountdownWidgetConfigScreenState
                     ),
                   )
                 : ClipOval(
-                    child: SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: Image.network(preview, fit: BoxFit.cover),
+                    child: ColoredBox(
+                      color: Colors.white,
+                      child: Padding(
+                        // 略缩进，避免圆形裁切吃掉数字描边
+                        padding: const EdgeInsets.all(5),
+                        child: Image.network(
+                          preview,
+                          width: 38,
+                          height: 38,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
                   ),
           );
@@ -1276,7 +1289,7 @@ class _CountdownWidgetConfigScreenState
           }
           if (index == 1) {
             return _roundOption(
-              selected: !_apiDetailMode && _backgroundImage == null,
+              selected: _useSolidBackground,
               onTap: _pickBackgroundColor,
               fill: true,
               child: const _PaletteCircle(size: 48),
@@ -1284,8 +1297,14 @@ class _CountdownWidgetConfigScreenState
           }
           final url = _backgroundUrl(items[index - 2]);
           return _roundOption(
-            selected: url.isNotEmpty && url == _backgroundImage,
-            onTap: () => setState(() => _backgroundImage = url),
+            selected:
+                !_useSolidBackground &&
+                url.isNotEmpty &&
+                url == _backgroundImage,
+            onTap: () => setState(() {
+              _useSolidBackground = false;
+              _backgroundImage = url;
+            }),
             fill: true,
             child: ClipOval(
               child: Image.network(
@@ -1366,24 +1385,35 @@ class _CountdownWidgetConfigScreenState
   }
 
   Future<void> _pickTextColor() async {
-    final color = await _pickColor(_textColor);
+    final color = await _pickColor(
+      _textColor,
+      title: '选择文字颜色',
+    );
     if (color != null && mounted) {
       setState(() => _applyOverallTextColor(color));
     }
   }
 
   Future<void> _pickBackgroundColor() async {
-    final color = await _pickColor(_backgroundColor);
+    final color = await _pickColor(
+      _backgroundColor,
+      title: '选择背景颜色',
+    );
     if (color != null && mounted) {
       setState(() {
         _backgroundColor = color;
         _backgroundImage = null;
+        _useSolidBackground = true;
       });
     }
   }
 
-  Future<Color?> _pickColor(Color initial) {
-    return showComponentColorPicker(context, initialColor: initial);
+  Future<Color?> _pickColor(Color initial, {required String title}) {
+    return showComponentColorPicker(
+      context,
+      initialColor: initial,
+      title: title,
+    );
   }
 
   Future<void> _pickBackground() async {
@@ -1392,11 +1422,15 @@ class _CountdownWidgetConfigScreenState
       if (path == null || path.isEmpty || !mounted) return;
       await withSavingOverlay(context, () async {
         final url = await PetImageService.upload(path);
+        // debugPrint('[CountdownWidget] upload background url=$url');
         if (!mounted) return;
         if (url.isEmpty) {
           throw Exception('empty upload url');
         }
-        setState(() => _backgroundImage = url);
+        setState(() {
+          _useSolidBackground = false;
+          _backgroundImage = url;
+        });
 
         final definition = WidgetDetailScope.maybeOf(context);
         if (definition == null || definition.id <= 0) {
@@ -1469,9 +1503,9 @@ class _CountdownWidgetConfigScreenState
           ),
           prefs.setString(
             '${_prefsPrefix}_background_mode',
-            _backgroundImage == null ? 'palette' : 'image',
+            _useSolidBackground ? 'palette' : 'image',
           ),
-          if (_backgroundImage == null)
+          if (_useSolidBackground || _backgroundImage == null)
             prefs.remove('${_prefsPrefix}_background_image')
           else
             prefs.setString(
@@ -1563,12 +1597,14 @@ class _CountdownWidgetConfigScreenState
         _backgroundColor = const Color(0xFF98CBF2);
         if (_apiDetailMode) {
           _backgroundImage = null;
+          _useSolidBackground = false;
           _backgroundReady = true;
         } else if (!BackgroundStore.instance.widgetListLoading(1)) {
           final bgItems = BackgroundStore.instance.widgetItems(1);
           if (bgItems.isNotEmpty) {
             _backgroundImage = _backgroundUrl(bgItems.first);
           }
+          _useSolidBackground = false;
           _backgroundReady = true;
         }
         return;
@@ -1589,19 +1625,23 @@ class _CountdownWidgetConfigScreenState
       if (backgroundColor != null) _backgroundColor = Color(backgroundColor);
       if (_apiDetailMode) {
         _backgroundImage = null;
+        _useSolidBackground = false;
         _backgroundReady = true;
       } else {
         if (backgroundMode == 'palette') {
           _backgroundImage = null;
+          _useSolidBackground = true;
           _backgroundReady = true;
         } else if (backgroundImage != null && backgroundImage.isNotEmpty) {
           _backgroundImage = backgroundImage;
+          _useSolidBackground = false;
           _backgroundReady = true;
         } else if (!BackgroundStore.instance.widgetListLoading(1)) {
           final bgItems = BackgroundStore.instance.widgetItems(1);
           if (bgItems.isNotEmpty) {
             _backgroundImage = _backgroundUrl(bgItems.first);
           }
+          _useSolidBackground = false;
           _backgroundReady = true;
         }
       }

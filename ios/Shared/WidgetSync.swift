@@ -295,6 +295,13 @@ enum WidgetSync {
     )
   }
 
+  static func removeWidgetBackground(widgetId: Int) {
+    guard widgetId > 0, let container = appGroupContainer() else { return }
+    let url = container.appendingPathComponent(backgroundFileName(widgetId: widgetId))
+    try? FileManager.default.removeItem(at: url)
+    NSLog("[SavedBackground] removed background for widgetId=\(widgetId)")
+  }
+
   static func saveWidgetBackground(widgetId: Int, fromPath path: String) -> Bool {
     let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return false }
@@ -765,6 +772,8 @@ enum WidgetChannelHandler {
         handleSaveWidgetPreview(call: call, result: result)
       case "saveWidgetBackground":
         handleSaveWidgetBackground(call: call, result: result)
+      case "clearWidgetBackground":
+        handleClearWidgetBackground(call: call, result: result)
       case "saveWidgetDigits":
         handleSaveWidgetDigits(call: call, result: result)
       case "clearWidgetDigits":
@@ -791,6 +800,19 @@ enum WidgetChannelHandler {
       ?? Int(args["widgetId"] as? String ?? "")
       ?? 0
     WidgetSync.removeWidgetPreview(widgetId: widgetId)
+    WidgetSync.reloadTimelines()
+    result(true)
+  }
+
+  private static func handleClearWidgetBackground(
+    call: FlutterMethodCall,
+    result: @escaping FlutterResult
+  ) {
+    let args = call.arguments as? [String: Any] ?? [:]
+    let widgetId = args["widgetId"] as? Int
+      ?? Int(args["widgetId"] as? String ?? "")
+      ?? 0
+    WidgetSync.removeWidgetBackground(widgetId: widgetId)
     WidgetSync.reloadTimelines()
     result(true)
   }
