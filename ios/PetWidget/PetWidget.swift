@@ -410,11 +410,24 @@ struct PetWidgetEntryView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .petWidgetContainerBackground()
     }
 
     private var resolvedConfig: SavedWidgetConfiguration? {
         guard let widgetId = entry.widgetId else { return nil }
         return SavedWidgetConfiguration.loadAll().first { $0.widgetId == widgetId }
+    }
+}
+
+/// iOS 17+ 需要显式声明容器背景，否则系统默认浅色底会露在 content margin 里。
+private extension View {
+    @ViewBuilder
+    func petWidgetContainerBackground() -> some View {
+        if #available(iOSApplicationExtension 17.0, *) {
+            containerBackground(for: .widget) { Color.clear }
+        } else {
+            self
+        }
     }
 }
 
@@ -591,5 +604,40 @@ struct HomeScreenPetWidgetMedium: Widget {
         .configurationDisplayName("中号")
         .description("选择你要添加的组件尺寸添加到桌面")
         .supportedFamilies([.systemMedium])
+    }
+}
+
+/// iOS 17+：关闭系统默认 content margins，避免高版本出现白边；kind 与上方一致以保留已添加组件。
+@available(iOSApplicationExtension 17.0, *)
+struct HomeScreenPetWidgetSmallNoMargins: Widget {
+    var body: some WidgetConfiguration {
+        IntentConfiguration(
+            kind: "PetWidgetSmall",
+            intent: SelectSmallSavedWidgetIntent.self,
+            provider: PetWidgetSmallIntentProvider()
+        ) { entry in
+            PetWidgetEntryView(entry: entry)
+        }
+        .configurationDisplayName("小号")
+        .description("选择你要添加的组件尺寸添加到桌面")
+        .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct HomeScreenPetWidgetMediumNoMargins: Widget {
+    var body: some WidgetConfiguration {
+        IntentConfiguration(
+            kind: "PetWidgetMedium",
+            intent: SelectMediumSavedWidgetIntent.self,
+            provider: PetWidgetMediumIntentProvider()
+        ) { entry in
+            PetWidgetEntryView(entry: entry)
+        }
+        .configurationDisplayName("中号")
+        .description("选择你要添加的组件尺寸添加到桌面")
+        .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
