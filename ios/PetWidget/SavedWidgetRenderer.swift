@@ -470,18 +470,20 @@ struct SavedWidgetTemplateView: View {
   let config: SavedWidgetConfiguration
 
   var body: some View {
-    // 内容决定布局；背景用 background 铺满，避免 fill 图撑破测宽，也避免 Color.clear 层尺寸为 0
+    // 内容决定布局；背景铺满且不参与测宽（iOS 14 兼容用 background(View)，不用 iOS 15+ 的 trailing closure）
     content
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .background {
+      .background(
         ZStack {
           config.backgroundColor
           if let image = config.backgroundUIImage() {
-            Image(uiImage: image)
-              .resizable()
-              .scaledToFill()
-              .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-              .clipped()
+            GeometryReader { geo in
+              Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: geo.size.width, height: geo.size.height)
+                .clipped()
+            }
           }
           if config.template == 7 && hasBackgroundImage {
             Color.black.opacity(0.16)
@@ -490,7 +492,7 @@ struct SavedWidgetTemplateView: View {
             Color.white.opacity(0.18)
           }
         }
-      }
+      )
       .clipped()
   }
 
