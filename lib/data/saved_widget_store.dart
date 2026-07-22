@@ -151,10 +151,16 @@ class SavedWidgetStore extends ChangeNotifier {
 
   Future<void> _syncBackgroundToAppGroup(int widgetId, String imageUrl) async {
     if (!Platform.isIOS) return;
+    final trimmed = imageUrl.trim();
+    if (trimmed.isEmpty) return;
+    final isLocal =
+        trimmed.startsWith('/') ||
+        trimmed.startsWith('file://') ||
+        RegExp(r'^[A-Za-z]:[\\/]').hasMatch(trimmed);
     try {
       await _channel.invokeMethod<void>('saveWidgetBackground', {
         'widgetId': widgetId,
-        'imageUrl': imageUrl,
+        if (isLocal) 'localImagePath': trimmed else 'imageUrl': trimmed,
         'authToken': AuthSessionStore.instance.token ?? '',
       });
     } catch (error) {

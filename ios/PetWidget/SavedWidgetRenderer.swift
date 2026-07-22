@@ -629,9 +629,9 @@ struct SavedWidgetTemplateView: View {
     }
     .padding(
       isMedium
-        ? EdgeInsets(top: 12, leading: 10, bottom: 12, trailing: 10)
-        // 小号多留边，避免条形框贴齐组件圆角边缘
-        : EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
+        // 中号条形框略收窄
+        ? EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
+        : EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
     )
   }
 

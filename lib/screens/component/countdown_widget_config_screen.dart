@@ -778,11 +778,7 @@ class _CountdownWidgetConfigScreenState
             if (_effectiveBackgroundImage != null)
               _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover),
             Padding(
-              // 小号左右多留边，避免条形框贴齐组件边缘
-              padding: EdgeInsets.symmetric(
-                horizontal: _isMedium ? 10 : 14,
-                vertical: _isMedium ? 10 : 10,
-              ),
+              padding: EdgeInsets.all(_isMedium ? 16 : 8),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -1392,10 +1388,26 @@ class _CountdownWidgetConfigScreenState
     try {
       final path = await PetImagePicker.pickFromGallery(context);
       if (path == null || path.isEmpty || !mounted) return;
-      setState(() => _backgroundImage = path);
+      // 与宠物组件一致：先 /api/base/upload + /api/pet/uploadBackground，再存网络 URL
+      // 仅存本地路径时临时文件会失效，桌面小组件读不到背景
+      final created = await BackgroundStore.instance.uploadCustomBackground(
+        localPath: path,
+        name: '组件背景',
+      );
+      if (!mounted || created == null) return;
+      final image = _backgroundUrl(created);
+      if (image.isEmpty) {
+        showCenterTip(context, '背景上传失败');
+        return;
+      }
+      setState(() => _backgroundImage = image);
     } on AppPermissionDeniedException catch (error) {
       if (!mounted) return;
       await AppPermissionUtil.showDeniedDialog(context, error);
+    } catch (error) {
+      if (!mounted) return;
+      showCenterTip(context, '背景上传失败');
+      debugPrint('[CountdownWidget] upload background failed: $error');
     }
   }
 
