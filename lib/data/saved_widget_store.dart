@@ -81,10 +81,10 @@ class SavedWidgetStore extends ChangeNotifier {
       }
     }
 
-    // 背景图单独缓存到 App Group，桌面实时组件用（不依赖小组件内网络）
+    // 背景图：网络地址先由 Flutter 下载到本地，再写入 App Group（Widget 扩展网络不可靠）
     final bg = '${mergedSettings['background_image'] ?? ''}'.trim();
     if (bg.isNotEmpty) {
-      await _syncBackgroundToAppGroup(definition.id, bg);
+      await syncBackgroundImage(widgetId: definition.id, imageRef: bg);
     }
 
     // 自定义数字字体 0–9 → 小组件实时天数
@@ -149,9 +149,42 @@ class SavedWidgetStore extends ChangeNotifier {
     }
   }
 
+  /// [imageRef] 可为本地路径或 http(s) URL。远程图先下载再写入 App Group。
+  Future<void> syncBackgroundImage({
+    required int widgetId,
+    required String imageRef,
+  }) async {
+    if (!Platform.isIOS || widgetId <= 0) return;
+    final trimmed = imageRef.trim();
+    if (trimmed.isEmpty) return;
+
+    var localPath = trimmed;
+    final isLocal =
+        trimmed.startsWith('/') ||
+        trimmed.startsWith('file://') ||
+        RegExp(r'^[A-Za-z]:[\\/]').hasMatch(trimmed);
+    if (!isLocal) {
+      try {
+        localPath = await PetImageService.downloadToDocuments(
+          PetImageService.resolveUrl(trimmed),
+          filename: 'saved_widget_bg_$widgetId.png',
+        );
+      } catch (error) {
+        debugPrint('[SavedWidgetStore] download background failed: $error');
+        // 仍尝试让原生直接拉 URL
+        await _syncBackgroundToAppGroup(widgetId, trimmed);
+        return;
+      }
+    } else if (trimmed.startsWith('file://')) {
+      localPath = Uri.parse(trimmed).toFilePath();
+    }
+
+    await _syncBackgroundToAppGroup(widgetId, localPath);
+  }
+
   Future<void> _syncBackgroundToAppGroup(int widgetId, String imageUrl) async {
     if (!Platform.isIOS) return;
-    final trimmed = PetImageService.resolveUrl(imageUrl.trim());
+    final trimmed = imageUrl.trim();
     if (trimmed.isEmpty) return;
     final isLocal =
         trimmed.startsWith('/') ||
@@ -160,7 +193,7 @@ class SavedWidgetStore extends ChangeNotifier {
     try {
       await _channel.invokeMethod<void>('saveWidgetBackground', {
         'widgetId': widgetId,
-        if (isLocal) 'localImagePath': trimmed else 'imageUrl': trimmed,
+        if (isLocal) 'localImagePath': trimmed else 'imageUrl': PetImageService.resolveUrl(trimmed),
         'authToken': AuthSessionStore.instance.token ?? '',
       });
     } catch (error) {

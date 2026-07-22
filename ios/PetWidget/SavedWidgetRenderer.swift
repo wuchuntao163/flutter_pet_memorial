@@ -455,6 +455,7 @@ struct SavedWidgetTemplateView: View {
       }
       content
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
   }
 
@@ -467,9 +468,13 @@ struct SavedWidgetTemplateView: View {
       Image(uiImage: image)
         .resizable()
         .aspectRatio(contentMode: .fill)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
     } else if let url = URL(string: config.string("background_image")),
               !config.string("background_image").isEmpty {
       CompatibleRemoteImage(url: url, contentMode: .fill)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
     }
   }
 
@@ -577,7 +582,7 @@ struct SavedWidgetTemplateView: View {
         .opacity(0.42)
     }
     .foregroundColor(config.textColor)
-    .padding(EdgeInsets(top: 10, leading: 14, bottom: 11, trailing: 14))
+    .padding(EdgeInsets(top: 10, leading: 20, bottom: 11, trailing: 20))
   }
 
   private var multiMemorialTemplate: some View {

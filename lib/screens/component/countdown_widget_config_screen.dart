@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,6 +10,7 @@ import '../../config/layout.dart';
 import '../../data/background_store.dart';
 import '../../data/font_style_store.dart';
 import '../../data/memorial_store.dart';
+import '../../data/saved_widget_store.dart';
 import '../../models/font_style_config.dart';
 import '../../models/memorial_day.dart';
 import '../../router/app_routes.dart';
@@ -893,7 +893,7 @@ class _CountdownWidgetConfigScreenState
 
   Widget _buildSimplePreview() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 11),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1390,27 +1390,22 @@ class _CountdownWidgetConfigScreenState
     try {
       final path = await PetImagePicker.pickFromGallery(context);
       if (path == null || path.isEmpty || !mounted) return;
-      // 只走 /api/base/upload 拿网络 URL；同时用本地文件立刻写入 App Group，避免桌面读不到
-      final url = await PetImageService.upload(path);
-      if (!mounted) return;
-      if (url.isEmpty) {
-        showCenterTip(context, '背景上传失败');
-        return;
-      }
-      setState(() => _backgroundImage = url);
-      final definition = WidgetDetailScope.maybeOf(context);
-      if (definition != null && definition.id > 0 && Platform.isIOS) {
-        try {
-          await const MethodChannel(
-            'com.example.flutterPetMemorial/widget',
-          ).invokeMethod<void>('saveWidgetBackground', {
-            'widgetId': definition.id,
-            'localImagePath': path,
-          });
-        } catch (error) {
-          debugPrint('[CountdownWidget] eager background sync failed: $error');
+      await withSavingOverlay(context, () async {
+        // 只走 /api/base/upload；再用本地文件写入 App Group（桌面扩展几乎不能靠网络图）
+        final url = await PetImageService.upload(path);
+        if (!mounted) return;
+        if (url.isEmpty) {
+          throw Exception('empty upload url');
         }
-      }
+        setState(() => _backgroundImage = url);
+        final definition = WidgetDetailScope.maybeOf(context);
+        if (definition != null && definition.id > 0) {
+          await SavedWidgetStore.instance.syncBackgroundImage(
+            widgetId: definition.id,
+            imageRef: path,
+          );
+        }
+      });
     } on AppPermissionDeniedException catch (error) {
       if (!mounted) return;
       await AppPermissionUtil.showDeniedDialog(context, error);
