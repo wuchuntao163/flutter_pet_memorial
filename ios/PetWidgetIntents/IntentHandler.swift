@@ -27,7 +27,7 @@ extension IntentHandler: SelectSmallSavedWidgetIntentHandling {
   }
 
   func defaultTransparentPosition(for intent: SelectSmallSavedWidgetIntent) -> String? {
-    SavedWidgetOptionsProvider.transparentFollowApp
+    SavedWidgetOptionsProvider.transparentOff
   }
 }
 
@@ -51,6 +51,6 @@ extension IntentHandler: SelectMediumSavedWidgetIntentHandling {
   }
 
   func defaultTransparentPosition(for intent: SelectMediumSavedWidgetIntent) -> String? {
-    SavedWidgetOptionsProvider.transparentFollowApp
+    SavedWidgetOptionsProvider.transparentOff
   }
 }

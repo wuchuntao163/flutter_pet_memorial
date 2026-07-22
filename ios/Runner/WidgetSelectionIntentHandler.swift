@@ -25,7 +25,7 @@ final class WidgetSelectionIntentHandler: NSObject,
   }
 
   func defaultTransparentPosition(for intent: SelectSmallSavedWidgetIntent) -> String? {
-    SavedWidgetOptionsProvider.transparentFollowApp
+    SavedWidgetOptionsProvider.transparentOff
   }
 
   func provideCurrentWidgetOptionsCollection(
@@ -47,6 +47,6 @@ final class WidgetSelectionIntentHandler: NSObject,
   }
 
   func defaultTransparentPosition(for intent: SelectMediumSavedWidgetIntent) -> String? {
-    SavedWidgetOptionsProvider.transparentFollowApp
+    SavedWidgetOptionsProvider.transparentOff
   }
 }

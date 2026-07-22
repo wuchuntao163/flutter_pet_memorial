@@ -55,18 +55,28 @@ Future<void> saveWidgetToLibrary(
   WidgetDefinition? definition, {
   Map<String, dynamic> settings = const {},
   GlobalKey? previewBoundaryKey,
+  GlobalKey? backgroundBoundaryKey,
 }) async {
   if (definition == null || definition.isIsland) return;
 
   Uint8List? previewPng;
-  if (previewBoundaryKey != null) {
+  Uint8List? backgroundPng;
+  if (previewBoundaryKey != null || backgroundBoundaryKey != null) {
     try {
-      // 等布局与图片绘制完成再截图
-      await Future<void>.delayed(const Duration(milliseconds: 80));
-      previewPng = await MemorialImageCapture.capturePng(
-        previewBoundaryKey,
-        pixelRatio: 3,
-      );
+      // 等布局与背景图绘制完成再截图（网络图略多等一会）
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      if (previewBoundaryKey != null) {
+        previewPng = await MemorialImageCapture.capturePng(
+          previewBoundaryKey,
+          pixelRatio: 3,
+        );
+      }
+      if (backgroundBoundaryKey != null) {
+        backgroundPng = await MemorialImageCapture.capturePng(
+          backgroundBoundaryKey,
+          pixelRatio: 3,
+        );
+      }
     } catch (error) {
       debugPrint('[saveWidgetToLibrary] capture failed: $error');
     }
@@ -76,5 +86,6 @@ Future<void> saveWidgetToLibrary(
     definition,
     settings: settings,
     previewPng: previewPng,
+    backgroundPng: backgroundPng,
   );
 }

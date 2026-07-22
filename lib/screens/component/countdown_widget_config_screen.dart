@@ -64,6 +64,7 @@ class _CountdownWidgetConfigScreenState
   bool _apiDetailMode = false;
   bool _hasSelectedTextColor = false;
   final GlobalKey _previewBoundaryKey = GlobalKey();
+  final GlobalKey _previewBackgroundKey = GlobalKey();
 
   void _applyOverallTextColor(Color color) {
     _textColor = color;
@@ -544,16 +545,39 @@ class _CountdownWidgetConfigScreenState
     final simple = widget.variant == CountdownWidgetVariant.simple;
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
-      child: Container(
+      child: SizedBox(
         width: 132,
         height: 132,
-        decoration: BoxDecoration(color: _backgroundColor),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (_effectiveBackgroundImage != null)
-              _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover),
+            _previewBackgroundLayer(width: 132, height: 132),
             if (simple) _buildSimplePreview() else _buildPhotoPreview(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 仅底色/背景图，供保存时写入桌面实时背景（不含文字，保证倒计时仍实时）
+  Widget _previewBackgroundLayer({
+    required double width,
+    required double height,
+    Widget? fallback,
+  }) {
+    return RepaintBoundary(
+      key: _previewBackgroundKey,
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: _backgroundColor),
+            if (_effectiveBackgroundImage != null)
+              _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover)
+            else if (fallback != null)
+              fallback,
           ],
         ),
       ),
@@ -566,15 +590,13 @@ class _CountdownWidgetConfigScreenState
     const weekdays = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
-      child: Container(
+      child: SizedBox(
         width: 280,
         height: 124,
-        decoration: BoxDecoration(color: _backgroundColor),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (_effectiveBackgroundImage != null)
-              _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover),
+            _previewBackgroundLayer(width: 280, height: 124),
             Padding(
               padding: const EdgeInsets.fromLTRB(15, 10, 15, 8),
               child: Column(
@@ -688,21 +710,21 @@ class _CountdownWidgetConfigScreenState
     ];
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
-      child: Container(
+      child: SizedBox(
         width: 132,
         height: 132,
-        color: _backgroundColor,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (_effectiveBackgroundImage != null)
-              _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover)
-            else
-              CustomPaint(
+            _previewBackgroundLayer(
+              width: 132,
+              height: 132,
+              fallback: CustomPaint(
                 painter: _DotPatternPainter(
                   color: _textColor.withValues(alpha: 0.12),
                 ),
               ),
+            ),
             Column(
               children: [
                 SizedBox(
@@ -774,15 +796,13 @@ class _CountdownWidgetConfigScreenState
     final height = _isMedium ? 124.0 : 132.0;
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
-      child: Container(
+      child: SizedBox(
         width: width,
         height: height,
-        decoration: BoxDecoration(color: _backgroundColor),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (_effectiveBackgroundImage != null)
-              _sourceImage(_effectiveBackgroundImage!, fit: BoxFit.cover),
+            _previewBackgroundLayer(width: width, height: height),
             Padding(
               padding: EdgeInsets.all(_isMedium ? 16 : 8),
               child: Column(
@@ -1487,6 +1507,57 @@ class _CountdownWidgetConfigScreenState
     final enabled = await LiveActivityService.instance.isEnabled();
     if (!mounted) return;
     await IosDesktopPetGuideDialog.show(context, liveActivityEnabled: enabled);
+    if (!mounted) return;
+    // iOS 假透明：需先导入桌面空白页截图，再在「编辑小组件」里选方位
+    if (Platform.isIOS) {
+      final setup = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('设置透明壁纸'),
+          content: const Text(
+            'iOS 无法真正镂空桌面。请先在桌面空白页截图，再选择该截图；然后长按桌面组件，在「透明位置」选择左上/右上等方位。',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('稍后'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('选择截图'),
+            ),
+          ],
+        ),
+      );
+      if (setup == true && mounted) {
+        await _setupTransparentWallpaper();
+      }
+    }
+  }
+
+  Future<void> _setupTransparentWallpaper() async {
+    try {
+      final path = await PetImagePicker.pickFromGallery(context);
+      if (path == null || path.isEmpty || !mounted) return;
+      final ok = await withSavingOverlay(context, () async {
+        return SavedWidgetStore.instance
+            .setupTransparentWallpapersFromScreenshot(path);
+      });
+      if (!mounted) return;
+      if (ok == true) {
+        await SavedWidgetStore.instance.setAppTransparentPosition('左上');
+        await showCenterTip(context, '透明壁纸已设置，请在桌面编辑组件选择方位');
+      } else {
+        await showCenterTip(context, '透明壁纸设置失败');
+      }
+    } on AppPermissionDeniedException catch (error) {
+      if (!mounted) return;
+      await AppPermissionUtil.showDeniedDialog(context, error);
+    } catch (error) {
+      if (!mounted) return;
+      debugPrint('[CountdownWidget] transparent wallpaper failed: $error');
+      await showCenterTip(context, '透明壁纸设置失败');
+    }
   }
 
   Future<void> _save() async {
@@ -1562,6 +1633,7 @@ class _CountdownWidgetConfigScreenState
             'background_image': _effectiveBackgroundImage ?? '',
           },
           previewBoundaryKey: _previewBoundaryKey,
+          backgroundBoundaryKey: _previewBackgroundKey,
         );
       });
       if (!mounted) return;

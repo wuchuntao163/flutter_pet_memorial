@@ -60,12 +60,17 @@ enum SavedWidgetOptionsProvider {
 
   private static let cornerPositions = ["左上", "右上", "左下", "右下", "居中"]
 
-  /// 编辑小组件「透明位置」选项（高版本：开启透明背景 + 跟随 App，去掉方位参数）
+  /// 编辑小组件「透明位置」选项
   static func makeTransparentCollection() -> INObjectCollection<NSString> {
     let items: [NSString] = [
       transparentOff as NSString,
       transparentEnable as NSString,
       transparentFollowApp as NSString,
+      "左上" as NSString,
+      "右上" as NSString,
+      "左下" as NSString,
+      "右下" as NSString,
+      "居中" as NSString,
     ]
     let section = INObjectSection(title: "透明位置", items: items)
     return INObjectCollection(sections: [section])

@@ -302,6 +302,80 @@ enum WidgetSync {
     NSLog("[SavedBackground] removed background for widgetId=\(widgetId)")
   }
 
+  /// 桌面空白页截图 → 裁出各方位假透明壁纸
+  static func saveTransparentWallpapers(fromScreenshot data: Data) -> Bool {
+    guard let image = UIImage(data: data) else {
+      NSLog("[TransparentWallpaper] decode screenshot failed")
+      return false
+    }
+    let size = image.size
+    guard size.width > 10, size.height > 10 else { return false }
+
+    let crops = transparentCropRects(imageSize: size)
+    var saved = 0
+    for (key, rect) in crops {
+      guard let cropped = cropImage(image, to: rect),
+            let png = cropped.pngData(),
+            !png.isEmpty else {
+        NSLog("[TransparentWallpaper] crop failed key=\(key)")
+        continue
+      }
+      let ok = writePng(
+        cropped,
+        fileName: "widgetTransparent_\(key).png",
+        tempFileName: "widgetTransparent_\(key).tmp.png",
+        logTag: "TransparentWallpaper"
+      )
+      if ok { saved += 1 }
+    }
+    NSLog("[TransparentWallpaper] saved \(saved)/\(crops.count) crops")
+    return saved > 0
+  }
+
+  static func setAppTransparentPosition(_ position: String) {
+    let trimmed = position.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let defaults = UserDefaults(suiteName: AppGroupConfig.id) else { return }
+    defaults.set(trimmed, forKey: SavedWidgetOptionsProvider.appTransparentPositionKey)
+    defaults.synchronize()
+    NSLog("[TransparentWallpaper] app position=\(trimmed)")
+  }
+
+  /// 竖屏主屏截图上的近似裁切框（小/中组件常见 2 列布局）
+  private static func transparentCropRects(imageSize: CGSize) -> [String: CGRect] {
+    let w = imageSize.width
+    let h = imageSize.height
+    let left = w * 0.074
+    let top = h * 0.168
+    let small = w * 0.395
+    let hGap = w * 0.062
+    let vGap = h * 0.022
+    let midTop = top + small + vGap
+    let bottom = midTop + small + vGap
+    let right = left + small + hGap
+    let mediumW = small * 2 + hGap
+    let mediumH = small
+
+    return [
+      "topLeft": CGRect(x: left, y: top, width: small, height: small),
+      "topRight": CGRect(x: right, y: top, width: small, height: small),
+      "bottomLeft": CGRect(x: left, y: bottom, width: small, height: small),
+      "bottomRight": CGRect(x: right, y: bottom, width: small, height: small),
+      "center": CGRect(x: left, y: midTop, width: mediumW, height: mediumH),
+    ]
+  }
+
+  private static func cropImage(_ image: UIImage, to rect: CGRect) -> UIImage? {
+    let scale = image.scale
+    let scaled = CGRect(
+      x: rect.origin.x * scale,
+      y: rect.origin.y * scale,
+      width: rect.size.width * scale,
+      height: rect.size.height * scale
+    )
+    guard let cg = image.cgImage?.cropping(to: scaled) else { return nil }
+    return UIImage(cgImage: cg, scale: scale, orientation: image.imageOrientation)
+  }
+
   static func saveWidgetBackground(widgetId: Int, fromPath path: String) -> Bool {
     let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return false }
@@ -774,6 +848,10 @@ enum WidgetChannelHandler {
         handleSaveWidgetBackground(call: call, result: result)
       case "clearWidgetBackground":
         handleClearWidgetBackground(call: call, result: result)
+      case "saveTransparentWallpapers":
+        handleSaveTransparentWallpapers(call: call, result: result)
+      case "setAppTransparentPosition":
+        handleSetAppTransparentPosition(call: call, result: result)
       case "saveWidgetDigits":
         handleSaveWidgetDigits(call: call, result: result)
       case "clearWidgetDigits":
@@ -813,6 +891,58 @@ enum WidgetChannelHandler {
       ?? Int(args["widgetId"] as? String ?? "")
       ?? 0
     WidgetSync.removeWidgetBackground(widgetId: widgetId)
+    WidgetSync.reloadTimelines()
+    result(true)
+  }
+
+  private static func handleSaveTransparentWallpapers(
+    call: FlutterMethodCall,
+    result: @escaping FlutterResult
+  ) {
+    guard WidgetSync.appGroupContainer() != nil else {
+      result(
+        FlutterError(
+          code: "APP_GROUP_UNAVAILABLE",
+          message: "App Group 未配置",
+          details: nil
+        )
+      )
+      return
+    }
+    let args = call.arguments as? [String: Any] ?? [:]
+    let base64 = args["imageBase64"] as? String ?? ""
+    guard !base64.isEmpty, let data = Data(base64Encoded: base64) else {
+      result(
+        FlutterError(
+          code: "INVALID_SCREENSHOT",
+          message: "截图数据无效",
+          details: nil
+        )
+      )
+      return
+    }
+    let ok = WidgetSync.saveTransparentWallpapers(fromScreenshot: data)
+    if ok {
+      WidgetSync.reloadTimelines()
+      result(true)
+    } else {
+      result(
+        FlutterError(
+          code: "WRITE_TRANSPARENT_FAILED",
+          message: "写入透明壁纸失败",
+          details: nil
+        )
+      )
+    }
+  }
+
+  private static func handleSetAppTransparentPosition(
+    call: FlutterMethodCall,
+    result: @escaping FlutterResult
+  ) {
+    let args = call.arguments as? [String: Any] ?? [:]
+    let position = args["position"] as? String ?? SavedWidgetOptionsProvider.transparentOff
+    WidgetSync.setAppTransparentPosition(position)
     WidgetSync.reloadTimelines()
     result(true)
   }

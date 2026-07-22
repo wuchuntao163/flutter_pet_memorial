@@ -56,6 +56,7 @@ class SavedWidgetStore extends ChangeNotifier {
     WidgetDefinition definition, {
     Map<String, dynamic> settings = const {},
     Uint8List? previewPng,
+    Uint8List? backgroundPng,
   }) async {
     if (definition.type != 1 || definition.id <= 0) return;
     await load();
@@ -81,20 +82,25 @@ class SavedWidgetStore extends ChangeNotifier {
       }
     }
 
-    // 背景图：网络地址先由 Flutter 下载到本地，再写入 App Group（Widget 扩展网络不可靠）
-    // 纯色色盘：清空 background_image，并删掉旧的 App Group 背景文件，否则会盖住 background_color
-    final bg = '${mergedSettings['background_image'] ?? ''}'.trim();
-    if (bg.isNotEmpty) {
-      try {
-        await syncBackgroundImage(widgetId: definition.id, imageRef: bg);
-      } catch (error) {
-        // 相册选取时可能已写入本地缓存；网络再拉失败不阻断保存
-        debugPrint(
-          '[SavedWidgetStore] sync background on save failed: $error',
-        );
-      }
+    // 桌面实时组件背景：优先用预览底图层截图（与 App 内所见一致，不依赖二次下载）
+    if (backgroundPng != null && backgroundPng.isNotEmpty) {
+      await syncBackgroundBytes(
+        widgetId: definition.id,
+        pngBytes: backgroundPng,
+      );
     } else {
-      await clearBackgroundImage(widgetId: definition.id);
+      final bg = '${mergedSettings['background_image'] ?? ''}'.trim();
+      if (bg.isNotEmpty) {
+        try {
+          await syncBackgroundImage(widgetId: definition.id, imageRef: bg);
+        } catch (error) {
+          debugPrint(
+            '[SavedWidgetStore] sync background on save failed: $error',
+          );
+        }
+      } else {
+        await clearBackgroundImage(widgetId: definition.id);
+      }
     }
 
     // 自定义数字字体 0–9 → 小组件实时天数
@@ -171,7 +177,15 @@ class SavedWidgetStore extends ChangeNotifier {
       final bytes = await File(src).readAsBytes();
       if (bytes.isEmpty) return null;
       final dir = await getApplicationDocumentsDirectory();
-      final dest = File('${dir.path}/widget_album_bg_$widgetId.bin');
+      final lower = src.toLowerCase();
+      final ext = lower.endsWith('.png')
+          ? '.png'
+          : lower.endsWith('.heic')
+          ? '.heic'
+          : lower.endsWith('.webp')
+          ? '.webp'
+          : '.jpg';
+      final dest = File('${dir.path}/widget_album_bg_$widgetId$ext');
       await dest.writeAsBytes(bytes, flush: true);
       return dest.path;
     } catch (error) {
@@ -188,6 +202,55 @@ class SavedWidgetStore extends ChangeNotifier {
       });
     } catch (error) {
       debugPrint('[SavedWidgetStore] clear background failed: $error');
+    }
+  }
+
+  /// 直接把 PNG 字节写入 App Group（桌面实时背景最稳路径）
+  Future<void> syncBackgroundBytes({
+    required int widgetId,
+    required Uint8List pngBytes,
+  }) async {
+    if (!Platform.isIOS || widgetId <= 0 || pngBytes.isEmpty) return;
+    try {
+      await _channel.invokeMethod<void>('saveWidgetBackground', {
+        'widgetId': widgetId,
+        'imageBase64': base64Encode(pngBytes),
+      });
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] sync background bytes failed: $error');
+      rethrow;
+    }
+  }
+
+  /// 桌面空白页截图 → 裁切各透明位置壁纸到 App Group
+  Future<bool> setupTransparentWallpapersFromScreenshot(String localPath) async {
+    if (!Platform.isIOS) return false;
+    try {
+      final bytes = await File(
+        localPath.startsWith('file://')
+            ? Uri.parse(localPath).toFilePath()
+            : localPath,
+      ).readAsBytes();
+      if (bytes.isEmpty) return false;
+      final ok = await _channel.invokeMethod<bool>(
+        'saveTransparentWallpapers',
+        {'imageBase64': base64Encode(bytes)},
+      );
+      return ok == true;
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] setup transparent wallpapers failed: $error');
+      return false;
+    }
+  }
+
+  Future<void> setAppTransparentPosition(String position) async {
+    if (!Platform.isIOS) return;
+    try {
+      await _channel.invokeMethod<void>('setAppTransparentPosition', {
+        'position': position,
+      });
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] set transparent position failed: $error');
     }
   }
 
@@ -229,6 +292,10 @@ class SavedWidgetStore extends ChangeNotifier {
             (trimmed.startsWith('file://')
                 ? Uri.parse(trimmed).toFilePath()
                 : trimmed);
+        // 本地文件用 base64 写入，避免路径/扩展名导致原生解码失败
+        final bytes = await File(localPath).readAsBytes();
+        await syncBackgroundBytes(widgetId: widgetId, pngBytes: bytes);
+        return;
       } else {
         // 相册 upload / 背景列表 URL 同一处理
         localPath = await PetImageService.downloadToDocuments(
@@ -237,10 +304,8 @@ class SavedWidgetStore extends ChangeNotifier {
         );
       }
 
-      await _channel.invokeMethod<void>('saveWidgetBackground', {
-        'widgetId': widgetId,
-        'localImagePath': localPath,
-      });
+      final bytes = await File(localPath).readAsBytes();
+      await syncBackgroundBytes(widgetId: widgetId, pngBytes: bytes);
     } catch (error) {
       debugPrint('[SavedWidgetStore] sync background failed: $error');
       rethrow;
