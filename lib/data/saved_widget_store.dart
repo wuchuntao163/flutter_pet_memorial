@@ -85,7 +85,14 @@ class SavedWidgetStore extends ChangeNotifier {
     // 纯色色盘：清空 background_image，并删掉旧的 App Group 背景文件，否则会盖住 background_color
     final bg = '${mergedSettings['background_image'] ?? ''}'.trim();
     if (bg.isNotEmpty) {
-      await syncBackgroundImage(widgetId: definition.id, imageRef: bg);
+      try {
+        await syncBackgroundImage(widgetId: definition.id, imageRef: bg);
+      } catch (error) {
+        // 相册选取时可能已写入本地缓存；网络再拉失败不阻断保存
+        debugPrint(
+          '[SavedWidgetStore] sync background on save failed: $error',
+        );
+      }
     } else {
       await clearBackgroundImage(widgetId: definition.id);
     }
@@ -195,13 +202,25 @@ class SavedWidgetStore extends ChangeNotifier {
     if (trimmed.isEmpty) return;
 
     try {
-      final isLocal =
-          trimmed.startsWith('/') ||
-          trimmed.startsWith('file://') ||
-          RegExp(r'^[A-Za-z]:[\\/]').hasMatch(trimmed);
+      final looksRemote =
+          trimmed.startsWith('http://') ||
+          trimmed.startsWith('https://') ||
+          trimmed.startsWith('//');
+      // 仅真实本地路径走文件；避免把相对路径 `/uploads/...` 误判为本地
+      final isLocalFile =
+          !looksRemote &&
+          (trimmed.startsWith('file://') ||
+              RegExp(r'^[A-Za-z]:[\\/]').hasMatch(trimmed) ||
+              (trimmed.startsWith('/') &&
+                  !trimmed.startsWith('/api/') &&
+                  !trimmed.startsWith('/uploads/') &&
+                  (trimmed.startsWith('/var/') ||
+                      trimmed.startsWith('/private/') ||
+                      trimmed.startsWith('/Users/') ||
+                      trimmed.startsWith('/data/'))));
 
       late final String localPath;
-      if (isLocal) {
+      if (isLocalFile) {
         localPath =
             await persistLocalBackgroundCopy(
               widgetId: widgetId,
@@ -211,7 +230,7 @@ class SavedWidgetStore extends ChangeNotifier {
                 ? Uri.parse(trimmed).toFilePath()
                 : trimmed);
       } else {
-        // 相册 upload 得到的 URL 与背景列表 URL 同一处理
+        // 相册 upload / 背景列表 URL 同一处理
         localPath = await PetImageService.downloadToDocuments(
           PetImageService.resolveUrl(trimmed),
           filename: 'saved_widget_bg_$widgetId.img',

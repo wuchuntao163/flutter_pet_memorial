@@ -1421,28 +1421,38 @@ class _CountdownWidgetConfigScreenState
       final path = await PetImagePicker.pickFromGallery(context);
       if (path == null || path.isEmpty || !mounted) return;
       await withSavingOverlay(context, () async {
-        final url = await PetImageService.upload(path);
-        // debugPrint('[CountdownWidget] upload background url=$url');
+        final definition = WidgetDetailScope.maybeOf(context);
+        // 倒计时类桌面走实时渲染：必须先把本地图写入 App Group，不能依赖上传后再下载
+        if (definition != null && definition.id > 0) {
+          await SavedWidgetStore.instance.syncBackgroundImage(
+            widgetId: definition.id,
+            imageRef: path,
+          );
+        } else {
+          debugPrint(
+            '[CountdownWidget] no widget definition, skip App Group sync',
+          );
+        }
+
+        // 与宠物组件一致：登记背景库，拿到稳定网络地址供保存
+        final created = await BackgroundStore.instance.uploadCustomBackground(
+          localPath: path,
+          name: '组件背景',
+        );
         if (!mounted) return;
+        final url = created == null
+            ? ''
+            : PetImageService.resolveUrl(
+                '${created['image'] ?? created['img'] ?? created['url'] ?? ''}',
+              );
         if (url.isEmpty) {
           throw Exception('empty upload url');
         }
+        debugPrint('[CountdownWidget] upload background url=$url');
         setState(() {
           _useSolidBackground = false;
           _backgroundImage = url;
         });
-
-        final definition = WidgetDetailScope.maybeOf(context);
-        if (definition == null || definition.id <= 0) {
-          debugPrint('[CountdownWidget] no widget definition, skip App Group sync');
-          return;
-        }
-
-        // 与点选背景列表相同：把最终网络 URL 下载进 App Group（桌面只认这份缓存）
-        await SavedWidgetStore.instance.syncBackgroundImage(
-          widgetId: definition.id,
-          imageRef: url,
-        );
       });
     } on AppPermissionDeniedException catch (error) {
       if (!mounted) return;

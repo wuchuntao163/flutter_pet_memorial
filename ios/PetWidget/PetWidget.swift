@@ -459,6 +459,7 @@ struct SavedWidgetHomeView: View {
 
     var body: some View {
         ZStack {
+            // 假透明：有壁纸裁切则铺底；没有时依赖容器 clear + 内容无底色透出桌面
             if isTransparent {
                 if let wall = Self.wallpaperImage(for: resolvedPosition) {
                     Color.clear
@@ -473,7 +474,10 @@ struct SavedWidgetHomeView: View {
                 }
             }
 
-            if config.needsLiveDayRender {
+            if isTransparent {
+                // 透明时不能用整张预览截图（含不透明底），必须实时内容且无背景
+                SavedWidgetTemplateView(config: config, hideBackground: true)
+            } else if config.needsLiveDayRender {
                 SavedWidgetTemplateView(config: config)
             } else if let preview = config.previewUIImage() {
                 Color.clear

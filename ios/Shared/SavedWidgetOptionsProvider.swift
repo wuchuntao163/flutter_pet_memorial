@@ -136,7 +136,7 @@ enum SavedWidgetOptionsProvider {
         return key
       }
     }
-    return "center"
+    return nil
   }
 
   private static func fileKey(forCornerOrCustom position: String) -> String? {
