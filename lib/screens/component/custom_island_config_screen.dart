@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -9,8 +7,8 @@ import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_image_util.dart';
 import '../../utils/island_success_dialog.dart';
-import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 import 'pet_widget_config_screen.dart' show showComponentColorPicker;
@@ -347,8 +345,8 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
 
   Widget _panelPreview() {
     return SizedBox(
-      width: 245,
-      height: 92,
+      width: kIslandPreviewCardWidth,
+      height: kIslandPreviewCardHeight,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: LayoutBuilder(
@@ -411,17 +409,31 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
 
   Widget _panelImage() {
     if (_panelImagePath != null) {
-      return Image.file(File(_panelImagePath!), fit: BoxFit.cover);
+      return islandImage(
+        _panelImagePath,
+        width: kIslandPreviewCardWidth,
+        height: kIslandPreviewCardHeight,
+        fit: BoxFit.cover,
+        placeholder: Image.asset(
+          'assets/images/image_87.png',
+          fit: BoxFit.cover,
+        ),
+      );
     }
     final defaultBackground = WidgetDetailScope.maybeOf(
       context,
     )?.defaultBackground.trim();
     if (defaultBackground != null && defaultBackground.isNotEmpty) {
-      if (defaultBackground.startsWith('http://') ||
-          defaultBackground.startsWith('https://')) {
-        return Image.network(defaultBackground, fit: BoxFit.cover);
-      }
-      return Image.asset(defaultBackground, fit: BoxFit.cover);
+      return islandImage(
+        defaultBackground,
+        width: kIslandPreviewCardWidth,
+        height: kIslandPreviewCardHeight,
+        fit: BoxFit.cover,
+        placeholder: Image.asset(
+          'assets/images/image_87.png',
+          fit: BoxFit.cover,
+        ),
+      );
     }
     return Image.asset('assets/images/image_87.png', fit: BoxFit.cover);
   }
@@ -436,12 +448,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
     final icon = right ? _rightIcon : _leftIcon;
     if (imagePath != null) {
       return ClipOval(
-        child: Image.file(
-          File(imagePath),
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        ),
+        child: islandImage(imagePath, width: size, height: size),
       );
     }
     return SizedBox(
@@ -598,20 +605,20 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
   }
 
   Future<void> _pickPanelImage() async {
-    final path = await PetImagePicker.pickFromGallery(context);
-    if (path != null && path.isNotEmpty && mounted) {
-      setState(() => _panelImagePath = path);
+    final url = await pickAndUploadIslandImage(context);
+    if (url != null && url.isNotEmpty && mounted) {
+      setState(() => _panelImagePath = url);
     }
   }
 
   Future<void> _pickIconImage() async {
-    final path = await PetImagePicker.pickFromGallery(context);
-    if (path != null && path.isNotEmpty && mounted) {
+    final url = await pickAndUploadIslandImage(context);
+    if (url != null && url.isNotEmpty && mounted) {
       setState(() {
         if (_editingRightIcon) {
-          _rightIconImagePath = path;
+          _rightIconImagePath = url;
         } else {
-          _leftIconImagePath = path;
+          _leftIconImagePath = url;
         }
       });
     }

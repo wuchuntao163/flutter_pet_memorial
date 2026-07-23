@@ -11,6 +11,7 @@ import '../data/auth_session_store.dart';
 import '../data/memorial_store.dart';
 import '../l10n/tr.dart';
 import '../utils/pet_display_image.dart';
+import 'pet_image_service.dart';
 
 /// iOS 灵动岛 / Live Activity：按模板 1–6 同步，同时仅一个岛。
 class LiveActivityService {
@@ -131,7 +132,7 @@ class LiveActivityService {
         final path = entry.value;
         if (path == null || path.trim().isEmpty) continue;
         if (entry.key == 'petUrl' || entry.key == 'cloverUrl') continue;
-        await syncAsset(role: entry.key, imagePath: path);
+        await syncAsset(role: entry.key, imagePath: _resolveAssetRef(path));
       }
     }
 
@@ -209,9 +210,10 @@ class LiveActivityService {
     final value = raw.trim();
     if (value.isEmpty) return null;
     try {
-      if (value.startsWith('http://') || value.startsWith('https://')) {
+      final remote = _resolveAssetRef(value);
+      if (remote.startsWith('http://') || remote.startsWith('https://')) {
         final response = await Dio().get<List<int>>(
-          value,
+          remote,
           options: Options(responseType: ResponseType.bytes),
         );
         final data = response.data;
@@ -237,6 +239,21 @@ class LiveActivityService {
     return null;
   }
 
+  /// 网络相对路径补全；本地文件路径原样返回。
+  String _resolveAssetRef(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return value;
+    if (value.startsWith('http://') ||
+        value.startsWith('https://') ||
+        value.startsWith('assets/')) {
+      return PetImageService.resolveUrl(value);
+    }
+    if (value.startsWith('/uploads/') || value.startsWith('uploads/')) {
+      return PetImageService.resolveUrl(value);
+    }
+    return value;
+  }
+
   /// 用户已开启且系统允许时，按 active 模板重算内容。
   Future<bool> syncIfEnabled({bool force = false}) async {
     if (!await isSupported()) return false;
@@ -253,10 +270,10 @@ class LiveActivityService {
       final photo = prefs.getString('photo_island_image');
       final banner = prefs.getString('photo_island_banner_bg');
       if (photo != null && photo.isNotEmpty) {
-        await syncAsset(role: 'photo', imagePath: photo);
+        await syncAsset(role: 'photo', imagePath: _resolveAssetRef(photo));
       }
       if (banner != null && banner.isNotEmpty) {
-        await syncAsset(role: 'bannerBg', imagePath: banner);
+        await syncAsset(role: 'bannerBg', imagePath: _resolveAssetRef(banner));
       }
     }
     if (template == 5) {

@@ -8,6 +8,7 @@ import '../../data/app_cache_store.dart';
 import '../../services/live_activity_service.dart';
 import '../../services/pet_image_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_image_util.dart';
 import '../../utils/island_success_dialog.dart';
 import '../../utils/pet_display_image.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
@@ -309,8 +310,8 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
 
   Widget _buildExpandedIsland() {
     return Container(
-      width: 245,
-      height: 88,
+      width: kIslandPreviewCardWidth,
+      height: kIslandPreviewCardHeight,
       padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(

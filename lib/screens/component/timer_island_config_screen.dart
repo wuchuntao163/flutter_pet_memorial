@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/cupertino.dart';
@@ -11,8 +10,8 @@ import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_image_util.dart';
 import '../../utils/island_success_dialog.dart';
-import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 
@@ -378,8 +377,8 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
 
   Widget _buildExpandedIsland() {
     return Container(
-      width: 245,
-      height: 82,
+      width: kIslandPreviewCardWidth,
+      height: kIslandPreviewCardHeight,
       padding: const EdgeInsets.fromLTRB(28, 0, 8, 0),
       decoration: BoxDecoration(
         color: _isCountUp ? Colors.black : const Color(0xFFE4F0FF),
@@ -427,12 +426,7 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
   Widget _selectedIcon(double size) {
     if (_imagePath != null) {
       return ClipOval(
-        child: Image.file(
-          File(_imagePath!),
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        ),
+        child: islandImage(_imagePath, width: size, height: size),
       );
     }
     return SizedBox(
@@ -513,10 +507,9 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
   }
 
   Future<void> _pickImage() async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    final path = await PetImagePicker.pickFromGallery(context);
-    if (path != null && path.isNotEmpty && mounted) {
-      setState(() => _imagePath = path);
+    final url = await pickAndUploadIslandImage(context);
+    if (url != null && url.isNotEmpty && mounted) {
+      setState(() => _imagePath = url);
     }
   }
 

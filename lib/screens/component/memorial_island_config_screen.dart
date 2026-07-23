@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -12,8 +10,8 @@ import '../../models/memorial_day.dart';
 import '../../router/app_routes.dart';
 import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_image_util.dart';
 import '../../utils/island_success_dialog.dart';
-import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 
@@ -357,8 +355,8 @@ class _MemorialIslandConfigScreenState
   Widget _buildExpandedIsland() {
     final item = _selected;
     return Container(
-      width: 245,
-      height: 82,
+      width: kIslandPreviewCardWidth,
+      height: kIslandPreviewCardHeight,
       padding: const EdgeInsets.fromLTRB(32, 0, 4, 0),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -478,12 +476,7 @@ class _MemorialIslandConfigScreenState
   Widget _selectedIcon(double size) {
     if (_imagePath != null) {
       return ClipOval(
-        child: Image.file(
-          File(_imagePath!),
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        ),
+        child: islandImage(_imagePath, width: size, height: size),
       );
     }
     return SizedBox(
@@ -533,9 +526,10 @@ class _MemorialIslandConfigScreenState
   }
 
   Future<void> _pickImage() async {
-    final path = await PetImagePicker.pickFromGallery(context);
-    if (path == null || path.isEmpty || !mounted) return;
-    setState(() => _imagePath = path);
+    final url = await pickAndUploadIslandImage(context);
+    if (url != null && url.isNotEmpty && mounted) {
+      setState(() => _imagePath = url);
+    }
   }
 
   Future<void> _showEmojiPicker() async {

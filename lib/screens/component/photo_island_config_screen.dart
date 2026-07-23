@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,8 +6,8 @@ import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_image_util.dart';
 import '../../utils/island_success_dialog.dart';
-import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 import 'pet_widget_config_screen.dart' show showComponentColorPicker;
@@ -311,8 +309,8 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
   );
 
   Widget _expandedPreview() => Container(
-    width: 245,
-    height: 72,
+    width: kIslandPreviewCardWidth,
+    height: kIslandPreviewCardHeight,
     padding: const EdgeInsets.fromLTRB(18, 0, 12, 0),
     decoration: BoxDecoration(
       gradient: const LinearGradient(
@@ -342,28 +340,12 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
   );
 
   Widget _image(double size, {bool circular = false}) {
-    final Widget image;
-    if (_imagePath != null) {
-      image = Image.file(
-        File(_imagePath!),
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Image.asset(
-          'assets/images/addvalentine.png',
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        ),
-      );
-    } else {
-      image = Image.asset(
-        'assets/images/addvalentine.png',
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-      );
-    }
+    final image = islandImage(
+      _imagePath,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+    );
     final clipped = circular
         ? ClipOval(child: image)
         : ClipRRect(
@@ -436,7 +418,10 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
         final color = _colors[index - 1];
         final selected = color.toARGB32() == _textColor.toARGB32();
         return InkWell(
-          onTap: () => setState(() => _textColor = color),
+          onTap: () async {
+            setState(() => _textColor = color);
+            await _syncLiveIfEnabled();
+          },
           child: Container(
             width: 34,
             height: 34,
@@ -492,6 +477,7 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
                         min: 12,
                         max: 24,
                         onChanged: (value) => setState(() => _fontSize = value),
+                        onChangeEnd: (_) => _syncLiveIfEnabled(),
                       ),
                     ),
                     Positioned(
@@ -523,14 +509,41 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
       context,
       initialColor: _textColor,
     );
-    if (color != null && mounted) setState(() => _textColor = color);
+    if (color != null && mounted) {
+      setState(() => _textColor = color);
+      await _syncLiveIfEnabled();
+    }
+  }
+
+  Future<void> _syncLiveIfEnabled() async {
+    if (!_enabled) return;
+    final bannerBg =
+        WidgetDetailScope.maybeOf(context)?.defaultBackground.trim() ?? '';
+    final content = _controller.text.trim();
+    final bgColor = const Color(0xFFFFC7B9).toARGB32();
+    await LiveActivityService.instance.startOrUpdateIsland(
+      template: 2,
+      payload: {
+        'petName': content.isEmpty ? '图文岛' : content,
+        'subtitle': content.isEmpty ? '笨猫真可爱 >.<' : content,
+        'memorialTitle': '',
+        'textColorARGB': _textColor.toARGB32(),
+        'textFontSize': _fontSize,
+        'backgroundColorARGB': bgColor,
+      },
+      assetPaths: {
+        if (_imagePath != null) 'photo': _imagePath,
+        if (bannerBg.isNotEmpty) 'bannerBg': bannerBg,
+      },
+    );
   }
 
   Future<void> _pickImage() async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    final path = await PetImagePicker.pickFromGallery(context);
-    if (path != null && path.isNotEmpty && mounted) {
-      setState(() => _imagePath = path);
+    final url = await pickAndUploadIslandImage(context);
+    if (url != null && url.isNotEmpty && mounted) {
+      setState(() => _imagePath = url);
+    } else if (mounted && url == null) {
+      // 用户取消不提示；上传失败时 util 已打日志
     }
   }
 

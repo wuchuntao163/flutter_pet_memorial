@@ -106,11 +106,7 @@ struct PetLiveActivityWidget: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: PetLiveActivityAttributes.self) { context in
       lockScreenView(context: context)
-        .activityBackgroundTint(
-          context.state.template == 6
-            ? Color.clear
-            : LiveActivityShared.color(from: context.state.backgroundColorARGB)
-        )
+        .activityBackgroundTint(lockScreenTint(for: context.state))
         .activitySystemActionForegroundColor(Color.primary)
     } dynamicIsland: { context in
       DynamicIsland {
@@ -132,6 +128,15 @@ struct PetLiveActivityWidget: Widget {
   }
 
   // MARK: - Compact
+
+  private func lockScreenTint(
+    for state: PetLiveActivityAttributes.ContentState
+  ) -> Color {
+    // 自定义面板 / 已有背景图：透明 tint，让内容区背景色真正生效
+    if state.template == 6 { return Color.clear }
+    if LiveActivityShared.loadBannerBg() != nil { return Color.clear }
+    return LiveActivityShared.color(from: state.backgroundColorARGB)
+  }
 
   @ViewBuilder
   private func compactLeading(
