@@ -340,19 +340,7 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
   );
 
   Widget _image(double size, {bool circular = false}) {
-    final image = islandImage(
-      _imagePath,
-      width: size,
-      height: size,
-      fit: BoxFit.cover,
-    );
-    final clipped = circular
-        ? ClipOval(child: image)
-        : ClipRRect(
-            borderRadius: BorderRadius.circular(size * 0.22),
-            child: image,
-          );
-    return SizedBox(width: size, height: size, child: clipped);
+    return islandCardSideImage(_imagePath, size: size, circular: circular);
   }
 
   Widget _title(String text) => Text(

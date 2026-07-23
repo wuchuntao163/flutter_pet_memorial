@@ -336,7 +336,7 @@ class _MemorialIslandConfigScreenState
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _selectedIcon(19),
+          _selectedIcon(19, circular: true),
           const Spacer(),
           Text(
             '${_days(_selected)}天',
@@ -473,11 +473,9 @@ class _MemorialIslandConfigScreenState
     );
   }
 
-  Widget _selectedIcon(double size) {
+  Widget _selectedIcon(double size, {bool circular = false}) {
     if (_imagePath != null) {
-      return ClipOval(
-        child: islandImage(_imagePath, width: size, height: size),
-      );
+      return islandCardSideImage(_imagePath, size: size, circular: circular);
     }
     return SizedBox(
       width: size,

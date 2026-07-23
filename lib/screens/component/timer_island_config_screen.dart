@@ -356,23 +356,23 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
         color: Colors.black,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _selectedIcon(19),
-          const Spacer(),
-          Text(
-            _timerText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              height: 1,
-            ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _selectedIcon(19, circular: true),
+        const Spacer(),
+        Text(
+          _timerText,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+            height: 1,
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  );
   }
 
   Widget _buildExpandedIsland() {
@@ -423,11 +423,9 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
     );
   }
 
-  Widget _selectedIcon(double size) {
+  Widget _selectedIcon(double size, {bool circular = false}) {
     if (_imagePath != null) {
-      return ClipOval(
-        child: islandImage(_imagePath, width: size, height: size),
-      );
+      return islandCardSideImage(_imagePath, size: size, circular: circular);
     }
     return SizedBox(
       width: size,

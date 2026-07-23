@@ -83,3 +83,26 @@ Widget islandImage(
 /// 各岛通知版预览统一尺寸（与正计时 / 纪念日一致）
 const double kIslandPreviewCardWidth = 245;
 const double kIslandPreviewCardHeight = 82;
+
+/// 图文岛通知版左侧图形状：圆角矩形（非正圆）
+Widget islandCardSideImage(
+  String? source, {
+  required double size,
+  bool circular = false,
+  Widget? placeholder,
+}) {
+  final image = islandImage(
+    source,
+    width: size,
+    height: size,
+    fit: BoxFit.cover,
+    placeholder: placeholder,
+  );
+  final clipped = circular
+      ? ClipOval(child: image)
+      : ClipRRect(
+          borderRadius: BorderRadius.circular(size * 0.22),
+          child: image,
+        );
+  return SizedBox(width: size, height: size, child: clipped);
+}

@@ -293,7 +293,7 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _selectedPetImage(size: 20),
+          _selectedPetImage(size: 20, circular: true),
           const Spacer(),
           if (_cloverImage != null && _cloverImage!.isNotEmpty)
             Image.network(
@@ -384,14 +384,15 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
     );
   }
 
-  Widget _selectedPetImage({required double size}) {
+  Widget _selectedPetImage({required double size, bool circular = false}) {
     if (_petImages.isEmpty) {
       return Icon(Icons.pets, size: size * 0.7, color: AppColors.accentDark);
     }
-    return SizedBox(
-      width: size,
-      height: size,
-      child: _petImage(_petImages[_selectedPet]),
+    return islandCardSideImage(
+      _petImages[_selectedPet],
+      size: size,
+      circular: circular,
+      placeholder: Icon(Icons.pets, size: size * 0.7, color: AppColors.accentDark),
     );
   }
 
