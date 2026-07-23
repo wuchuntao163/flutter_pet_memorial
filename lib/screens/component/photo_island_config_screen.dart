@@ -8,6 +8,7 @@ import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_success_dialog.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
@@ -305,13 +306,13 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
       borderRadius: BorderRadius.circular(16),
     ),
     alignment: Alignment.centerLeft,
-    child: _image(26, 13),
+    child: _image(26, circular: true),
   );
 
   Widget _expandedPreview() => Container(
     width: 245,
     height: 92,
-    padding: const EdgeInsets.fromLTRB(36, 0, 12, 0),
+    padding: const EdgeInsets.fromLTRB(18, 0, 12, 0),
     decoration: BoxDecoration(
       gradient: const LinearGradient(
         colors: [Color(0xFFFFC7B9), Color(0xFFFFD29B)],
@@ -321,8 +322,8 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
     ),
     child: Row(
       children: [
-        _image(54, 7),
-        const SizedBox(width: 20),
+        _image(54, circular: true),
+        const SizedBox(width: 12),
         Expanded(
           child: Text(
             _controller.text.trim().isEmpty ? '请输入内容' : _controller.text,
@@ -339,7 +340,7 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
     ),
   );
 
-  Widget _image(double size, double radius) {
+  Widget _image(double size, {bool circular = false}) {
     final image = _imagePath == null
         ? Image.asset(
             'assets/images/addvalentine.png',
@@ -353,7 +354,13 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
             height: size,
             fit: BoxFit.cover,
           );
-    return ClipRRect(borderRadius: BorderRadius.circular(radius), child: image);
+    if (circular) {
+      return ClipOval(child: image);
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.22),
+      child: image,
+    );
   }
 
   Widget _title(String text) => Text(
@@ -533,6 +540,8 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _busy = true);
     final next = !_enabled;
+    final bannerBg =
+        WidgetDetailScope.maybeOf(context)?.defaultBackground.trim() ?? '';
     final prefs = await SharedPreferences.getInstance();
     final content = _controller.text.trim();
     await Future.wait([
@@ -543,6 +552,13 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
     ]);
 
     if (next) {
+      const bgColor = Color(0xFFFFC7B9);
+      await prefs.setInt('photo_island_bg_color', bgColor.toARGB32());
+      if (bannerBg.isNotEmpty) {
+        await prefs.setString('photo_island_banner_bg', bannerBg);
+      } else {
+        await prefs.remove('photo_island_banner_bg');
+      }
       final ok = await LiveActivityService.instance.startOrUpdateIsland(
         template: 2,
         payload: {
@@ -550,9 +566,12 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
           'subtitle': content.isEmpty ? '笨猫真可爱 >.<' : content,
           'memorialTitle': '',
           'textColorARGB': _textColor.toARGB32(),
+          'textFontSize': _fontSize,
+          'backgroundColorARGB': bgColor.toARGB32(),
         },
         assetPaths: {
           if (_imagePath != null) 'photo': _imagePath,
+          if (bannerBg.isNotEmpty) 'bannerBg': bannerBg,
         },
       );
       if (!mounted) return;
@@ -566,7 +585,8 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
         _enabled = true;
         _busy = false;
       });
-      await showCenterTip(context, '已上岛');
+      if (!mounted) return;
+      await showIslandSuccessDialog(context);
       return;
     }
 

@@ -15,6 +15,10 @@ struct PetLiveActivityAttributes: ActivityAttributes {
     /// 模板 5：如「2555天」
     var daysText: String
     var textColorARGB: UInt32
+    /// 锁屏通知版背景色（模板 2 等）
+    var backgroundColorARGB: UInt32
+    /// 锁屏/展开正文点大小（模板 2）
+    var textFontSize: Double
     /// 模板 6 文案归一化坐标 0–1
     var textNormX: Double
     var textNormY: Double
@@ -30,6 +34,8 @@ struct PetLiveActivityAttributes: ActivityAttributes {
       case timerTargetEpoch
       case daysText
       case textColorARGB
+      case backgroundColorARGB
+      case textFontSize
       case textNormX
       case textNormY
       case compactLeadingEmoji
@@ -45,6 +51,8 @@ struct PetLiveActivityAttributes: ActivityAttributes {
       timerTargetEpoch: Double = 0,
       daysText: String = "",
       textColorARGB: UInt32 = 0xFFFFFFFF,
+      backgroundColorARGB: UInt32 = 0xFFFFC7B9,
+      textFontSize: Double = 16,
       textNormX: Double = 0.58,
       textNormY: Double = 0.72,
       compactLeadingEmoji: String = "",
@@ -58,6 +66,8 @@ struct PetLiveActivityAttributes: ActivityAttributes {
       self.timerTargetEpoch = timerTargetEpoch
       self.daysText = daysText
       self.textColorARGB = textColorARGB
+      self.backgroundColorARGB = backgroundColorARGB
+      self.textFontSize = textFontSize
       self.textNormX = textNormX
       self.textNormY = textNormY
       self.compactLeadingEmoji = compactLeadingEmoji
@@ -74,6 +84,8 @@ struct PetLiveActivityAttributes: ActivityAttributes {
       timerTargetEpoch = try c.decodeIfPresent(Double.self, forKey: .timerTargetEpoch) ?? 0
       daysText = try c.decodeIfPresent(String.self, forKey: .daysText) ?? ""
       textColorARGB = try c.decodeIfPresent(UInt32.self, forKey: .textColorARGB) ?? 0xFFFFFFFF
+      backgroundColorARGB = try c.decodeIfPresent(UInt32.self, forKey: .backgroundColorARGB) ?? 0xFFFFC7B9
+      textFontSize = try c.decodeIfPresent(Double.self, forKey: .textFontSize) ?? 16
       textNormX = try c.decodeIfPresent(Double.self, forKey: .textNormX) ?? 0.58
       textNormY = try c.decodeIfPresent(Double.self, forKey: .textNormY) ?? 0.72
       compactLeadingEmoji = try c.decodeIfPresent(String.self, forKey: .compactLeadingEmoji) ?? ""

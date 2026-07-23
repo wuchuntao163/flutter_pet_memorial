@@ -9,6 +9,7 @@ import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_success_dialog.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
@@ -334,6 +335,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _selectedIcon(24, right: false),
           const Spacer(),
@@ -446,7 +448,10 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
       width: size,
       height: size,
       child: Center(
-        child: Text(icon, style: TextStyle(fontSize: size * .72)),
+        child: Text(
+          icon,
+          style: TextStyle(fontSize: size * .72, height: 1),
+        ),
       ),
     );
   }
@@ -740,7 +745,8 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
         _enabled = true;
         _busy = false;
       });
-      await showCenterTip(context, '已上岛');
+      if (!mounted) return;
+      await showIslandSuccessDialog(context);
       return;
     }
 

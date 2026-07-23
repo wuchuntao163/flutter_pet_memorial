@@ -16,6 +16,7 @@ private enum LiveActivityShared {
   static let iconFileName = "petLiveActivityIcon.png"
   static let iconCompactFileName = "petLiveActivityCompactIcon.png"
   static let panelFileName = "petLiveActivityPanel.png"
+  static let bannerBgFileName = "petLiveActivityBannerBg.png"
   static let leftIconFileName = "petLiveActivityLeftIcon.png"
   static let leftIconCompactFileName = "petLiveActivityCompactLeftIcon.png"
   static let rightIconFileName = "petLiveActivityRightIcon.png"
@@ -77,6 +78,10 @@ private enum LiveActivityShared {
     loadValidUIImage(named: panelFileName)
   }
 
+  static func loadBannerBg() -> UIImage? {
+    loadValidUIImage(named: bannerBgFileName)
+  }
+
   static func loadCompactLeftIcon() -> UIImage? {
     loadValidUIImage(named: leftIconCompactFileName)
       ?? loadValidUIImage(named: leftIconFileName)
@@ -101,7 +106,9 @@ struct PetLiveActivityWidget: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: PetLiveActivityAttributes.self) { context in
       lockScreenView(context: context)
-        .activityBackgroundTint(Color.orange.opacity(0.12))
+        .activityBackgroundTint(
+          LiveActivityShared.color(from: context.state.backgroundColorARGB)
+        )
         .activitySystemActionForegroundColor(Color.primary)
     } dynamicIsland: { context in
       DynamicIsland {
@@ -135,7 +142,8 @@ struct PetLiveActivityWidget: Widget {
         image: LiveActivityShared.loadCompactPhoto(),
         emoji: state.compactLeadingEmoji,
         systemName: "photo",
-        size: 28
+        size: 28,
+        circular: true
       )
     case 3, 4, 5:
       imageOrEmoji(
@@ -214,10 +222,24 @@ struct PetLiveActivityWidget: Widget {
   private func lockScreenView(
     context: ActivityViewContext<PetLiveActivityAttributes>
   ) -> some View {
-    bodyContent(context: context, expanded: false)
-      .padding(.leading, 16)
-      .padding(.trailing, 14)
-      .padding(.vertical, 10)
+    let state = context.state
+    ZStack {
+      if state.template == 2 || state.template == 3 || state.template == 4
+        || state.template == 5 {
+        if let bg = LiveActivityShared.loadBannerBg() {
+          Image(uiImage: bg)
+            .resizable()
+            .scaledToFill()
+        } else {
+          LiveActivityShared.color(from: state.backgroundColorARGB)
+        }
+      }
+      bodyContent(context: context, expanded: false)
+        .padding(.leading, state.template == 2 ? 12 : 16)
+        .padding(.trailing, 14)
+        .padding(.vertical, 10)
+    }
+    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
   }
 
   @ViewBuilder
@@ -234,11 +256,17 @@ struct PetLiveActivityWidget: Widget {
           image: LiveActivityShared.loadPhoto(),
           emoji: state.compactLeadingEmoji,
           systemName: "photo",
-          size: imageSize
+          size: imageSize,
+          circular: true
         )
         .id(state.imageRevision)
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
-          .font(.system(size: expanded ? 16 : 15, weight: .semibold))
+          .font(
+            .system(
+              size: CGFloat(max(12, min(24, state.textFontSize))),
+              weight: .semibold
+            )
+          )
           .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
           .lineLimit(2)
           .minimumScaleFactor(0.75)
@@ -319,7 +347,7 @@ struct PetLiveActivityWidget: Widget {
             .clipped()
         } else {
           RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(Color.orange.opacity(0.18))
+            .fill(LiveActivityShared.color(from: state.backgroundColorARGB))
         }
         Text(state.subtitle.isEmpty ? "每天都要开心" : state.subtitle)
           .font(.system(size: 14, weight: .semibold))
@@ -342,24 +370,18 @@ struct PetLiveActivityWidget: Widget {
     state: PetLiveActivityAttributes.ContentState,
     compact: Bool
   ) -> some View {
-    let target = Date(timeIntervalSince1970: state.timerTargetEpoch)
-    let countsDown = state.template == 4
     let font = Font.system(size: compact ? 12 : 20, weight: .bold).monospacedDigit()
     if state.timerTargetEpoch <= 0 {
       Text("--:--")
         .font(font)
         .foregroundColor(.primary)
-    } else if countsDown {
-      Text(timerInterval: Date()...max(target, Date().addingTimeInterval(1)), countsDown: true)
-        .font(font)
-        .foregroundColor(.primary)
-        .multilineTextAlignment(.trailing)
     } else {
-      let end = Date().addingTimeInterval(60 * 60 * 24 * 30)
-      Text(timerInterval: min(target, Date())...end, countsDown: false)
+      // 过去日期正计时、未来日期倒计时，与 App 内按「目标时间」计算一致
+      Text(Date(timeIntervalSince1970: state.timerTargetEpoch), style: .timer)
         .font(font)
         .foregroundColor(.primary)
-        .multilineTextAlignment(.trailing)
+        .multilineTextAlignment(compact ? .trailing : .leading)
+        .monospacedDigit()
     }
   }
 
@@ -368,10 +390,21 @@ struct PetLiveActivityWidget: Widget {
     image: UIImage?,
     emoji: String,
     systemName: String,
-    size: CGFloat
+    size: CGFloat,
+    circular: Bool = false
   ) -> some View {
     if let image {
-      islandCompactImage(uiImage: image, size: size, cornerRadius: size * 0.22)
+      if circular {
+        Image(uiImage: image)
+          .resizable()
+          .interpolation(.high)
+          .antialiased(true)
+          .scaledToFill()
+          .frame(width: size, height: size)
+          .clipShape(Circle())
+      } else {
+        islandCompactImage(uiImage: image, size: size, cornerRadius: size * 0.22)
+      }
     } else if !emoji.isEmpty {
       Text(emoji)
         .font(.system(size: size * 0.72))

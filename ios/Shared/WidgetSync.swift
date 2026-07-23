@@ -23,6 +23,8 @@ enum WidgetSync {
   static let liveActivityPhotoTempFileName = "petLiveActivityPhoto.tmp.png"
   static let liveActivityPhotoCompactFileName = "petLiveActivityCompactPhoto.png"
   static let liveActivityPhotoCompactTempFileName = "petLiveActivityCompactPhoto.tmp.png"
+  static let liveActivityBannerBgFileName = "petLiveActivityBannerBg.png"
+  static let liveActivityBannerBgTempFileName = "petLiveActivityBannerBg.tmp.png"
   static let liveActivityIconFileName = "petLiveActivityIcon.png"
   static let liveActivityIconTempFileName = "petLiveActivityIcon.tmp.png"
   static let liveActivityIconCompactFileName = "petLiveActivityCompactIcon.png"
@@ -585,7 +587,7 @@ enum WidgetSync {
     return fullOk && compactOk
   }
 
-  /// role: photo | icon | panel | leftIcon | rightIcon
+  /// role: photo | icon | panel | leftIcon | rightIcon | bannerBg
   static func replaceLiveActivityAsset(role: String, data: Data) -> Bool {
     switch role {
     case "photo":
@@ -606,8 +608,15 @@ enum WidgetSync {
         compactTemp: liveActivityIconCompactTempFileName,
         logTag: "LiveActivityIcon"
       )
+    case "bannerBg":
+      return replaceLiveActivityBannerImage(
+        with: data,
+        fileName: liveActivityBannerBgFileName,
+        tempFileName: liveActivityBannerBgTempFileName,
+        logTag: "LiveActivityBannerBg"
+      )
     case "panel":
-      return replaceAppGroupImage(
+      return replaceLiveActivityBannerImage(
         with: data,
         fileName: liveActivityPanelFileName,
         tempFileName: liveActivityPanelTempFileName,
@@ -641,6 +650,25 @@ enum WidgetSync {
     }
   }
 
+  private static func replaceLiveActivityBannerImage(
+    with data: Data,
+    fileName: String,
+    tempFileName: String,
+    logTag: String
+  ) -> Bool {
+    guard let image = UIImage(data: data),
+          let resized = resizeForLiveActivityBanner(image) else {
+      NSLog("[\(logTag)] replace banner decode failed")
+      return false
+    }
+    return writePng(
+      resized,
+      fileName: fileName,
+      tempFileName: tempFileName,
+      logTag: logTag
+    )
+  }
+
   private static func replacePair(
     data: Data,
     fullName: String,
@@ -650,7 +678,7 @@ enum WidgetSync {
     logTag: String
   ) -> Bool {
     guard let image = UIImage(data: data),
-          let full = resizeForWidget(image),
+          let full = resizeForLiveActivityBanner(image),
           let compact = resizeForLiveActivityCompact(image) else {
       NSLog("[\(logTag)] replace image decode failed")
       return false
@@ -874,6 +902,7 @@ enum WidgetSync {
       + fileRevision(for: liveActivityIconFileName)
       + fileRevision(for: liveActivityIconCompactFileName)
       + fileRevision(for: liveActivityPanelFileName)
+      + fileRevision(for: liveActivityBannerBgFileName)
       + fileRevision(for: liveActivityLeftIconFileName)
       + fileRevision(for: liveActivityLeftIconCompactFileName)
       + fileRevision(for: liveActivityRightIconFileName)
@@ -938,6 +967,25 @@ enum WidgetSync {
   private static let widgetImageMaxSide: CGFloat = 1200
   /// 灵动岛紧凑区约 28pt，3x 下 84px；超过此尺寸系统会显示灰色占位
   private static let liveActivityCompactSide: CGFloat = 84
+  /// 锁屏通知版图片过大也会被系统替换成灰块，控制在约 360px
+  private static let liveActivityBannerMaxSide: CGFloat = 360
+
+  private static func resizeForLiveActivityBanner(_ image: UIImage) -> UIImage? {
+    let size = image.size
+    let maxSide = max(size.width, size.height)
+    guard maxSide > liveActivityBannerMaxSide else { return image }
+    let scale = liveActivityBannerMaxSide / maxSide
+    let target = CGSize(
+      width: floor(size.width * scale),
+      height: floor(size.height * scale)
+    )
+    let format = UIGraphicsImageRendererFormat.default()
+    format.opaque = false
+    format.scale = 1
+    return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+      image.draw(in: CGRect(origin: .zero, size: target))
+    }
+  }
 
   private static func resizeForLiveActivityCompact(_ image: UIImage) -> UIImage? {
     let side = liveActivityCompactSide

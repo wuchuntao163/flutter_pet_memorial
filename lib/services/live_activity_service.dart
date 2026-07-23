@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -174,11 +176,21 @@ class LiveActivityService {
   }) async {
     if (!await isSupported()) return false;
     try {
+      var path = imagePath?.trim();
+      var base64 = imageBase64;
+      // 网络图 / Flutter asset：原生读不到，先转 base64
+      if ((base64 == null || base64.isEmpty) && path != null && path.isNotEmpty) {
+        final resolved = await _resolveImageBytes(path);
+        if (resolved != null) {
+          base64 = base64Encode(resolved);
+          path = null;
+        }
+      }
       final ok =
           await _channel.invokeMethod<bool>('syncAsset', {
             'role': role,
-            if (imagePath != null) 'imagePath': imagePath,
-            if (imageBase64 != null) 'imageBase64': imageBase64,
+            if (path != null && path.isNotEmpty) 'imagePath': path,
+            if (base64 != null && base64.isNotEmpty) 'imageBase64': base64,
           }) ??
           false;
       return ok;
@@ -186,6 +198,38 @@ class LiveActivityService {
       debugPrint('[LiveActivityService] syncAsset $role failed: $e\n$st');
       return false;
     }
+  }
+
+  Future<Uint8List?> _resolveImageBytes(String raw) async {
+    final value = raw.trim();
+    if (value.isEmpty) return null;
+    try {
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        final response = await Dio().get<List<int>>(
+          value,
+          options: Options(responseType: ResponseType.bytes),
+        );
+        final data = response.data;
+        if (data != null && data.isNotEmpty) {
+          return Uint8List.fromList(data);
+        }
+        return null;
+      }
+      if (value.startsWith('assets/')) {
+        final data = await rootBundle.load(value);
+        return data.buffer.asUint8List();
+      }
+      final cleaned = value.startsWith('file://')
+          ? Uri.parse(value).toFilePath()
+          : value;
+      final file = File(cleaned);
+      if (await file.exists()) {
+        return file.readAsBytes();
+      }
+    } catch (e, st) {
+      debugPrint('[LiveActivityService] resolve image failed: $e\n$st');
+    }
+    return null;
   }
 
   /// 用户已开启且系统允许时，按 active 模板重算内容。
@@ -199,6 +243,16 @@ class LiveActivityService {
 
     if (template == 1) {
       await _syncLiveActivityImage(force: force);
+    }
+    if (template == 2) {
+      final photo = prefs.getString('photo_island_image');
+      final banner = prefs.getString('photo_island_banner_bg');
+      if (photo != null && photo.isNotEmpty) {
+        await syncAsset(role: 'photo', imagePath: photo);
+      }
+      if (banner != null && banner.isNotEmpty) {
+        await syncAsset(role: 'bannerBg', imagePath: banner);
+      }
     }
     if (template == 5) {
       await MemorialStore.instance.ensureMemorialsLoaded();
@@ -264,6 +318,8 @@ class LiveActivityService {
     final subtitle =
         prefs.getString('photo_island_content')?.trim() ?? '笨猫真可爱 >.<';
     final color = prefs.getInt('photo_island_color') ?? 0xFFFFFFFF;
+    final fontSize = prefs.getDouble('photo_island_font_size') ?? 16;
+    final bgColor = prefs.getInt('photo_island_bg_color') ?? 0xFFFFC7B9;
     return {
       'petId': '${cache.petId ?? ''}',
       'template': 2,
@@ -271,6 +327,8 @@ class LiveActivityService {
       'subtitle': subtitle,
       'memorialTitle': '',
       'textColorARGB': color,
+      'textFontSize': fontSize,
+      'backgroundColorARGB': bgColor,
     };
   }
 
@@ -298,6 +356,7 @@ class LiveActivityService {
       'memorialTitle': title,
       'timerTargetEpoch': epoch,
       'compactLeadingEmoji': icon,
+      'backgroundColorARGB': countUp ? 0xFF000000 : 0xFFE4F0FF,
     };
   }
 

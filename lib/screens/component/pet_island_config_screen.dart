@@ -8,6 +8,7 @@ import '../../data/app_cache_store.dart';
 import '../../services/live_activity_service.dart';
 import '../../services/pet_image_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_success_dialog.dart';
 import '../../utils/pet_display_image.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
@@ -289,6 +290,7 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _selectedPetImage(size: 20),
           const Spacer(),
@@ -477,7 +479,8 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
         _enabled = true;
         _busy = false;
       });
-      await _showIslandSuccessDialog();
+      if (!mounted) return;
+      await showIslandSuccessDialog(context);
       return;
     }
 
@@ -488,59 +491,6 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
       _enabled = false;
       _busy = false;
     });
-  }
-
-  Future<void> _showIslandSuccessDialog() async {
-    var dialogOpen = true;
-    final navigator = Navigator.of(context, rootNavigator: true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (dialogOpen && navigator.mounted && navigator.canPop()) {
-        navigator.pop();
-      }
-    });
-    await showDialog<void>(
-      context: context,
-      useRootNavigator: true,
-      requestFocus: false,
-      barrierDismissible: false,
-      barrierColor: Colors.black45,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: UnconstrainedBox(
-          child: Container(
-            width: 130,
-            height: 130,
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 13),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(32),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  'assets/images/shimajima.png',
-                  width: 74,
-                  height: 74,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 5),
-                const Text(
-                  '已上岛',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-    dialogOpen = false;
   }
 
   Future<void> _showTutorial() async {

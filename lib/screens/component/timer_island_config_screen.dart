@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
@@ -10,6 +11,7 @@ import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_success_dialog.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
@@ -36,6 +38,7 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
   bool _enabled = false;
   bool _busy = false;
   late DateTime _previewNow;
+  Timer? _previewTicker;
 
   bool get _isCountUp => widget.mode == TimerIslandMode.countUp;
   String get _pageTitle => _isCountUp ? '正计时' : '倒计时';
@@ -77,11 +80,16 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
     super.initState();
     _previewNow = DateTime.now();
     _titleController = TextEditingController(text: _defaultTitle);
+    _previewTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _previewNow = DateTime.now());
+    });
     _load();
   }
 
   @override
   void dispose() {
+    _previewTicker?.cancel();
     _titleController.dispose();
     super.dispose();
   }
@@ -350,6 +358,7 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _selectedIcon(19),
           const Spacer(),
@@ -359,6 +368,7 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
               color: Colors.white,
               fontSize: 9,
               fontWeight: FontWeight.w600,
+              height: 1,
             ),
           ),
         ],
@@ -429,7 +439,10 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
       width: size,
       height: size,
       child: Center(
-        child: Text(_icon, style: TextStyle(fontSize: size * .75)),
+        child: Text(
+          _icon,
+          style: TextStyle(fontSize: size * .75, height: 1),
+        ),
       ),
     );
   }
@@ -574,6 +587,8 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _busy = true);
     final next = !_enabled;
+    final bannerBg =
+        WidgetDetailScope.maybeOf(context)?.defaultBackground.trim() ?? '';
     final prefs = await SharedPreferences.getInstance();
     final title = _titleController.text.trim();
     await Future.wait([
@@ -602,6 +617,8 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
       } else if (!target.isAfter(now)) {
         target = target.add(const Duration(days: 1));
       }
+      final bgColor = (_isCountUp ? Colors.black : const Color(0xFFE4F0FF))
+          .toARGB32();
       final ok = await LiveActivityService.instance.startOrUpdateIsland(
         template: template,
         payload: {
@@ -610,9 +627,11 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
           'memorialTitle': title.isEmpty ? _defaultTitle : title,
           'timerTargetEpoch': target.millisecondsSinceEpoch / 1000.0,
           'compactLeadingEmoji': _icon,
+          'backgroundColorARGB': bgColor,
         },
         assetPaths: {
           if (_imagePath != null) 'icon': _imagePath,
+          if (bannerBg.isNotEmpty) 'bannerBg': bannerBg,
         },
       );
       if (!mounted) return;
@@ -626,7 +645,8 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
         _enabled = true;
         _busy = false;
       });
-      await showCenterTip(context, '已上岛');
+      if (!mounted) return;
+      await showIslandSuccessDialog(context);
       return;
     }
 

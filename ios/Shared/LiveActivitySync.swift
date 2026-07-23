@@ -46,6 +46,8 @@ enum LiveActivitySync {
     let timerTargetEpoch = doubleValue(args["timerTargetEpoch"]) ?? 0
     let daysText = stringValue(args["daysText"])
     let textColorARGB = uInt32Value(args["textColorARGB"]) ?? 0xFFFFFFFF
+    let backgroundColorARGB = uInt32Value(args["backgroundColorARGB"]) ?? 0xFFFFC7B9
+    let textFontSize = doubleValue(args["textFontSize"]) ?? 16
     let textNormX = doubleValue(args["textNormX"]) ?? 0.58
     let textNormY = doubleValue(args["textNormY"]) ?? 0.72
     let leadingEmoji = stringValue(args["compactLeadingEmoji"])
@@ -59,6 +61,8 @@ enum LiveActivitySync {
       timerTargetEpoch: timerTargetEpoch,
       daysText: daysText,
       textColorARGB: textColorARGB,
+      backgroundColorARGB: backgroundColorARGB,
+      textFontSize: textFontSize,
       textNormX: textNormX,
       textNormY: textNormY,
       compactLeadingEmoji: leadingEmoji,

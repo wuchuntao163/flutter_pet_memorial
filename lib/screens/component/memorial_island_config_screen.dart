@@ -12,6 +12,7 @@ import '../../models/memorial_day.dart';
 import '../../router/app_routes.dart';
 import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_success_dialog.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
@@ -335,6 +336,7 @@ class _MemorialIslandConfigScreenState
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _selectedIcon(19),
           const Spacer(),
@@ -344,6 +346,7 @@ class _MemorialIslandConfigScreenState
               color: Colors.white,
               fontSize: 9,
               fontWeight: FontWeight.w600,
+              height: 1,
             ),
           ),
         ],
@@ -487,7 +490,7 @@ class _MemorialIslandConfigScreenState
       width: size,
       height: size,
       child: Center(
-        child: Text(_icon, style: TextStyle(fontSize: size * .75)),
+        child: Text(_icon, style: TextStyle(fontSize: size * .75, height: 1)),
       ),
     );
   }
@@ -595,6 +598,8 @@ class _MemorialIslandConfigScreenState
     if (selected == null) return;
     setState(() => _busy = true);
     final next = !_enabled;
+    final bannerBg =
+        WidgetDetailScope.maybeOf(context)?.defaultBackground.trim() ?? '';
     final prefs = await SharedPreferences.getInstance();
     await Future.wait([
       prefs.setString(_selectedKey, selected.id),
@@ -613,9 +618,11 @@ class _MemorialIslandConfigScreenState
           'memorialTitle': selected.title,
           'daysText': daysText,
           'compactLeadingEmoji': _icon,
+          'backgroundColorARGB': const Color(0xFFF8E4EB).toARGB32(),
         },
         assetPaths: {
           if (_imagePath != null) 'icon': _imagePath,
+          if (bannerBg.isNotEmpty) 'bannerBg': bannerBg,
         },
       );
       if (!mounted) return;
@@ -629,7 +636,8 @@ class _MemorialIslandConfigScreenState
         _enabled = true;
         _busy = false;
       });
-      await showCenterTip(context, '已上岛');
+      if (!mounted) return;
+      await showIslandSuccessDialog(context);
       return;
     }
 
