@@ -107,7 +107,9 @@ struct PetLiveActivityWidget: Widget {
     ActivityConfiguration(for: PetLiveActivityAttributes.self) { context in
       lockScreenView(context: context)
         .activityBackgroundTint(
-          LiveActivityShared.color(from: context.state.backgroundColorARGB)
+          context.state.template == 6
+            ? Color.clear
+            : LiveActivityShared.color(from: context.state.backgroundColorARGB)
         )
         .activitySystemActionForegroundColor(Color.primary)
     } dynamicIsland: { context in
@@ -158,12 +160,17 @@ struct PetLiveActivityWidget: Widget {
         size: 26
       )
     case 6:
-      imageOrEmoji(
-        image: LiveActivityShared.loadCompactLeftIcon(),
-        emoji: state.compactLeadingEmoji.isEmpty ? "🌈" : state.compactLeadingEmoji,
-        systemName: "sparkles",
-        size: 26
-      )
+      // 自定义：相册上传图标在灵动岛显示圆形（如图）
+      if let image = LiveActivityShared.loadCompactLeftIcon() {
+        islandCompactImage(uiImage: image, size: 26, cornerRadius: 13)
+      } else {
+        imageOrEmoji(
+          image: nil,
+          emoji: state.compactLeadingEmoji.isEmpty ? "🌈" : state.compactLeadingEmoji,
+          systemName: "sparkles",
+          size: 26
+        )
+      }
     default:
       if let image = LiveActivityShared.loadCompactPetImage() {
         islandCompactImage(uiImage: image, size: 28, cornerRadius: 28 * 0.22)
@@ -193,12 +200,16 @@ struct PetLiveActivityWidget: Widget {
         .minimumScaleFactor(0.7)
         .lineLimit(1)
     case 6:
-      imageOrEmoji(
-        image: LiveActivityShared.loadCompactRightIcon(),
-        emoji: state.compactTrailingEmoji.isEmpty ? "🔔" : state.compactTrailingEmoji,
-        systemName: "bell.fill",
-        size: 22
-      )
+      if let image = LiveActivityShared.loadCompactRightIcon() {
+        islandCompactImage(uiImage: image, size: 22, cornerRadius: 11)
+      } else {
+        imageOrEmoji(
+          image: nil,
+          emoji: state.compactTrailingEmoji.isEmpty ? "🔔" : state.compactTrailingEmoji,
+          systemName: "bell.fill",
+          size: 22
+        )
+      }
     default:
       if let image = LiveActivityShared.loadCompactCloverImage() {
         islandCompactImage(uiImage: image, size: 22, cornerRadius: 22 * 0.18)
@@ -217,10 +228,18 @@ struct PetLiveActivityWidget: Widget {
   private func expandedContent(
     context: ActivityViewContext<PetLiveActivityAttributes>
   ) -> some View {
-    bodyContent(context: context, expanded: true)
-      .padding(.leading, 14)
-      .padding(.trailing, 12)
-      .padding(.vertical, 6)
+    let state = context.state
+    if state.template == 6 {
+      customPanel(state: state, height: 72)
+        .id(state.imageRevision)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+    } else {
+      bodyContent(context: context, expanded: true)
+        .padding(.leading, 14)
+        .padding(.trailing, 12)
+        .padding(.vertical, 6)
+    }
   }
 
   @ViewBuilder
@@ -228,27 +247,34 @@ struct PetLiveActivityWidget: Widget {
     context: ActivityViewContext<PetLiveActivityAttributes>
   ) -> some View {
     let state = context.state
-    bodyContent(context: context, expanded: false)
-      .padding(.leading, state.template == 2 ? 12 : 14)
-      .padding(.trailing, 12)
-      .padding(.vertical, 8)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .background {
-        if state.template == 2 || state.template == 3 || state.template == 4
-          || state.template == 5 {
-          Group {
-            if let bg = LiveActivityShared.loadBannerBg() {
-              Image(uiImage: bg)
-                .resizable()
-                .scaledToFill()
-            } else {
-              LiveActivityShared.color(from: state.backgroundColorARGB)
+    // 自定义面板全幅铺满，去掉外层 padding（否则上下左右会留缝）
+    if state.template == 6 {
+      customPanel(state: state, height: 92)
+        .id(state.imageRevision)
+        .frame(maxWidth: .infinity)
+    } else {
+      bodyContent(context: context, expanded: false)
+        .padding(.leading, state.template == 2 ? 14 : 16)
+        .padding(.trailing, 14)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
+        .background {
+          if state.template == 2 || state.template == 3 || state.template == 4
+            || state.template == 5 {
+            Group {
+              if let bg = LiveActivityShared.loadBannerBg() {
+                Image(uiImage: bg)
+                  .resizable()
+                  .scaledToFill()
+              } else {
+                LiveActivityShared.color(from: state.backgroundColorARGB)
+              }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
           }
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-      }
-      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
   }
 
   @ViewBuilder
@@ -257,17 +283,15 @@ struct PetLiveActivityWidget: Widget {
     expanded: Bool
   ) -> some View {
     let state = context.state
-    // 锁屏通知条保持紧凑，避免被背景图撑得过长
-    let imageSize: CGFloat = expanded ? 48 : 44
+    let imageSize: CGFloat = expanded ? 52 : 56
     switch state.template {
     case 2:
-      HStack(spacing: 10) {
+      HStack(spacing: 12) {
         imageOrEmoji(
           image: LiveActivityShared.loadPhoto(),
           emoji: state.compactLeadingEmoji,
           systemName: "photo",
-          size: imageSize,
-          circular: false
+          size: imageSize
         )
         .id(state.imageRevision)
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
@@ -278,7 +302,7 @@ struct PetLiveActivityWidget: Widget {
             )
           )
           .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
-          .lineLimit(1)
+          .lineLimit(2)
           .minimumScaleFactor(0.75)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
@@ -323,7 +347,7 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 6:
-      customPanel(state: state, height: expanded ? 72 : 78)
+      customPanel(state: state, height: expanded ? 72 : 92)
         .id(state.imageRevision)
     default:
       HStack(alignment: .center, spacing: 12) {

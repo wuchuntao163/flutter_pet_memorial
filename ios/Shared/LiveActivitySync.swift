@@ -117,23 +117,30 @@ enum LiveActivitySync {
     completion: @escaping (Bool) -> Void
   ) {
     DispatchQueue.global(qos: .userInitiated).async {
-      let data: Data?
+      var data: Data?
       if let path = imagePath?.trimmingCharacters(in: .whitespacesAndNewlines),
          !path.isEmpty {
         let cleaned = path.hasPrefix("file://")
           ? (URL(string: path)?.path ?? path)
           : path
-        data = try? Data(contentsOf: URL(fileURLWithPath: cleaned))
+        if let fileData = try? Data(contentsOf: URL(fileURLWithPath: cleaned)),
+           !fileData.isEmpty {
+          data = fileData
+        } else if let image = UIImage(contentsOfFile: cleaned),
+                  let png = image.pngData() {
+          // 部分相册临时路径 Data 直读失败，走 UIImage 再编码
+          data = png
+        }
       } else if let base64 = imageBase64, !base64.isEmpty {
         data = Data(base64Encoded: base64)
-      } else {
-        data = nil
       }
       guard let data, !data.isEmpty else {
+        NSLog("[LiveActivity] syncAsset empty role=\(role) path=\(imagePath ?? "")")
         DispatchQueue.main.async { completion(false) }
         return
       }
       let ok = WidgetSync.replaceLiveActivityAsset(role: role, data: data)
+      NSLog("[LiveActivity] syncAsset role=\(role) ok=\(ok) bytes=\(data.count)")
       DispatchQueue.main.async { completion(ok) }
     }
   }

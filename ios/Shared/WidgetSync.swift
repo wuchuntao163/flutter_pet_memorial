@@ -609,14 +609,14 @@ enum WidgetSync {
         logTag: "LiveActivityIcon"
       )
     case "bannerBg":
-      return replaceAppGroupImage(
+      return replaceLiveActivityContentImage(
         with: data,
         fileName: liveActivityBannerBgFileName,
         tempFileName: liveActivityBannerBgTempFileName,
         logTag: "LiveActivityBannerBg"
       )
     case "panel":
-      return replaceAppGroupImage(
+      return replaceLiveActivityContentImage(
         with: data,
         fileName: liveActivityPanelFileName,
         tempFileName: liveActivityPanelTempFileName,
@@ -659,7 +659,7 @@ enum WidgetSync {
     logTag: String
   ) -> Bool {
     guard let image = UIImage(data: data),
-          let full = resizeForWidget(image),
+          let full = resizeForLiveActivityContent(image),
           let compact = resizeForLiveActivityCompact(image) else {
       NSLog("[\(logTag)] replace image decode failed")
       return false
@@ -677,6 +677,26 @@ enum WidgetSync {
       logTag: "\(logTag)Compact"
     )
     return fullOk && compactOk
+  }
+
+  /// Live Activity 锁屏图过大时系统会直接不渲染；控制在约 300px
+  private static func replaceLiveActivityContentImage(
+    with data: Data,
+    fileName: String,
+    tempFileName: String,
+    logTag: String
+  ) -> Bool {
+    guard let image = UIImage(data: data),
+          let resized = resizeForLiveActivityContent(image) else {
+      NSLog("[\(logTag)] replace content image decode failed")
+      return false
+    }
+    return writePng(
+      resized,
+      fileName: fileName,
+      tempFileName: tempFileName,
+      logTag: logTag
+    )
   }
 
   private static func writePng(
@@ -948,6 +968,25 @@ enum WidgetSync {
   private static let widgetImageMaxSide: CGFloat = 1200
   /// 灵动岛紧凑区约 28pt，3x 下 84px；超过此尺寸系统会显示灰色占位
   private static let liveActivityCompactSide: CGFloat = 84
+  /// 锁屏 Live Activity 内容图过大时系统会丢弃不显示
+  private static let liveActivityContentMaxSide: CGFloat = 300
+
+  private static func resizeForLiveActivityContent(_ image: UIImage) -> UIImage? {
+    let size = image.size
+    let maxSide = max(size.width, size.height)
+    guard maxSide > liveActivityContentMaxSide else { return image }
+    let scale = liveActivityContentMaxSide / maxSide
+    let target = CGSize(
+      width: max(1, floor(size.width * scale)),
+      height: max(1, floor(size.height * scale))
+    )
+    let format = UIGraphicsImageRendererFormat.default()
+    format.opaque = false
+    format.scale = 1
+    return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+      image.draw(in: CGRect(origin: .zero, size: target))
+    }
+  }
 
   private static func resizeForLiveActivityCompact(_ image: UIImage) -> UIImage? {
     let side = liveActivityCompactSide
