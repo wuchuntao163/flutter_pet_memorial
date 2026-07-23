@@ -297,15 +297,17 @@ struct PetLiveActivityWidget: Widget {
     case 2:
       HStack(spacing: 12) {
         // 锁屏卡片相册图也用正圆；无图才 emoji
-        if let image = LiveActivityShared.loadPhoto() {
-          islandCircleImage(uiImage: image, size: imageSize)
-        } else {
-          imageOrEmoji(
-            image: nil,
-            emoji: state.compactLeadingEmoji,
-            systemName: "photo",
-            size: imageSize
-          )
+        Group {
+          if let image = LiveActivityShared.loadPhoto() {
+            islandCircleImage(uiImage: image, size: imageSize)
+          } else {
+            imageOrEmoji(
+              image: nil,
+              emoji: state.compactLeadingEmoji,
+              systemName: "photo",
+              size: imageSize
+            )
+          }
         }
         .id(state.imageRevision)
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
@@ -322,15 +324,17 @@ struct PetLiveActivityWidget: Widget {
       }
     case 3, 4:
       HStack(spacing: 12) {
-        if let image = LiveActivityShared.loadIcon() {
-          islandCircleImage(uiImage: image, size: imageSize)
-        } else {
-          imageOrEmoji(
-            image: nil,
-            emoji: state.compactLeadingEmoji.isEmpty ? "🔔" : state.compactLeadingEmoji,
-            systemName: "bell.fill",
-            size: imageSize
-          )
+        Group {
+          if let image = LiveActivityShared.loadIcon() {
+            islandCircleImage(uiImage: image, size: imageSize)
+          } else {
+            imageOrEmoji(
+              image: nil,
+              emoji: state.compactLeadingEmoji.isEmpty ? "🔔" : state.compactLeadingEmoji,
+              systemName: "bell.fill",
+              size: imageSize
+            )
+          }
         }
         .id(state.imageRevision)
         VStack(alignment: .leading, spacing: 4) {
@@ -344,15 +348,17 @@ struct PetLiveActivityWidget: Widget {
       }
     case 5:
       HStack(spacing: 12) {
-        if let image = LiveActivityShared.loadIcon() {
-          islandCircleImage(uiImage: image, size: imageSize)
-        } else {
-          imageOrEmoji(
-            image: nil,
-            emoji: state.compactLeadingEmoji.isEmpty ? "❤️" : state.compactLeadingEmoji,
-            systemName: "heart.fill",
-            size: imageSize
-          )
+        Group {
+          if let image = LiveActivityShared.loadIcon() {
+            islandCircleImage(uiImage: image, size: imageSize)
+          } else {
+            imageOrEmoji(
+              image: nil,
+              emoji: state.compactLeadingEmoji.isEmpty ? "❤️" : state.compactLeadingEmoji,
+              systemName: "heart.fill",
+              size: imageSize
+            )
+          }
         }
         .id(state.imageRevision)
         VStack(alignment: .leading, spacing: 4) {
@@ -373,10 +379,12 @@ struct PetLiveActivityWidget: Widget {
         .id(state.imageRevision)
     default:
       HStack(alignment: .center, spacing: 12) {
-        if let image = LiveActivityShared.loadCachedPetImage() {
-          islandCircleImage(uiImage: image, size: imageSize)
-        } else {
-          petImageView(size: imageSize)
+        Group {
+          if let image = LiveActivityShared.loadCachedPetImage() {
+            islandCircleImage(uiImage: image, size: imageSize)
+          } else {
+            petImageView(size: imageSize)
+          }
         }
         .id(state.imageRevision)
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
