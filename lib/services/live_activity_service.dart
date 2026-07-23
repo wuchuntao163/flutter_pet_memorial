@@ -178,8 +178,13 @@ class LiveActivityService {
     try {
       var path = imagePath?.trim();
       var base64 = imageBase64;
-      // 网络图 / Flutter asset：原生读不到，先转 base64
-      if ((base64 == null || base64.isEmpty) && path != null && path.isNotEmpty) {
+      // 仅网络图 / Flutter asset 需转 base64；本地文件路径交给原生直接读
+      if ((base64 == null || base64.isEmpty) &&
+          path != null &&
+          path.isNotEmpty &&
+          (path.startsWith('http://') ||
+              path.startsWith('https://') ||
+              path.startsWith('assets/'))) {
         final resolved = await _resolveImageBytes(path);
         if (resolved != null) {
           base64 = base64Encode(resolved);

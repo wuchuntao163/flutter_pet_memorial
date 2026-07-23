@@ -138,13 +138,18 @@ struct PetLiveActivityWidget: Widget {
     let state = context.state
     switch state.template {
     case 2:
-      imageOrEmoji(
-        image: LiveActivityShared.loadCompactPhoto(),
-        emoji: state.compactLeadingEmoji,
-        systemName: "photo",
-        size: 28,
-        circular: true
-      )
+      // 仅相册图在灵动岛 compact 显示圆形；无图时仍用 emoji/占位
+      if let image = LiveActivityShared.loadCompactPhoto() {
+        islandCompactImage(uiImage: image, size: 28, cornerRadius: 14)
+      } else {
+        imageOrEmoji(
+          image: nil,
+          emoji: state.compactLeadingEmoji,
+          systemName: "photo",
+          size: 28,
+          circular: false
+        )
+      }
     case 3, 4, 5:
       imageOrEmoji(
         image: LiveActivityShared.loadCompactIcon(),
@@ -223,23 +228,27 @@ struct PetLiveActivityWidget: Widget {
     context: ActivityViewContext<PetLiveActivityAttributes>
   ) -> some View {
     let state = context.state
-    ZStack {
-      if state.template == 2 || state.template == 3 || state.template == 4
-        || state.template == 5 {
-        if let bg = LiveActivityShared.loadBannerBg() {
-          Image(uiImage: bg)
-            .resizable()
-            .scaledToFill()
-        } else {
-          LiveActivityShared.color(from: state.backgroundColorARGB)
+    bodyContent(context: context, expanded: false)
+      .padding(.leading, state.template == 2 ? 12 : 14)
+      .padding(.trailing, 12)
+      .padding(.vertical, 8)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background {
+        if state.template == 2 || state.template == 3 || state.template == 4
+          || state.template == 5 {
+          Group {
+            if let bg = LiveActivityShared.loadBannerBg() {
+              Image(uiImage: bg)
+                .resizable()
+                .scaledToFill()
+            } else {
+              LiveActivityShared.color(from: state.backgroundColorARGB)
+            }
+          }
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
       }
-      bodyContent(context: context, expanded: false)
-        .padding(.leading, state.template == 2 ? 12 : 16)
-        .padding(.trailing, 14)
-        .padding(.vertical, 10)
-    }
-    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
   }
 
   @ViewBuilder
@@ -248,16 +257,17 @@ struct PetLiveActivityWidget: Widget {
     expanded: Bool
   ) -> some View {
     let state = context.state
-    let imageSize: CGFloat = expanded ? 56 : 60
+    // 锁屏通知条保持紧凑，避免被背景图撑得过长
+    let imageSize: CGFloat = expanded ? 48 : 44
     switch state.template {
     case 2:
-      HStack(spacing: 12) {
+      HStack(spacing: 10) {
         imageOrEmoji(
           image: LiveActivityShared.loadPhoto(),
           emoji: state.compactLeadingEmoji,
           systemName: "photo",
           size: imageSize,
-          circular: true
+          circular: false
         )
         .id(state.imageRevision)
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
@@ -268,7 +278,7 @@ struct PetLiveActivityWidget: Widget {
             )
           )
           .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
-          .lineLimit(2)
+          .lineLimit(1)
           .minimumScaleFactor(0.75)
           .frame(maxWidth: .infinity, alignment: .leading)
       }

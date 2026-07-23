@@ -306,12 +306,13 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
       borderRadius: BorderRadius.circular(16),
     ),
     alignment: Alignment.centerLeft,
-    child: _image(26, circular: true),
+    // 仅相册上传图在灵动岛预览里圆形
+    child: _image(26, circular: _imagePath != null),
   );
 
   Widget _expandedPreview() => Container(
     width: 245,
-    height: 92,
+    height: 72,
     padding: const EdgeInsets.fromLTRB(18, 0, 12, 0),
     decoration: BoxDecoration(
       gradient: const LinearGradient(
@@ -322,7 +323,7 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
     ),
     child: Row(
       children: [
-        _image(54, circular: true),
+        _image(44, circular: false),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
@@ -341,26 +342,35 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
   );
 
   Widget _image(double size, {bool circular = false}) {
-    final image = _imagePath == null
-        ? Image.asset(
-            'assets/images/addvalentine.png',
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-          )
-        : Image.file(
-            File(_imagePath!),
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-          );
-    if (circular) {
-      return ClipOval(child: image);
+    final Widget image;
+    if (_imagePath != null) {
+      image = Image.file(
+        File(_imagePath!),
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Image.asset(
+          'assets/images/addvalentine.png',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+        ),
+      );
+    } else {
+      image = Image.asset(
+        'assets/images/addvalentine.png',
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      );
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(size * 0.22),
-      child: image,
-    );
+    final clipped = circular
+        ? ClipOval(child: image)
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(size * 0.22),
+            child: image,
+          );
+    return SizedBox(width: size, height: size, child: clipped);
   }
 
   Widget _title(String text) => Text(
