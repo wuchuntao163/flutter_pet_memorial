@@ -21,7 +21,7 @@ final class WidgetSelectionIntentHandler: NSObject,
     for intent: SelectSmallSavedWidgetIntent,
     with completion: @escaping (INObjectCollection<NSString>?, Error?) -> Void
   ) {
-    completion(SavedWidgetOptionsProvider.makeTransparentCollection(), nil)
+    completion(SavedWidgetOptionsProvider.makeTransparentCollection(filter: .small), nil)
   }
 
   func defaultTransparentPosition(for intent: SelectSmallSavedWidgetIntent) -> String? {
@@ -43,7 +43,7 @@ final class WidgetSelectionIntentHandler: NSObject,
     for intent: SelectMediumSavedWidgetIntent,
     with completion: @escaping (INObjectCollection<NSString>?, Error?) -> Void
   ) {
-    completion(SavedWidgetOptionsProvider.makeTransparentCollection(), nil)
+    completion(SavedWidgetOptionsProvider.makeTransparentCollection(filter: .medium), nil)
   }
 
   func defaultTransparentPosition(for intent: SelectMediumSavedWidgetIntent) -> String? {

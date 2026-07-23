@@ -43,16 +43,34 @@ class PetImagePicker {
         maxAssets: 1,
         requestType: RequestType.image,
         textDelegate: const AssetPickerTextDelegate(),
-        pickerTheme: AssetPicker.themeData(
-          AppColors.accent,
-          light: true,
-        ),
+        pickerTheme: AssetPicker.themeData(AppColors.accent, light: true),
       ),
     );
     if (assets == null || assets.isEmpty) return null;
 
     final file = await assets.first.originFile;
     return file?.path;
+  }
+
+  /// 选择透明组件使用的壁纸原图，不压缩或降低画质。
+  static Future<String?> pickOriginalWallpaper(BuildContext context) async {
+    await AppPermissionUtil.ensureGalleryAccess();
+    if (!context.mounted) return null;
+
+    if (!Platform.isIOS) {
+      return pickFromGallery(context);
+    }
+
+    try {
+      final file = await _cameraPicker.pickImage(source: ImageSource.gallery);
+      return file?.path;
+    } on PlatformException catch (e) {
+      if (e.code == 'photo_access_denied' ||
+          e.code == 'photo_access_restricted') {
+        throw const AppPermissionDeniedException(AppPermissionType.gallery);
+      }
+      rethrow;
+    }
   }
 
   /// 打开相册选择多张图片
@@ -86,10 +104,7 @@ class PetImagePicker {
         maxAssets: maxAssets,
         requestType: RequestType.image,
         textDelegate: const AssetPickerTextDelegate(),
-        pickerTheme: AssetPicker.themeData(
-          AppColors.accent,
-          light: true,
-        ),
+        pickerTheme: AssetPicker.themeData(AppColors.accent, light: true),
       ),
     );
     if (assets == null || assets.isEmpty) return const [];

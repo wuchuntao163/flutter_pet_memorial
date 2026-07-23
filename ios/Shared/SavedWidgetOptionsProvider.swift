@@ -50,38 +50,29 @@ enum SavedWidgetOptionsProvider {
   // MARK: - 透明位置
 
   static let transparentOff = "关闭"
-  static let transparentFollowApp = "跟随 App 内设置"
-  /// 兼容旧版文案
+  static let transparentRevisionDefaultsKey = "widgetTransparentRevision"
+  /// 兼容已保存的旧选项（不再展示，升级后按关闭处理）
+  private static let transparentFollowApp = "跟随 App 内设置"
   private static let transparentFollowAppLegacy = "跟随app内设置"
-  /// 兼容已保存的旧选项（不再展示）
   private static let transparentEnableLegacy = "开启透明背景"
-  /// App Group UserDefaults：App 内设置的透明位置（左上/右上等，或关闭）
-  static let appTransparentPositionKey = "widgetTransparentPosition"
 
-  private static let cornerPositions = ["左上", "右上", "左下", "右下", "居中"]
+  private static let smallPositions = ["左上", "右上", "左中", "右中", "左下", "右下"]
+  private static let mediumPositions = ["顶部", "中部", "底部"]
 
   /// 编辑小组件「透明位置」选项
-  static func makeTransparentCollection() -> INObjectCollection<NSString> {
-    let items: [NSString] = [
-      transparentOff as NSString,
-      transparentFollowApp as NSString,
-      "左上" as NSString,
-      "右上" as NSString,
-      "左下" as NSString,
-      "右下" as NSString,
-      "居中" as NSString,
-    ]
+  static func makeTransparentCollection(filter: SizeFilter) -> INObjectCollection<NSString> {
+    let positions = filter == .small ? smallPositions : mediumPositions
+    let items = ([transparentOff] + positions).map { $0 as NSString }
     let section = INObjectSection(title: "透明位置", items: items)
     return INObjectCollection(sections: [section])
   }
 
-  /// 将 Intent 选项解析为实际位置（跟随 App 时读 App Group）
-  static func resolvedTransparentPosition(_ position: String?) -> String? {
+  /// 将 Intent 选项解析为实际位置。旧的 App 全局选项不再生效。
+  static func resolvedTransparentPosition(_ position: String?) -> String {
     let raw = position?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    // 未选/空 → 关闭（不要当成跟随 App，否则选壁纸后会全员透出）
     if raw.isEmpty { return transparentOff }
     if isFollowAppOption(raw) || raw == transparentEnableLegacy {
-      return appStoredTransparentPosition()
+      return transparentOff
     }
     return raw
   }
@@ -93,64 +84,32 @@ enum SavedWidgetOptionsProvider {
     return compact == "跟随App内设置" || compact == "跟随app内设置"
   }
 
-  /// App 内保存的透明位置；未设置时视为关闭
-  static func appStoredTransparentPosition() -> String {
-    guard let defaults = UserDefaults(suiteName: AppGroupConfig.id),
-          let value = defaults.string(forKey: appTransparentPositionKey)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-          !value.isEmpty else {
-      return transparentOff
-    }
-    // 旧值兜底
-    if value == transparentFollowApp
-      || value == transparentFollowAppLegacy
-      || value == transparentEnableLegacy {
-      return transparentOff
-    }
-    return value
-  }
-
   static func isTransparentEnabled(_ position: String?) -> Bool {
-    let resolved = resolvedTransparentPosition(position)?
-      .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    guard !resolved.isEmpty else { return false }
-    if resolved == transparentOff { return false }
-    // 仅方位开启假透明；「跟随 App」已在 resolve 时展开
-    return cornerPositions.contains(resolved)
+    let resolved = resolvedTransparentPosition(position)
+    return smallPositions.contains(resolved)
+      || mediumPositions.contains(resolved)
+      || resolved == "居中"
   }
 
-  /// 用作 App Group 文件名片段；[preferMedium] 时优先中号裁切
+  /// 用作 App Group 文件名片段；旧版已选方位仍可继续显示。
   static func transparentFileKey(_ position: String?, preferMedium: Bool = false) -> String? {
-    let resolved = resolvedTransparentPosition(position)?
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-    guard let resolved,
-          isTransparentEnabled(resolved) else {
-      return nil
-    }
-    return fileKey(forCornerOrCustom: resolved, preferMedium: preferMedium)
-  }
-
-  private static func fileKey(forCornerOrCustom position: String, preferMedium: Bool) -> String? {
+    let resolved = resolvedTransparentPosition(position)
     if preferMedium {
-      switch position {
-      case "左上", "右上": return "mediumTop"
-      case "居中": return "mediumMiddle"
-      case "左下", "右下": return "mediumBottom"
-      default: break
+      switch resolved {
+      case "顶部", "左上", "右上": return "mediumTop"
+      case "中部", "居中": return "mediumMiddle"
+      case "底部", "左下", "右下": return "mediumBottom"
+      default: return nil
       }
     }
-    switch position {
+    switch resolved {
     case "左上": return "topLeft"
     case "右上": return "topRight"
+    case "左中": return "midLeft"
+    case "右中": return "midRight"
     case "左下": return "bottomLeft"
     case "右下": return "bottomRight"
-    case "居中": return preferMedium ? "mediumMiddle" : "center"
-    default:
-      let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_-"))
-      let key = String(position.unicodeScalars.map {
-        allowed.contains($0) ? Character($0) : "_"
-      })
-      return key.isEmpty ? nil : key
+    default: return nil
     }
   }
 

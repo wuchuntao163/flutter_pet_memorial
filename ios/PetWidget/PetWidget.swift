@@ -63,7 +63,7 @@ struct SimpleEntry: TimelineEntry, Sendable {
     /// Selected「我的组件」id；nil = 未配置，显示引导
     let widgetId: Int?
     let isGalleryPreview: Bool
-    /// 「透明位置」：关闭 / 跟随 App / 方位名；用于壁纸裁切假透明
+    /// 「透明位置」：关闭 / 方位名；用于壁纸裁切假透明
     let transparentPosition: String?
 
     static func setup(date: Date = Date(), preview: Bool = false) -> SimpleEntry {
@@ -529,21 +529,20 @@ struct SavedWidgetHomeView: View {
               ) else {
             return nil
         }
-        let path = container.appendingPathComponent("widgetTransparent_\(key).png").path
-        if let image = UIImage(contentsOfFile: path) {
-            return image
+        let defaults = UserDefaults(suiteName: AppGroupConfig.id)
+        let revision = defaults?.string(
+            forKey: SavedWidgetOptionsProvider.transparentRevisionDefaultsKey
+        )?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !revision.isEmpty {
+            let path = container
+              .appendingPathComponent("widgetTransparent_\(revision)_\(key).png").path
+            return UIImage(contentsOfFile: path)
         }
-        // 中号缺图时回退小号方位
-        if preferMedium,
-           let fallback = SavedWidgetOptionsProvider.transparentFileKey(
-             position,
-             preferMedium: false
-           ) {
-            let fallbackPath = container
-              .appendingPathComponent("widgetTransparent_\(fallback).png").path
-            return UIImage(contentsOfFile: fallbackPath)
-        }
-        return nil
+        // 兼容升级前已生成的固定文件名裁切。
+        let legacyPath = container
+          .appendingPathComponent("widgetTransparent_\(key).png").path
+        return UIImage(contentsOfFile: legacyPath)
     }
 }
 

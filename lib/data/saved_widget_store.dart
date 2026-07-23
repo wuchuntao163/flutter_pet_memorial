@@ -189,7 +189,9 @@ class SavedWidgetStore extends ChangeNotifier {
       await dest.writeAsBytes(bytes, flush: true);
       return dest.path;
     } catch (error) {
-      debugPrint('[SavedWidgetStore] persistLocalBackgroundCopy failed: $error');
+      debugPrint(
+        '[SavedWidgetStore] persistLocalBackgroundCopy failed: $error',
+      );
       return null;
     }
   }
@@ -223,7 +225,9 @@ class SavedWidgetStore extends ChangeNotifier {
   }
 
   /// 桌面空白页截图 → 裁切各透明位置壁纸到 App Group
-  Future<bool> setupTransparentWallpapersFromScreenshot(String localPath) async {
+  Future<bool> setupTransparentWallpapersFromScreenshot(
+    String localPath,
+  ) async {
     if (!Platform.isIOS) return false;
     try {
       final bytes = await File(
@@ -238,33 +242,10 @@ class SavedWidgetStore extends ChangeNotifier {
       );
       return ok == true;
     } catch (error) {
-      debugPrint('[SavedWidgetStore] setup transparent wallpapers failed: $error');
-      return false;
-    }
-  }
-
-  Future<void> setAppTransparentPosition(String position) async {
-    if (!Platform.isIOS) return;
-    try {
-      await _channel.invokeMethod<void>('setAppTransparentPosition', {
-        'position': position,
-      });
-    } catch (error) {
-      debugPrint('[SavedWidgetStore] set transparent position failed: $error');
-    }
-  }
-
-  Future<String> getAppTransparentPosition() async {
-    if (!Platform.isIOS) return '关闭';
-    try {
-      final value = await _channel.invokeMethod<String>(
-        'getAppTransparentPosition',
+      debugPrint(
+        '[SavedWidgetStore] setup transparent wallpapers failed: $error',
       );
-      final trimmed = value?.trim() ?? '';
-      return trimmed.isEmpty ? '关闭' : trimmed;
-    } catch (error) {
-      debugPrint('[SavedWidgetStore] get transparent position failed: $error');
-      return '关闭';
+      return false;
     }
   }
 

@@ -68,28 +68,28 @@ enum WidgetTransparentCrop {
 
   /// 常见机型像素表（小号 / 中号 / 边距）。来源：主屏空桌面实测 + Scriptable 社区表
   private static func pixelTable(width w: Int, height h: Int) -> [String: CGRect]? {
-    // (left, top, small, mediumW, mediumH, hGap, vGap, rows)
-    typealias L = (left: CGFloat, top: CGFloat, small: CGFloat, medW: CGFloat, medH: CGFloat, hGap: CGFloat, vGap: CGFloat, rows: Int)
+    // 右列与中号宽度由屏幕宽度和左边距统一推导，避免同一机型的裁切坐标互相矛盾。
+    typealias L = (left: CGFloat, top: CGFloat, small: CGFloat, vGap: CGFloat, rows: Int)
     let layouts: [String: L] = [
       // SE / mini 类
-      "750x1334": (54, 110, 296, 634, 296, 54, 46, 2),
-      "1080x2340": (54, 198, 474, 1014, 474, 66, 60, 3),
-      "1125x2436": (54, 201, 465, 1005, 465, 66, 60, 3),
+      "750x1334": (54, 110, 296, 46, 2),
+      "1080x2340": (54, 198, 474, 60, 3),
+      "1125x2436": (54, 201, 465, 60, 3),
       // X / 11 Pro / 12 mini 等
-      "1170x2532": (66, 213, 474, 1032, 474, 66, 66, 3), // 12/13
-      "1179x2556": (72, 231, 474, 1014, 474, 72, 66, 3), // 14 Pro
-      "1284x2778": (84, 258, 516, 1116, 516, 72, 72, 3), // 12/13 Pro Max
-      "1290x2796": (84, 270, 510, 1092, 510, 78, 72, 3), // 14/15 Plus
-      "1320x2868": (87, 270, 510, 1092, 510, 78, 72, 3), // 16 Plus
-      "1206x2622": (75, 246, 486, 1044, 486, 72, 66, 3), // 16 Pro
-      "1290x2868": (87, 270, 510, 1092, 510, 78, 72, 3),
-      "1374x2982": (93, 285, 528, 1146, 528, 84, 75, 3), // 16 Pro Max 近似
+      "1170x2532": (66, 213, 474, 66, 3), // 12/13
+      "1179x2556": (72, 231, 474, 66, 3), // 14 Pro
+      "1284x2778": (84, 258, 516, 72, 3), // 12/13 Pro Max
+      "1290x2796": (84, 270, 510, 72, 3), // 14/15 Plus
+      "1320x2868": (87, 270, 510, 72, 3), // 16 Plus
+      "1206x2622": (75, 246, 486, 66, 3), // 16 Pro
+      "1290x2868": (87, 270, 510, 72, 3),
+      "1374x2982": (93, 285, 528, 75, 3), // 16 Pro Max 近似
     ]
     let key = "\(w)x\(h)"
     guard let L = layouts[key] else { return nil }
     return buildRects(
-      left: L.left, top: L.top, small: L.small,
-      medW: L.medW, medH: L.medH, hGap: L.hGap, vGap: L.vGap, rows: L.rows
+      screenWidth: CGFloat(w), left: L.left, top: L.top,
+      small: L.small, vGap: L.vGap, rows: L.rows
     )
   }
 
@@ -101,53 +101,47 @@ enum WidgetTransparentCrop {
     let sy = h / pointH
 
     let smallPt = smallWidgetSide(screenWidth: pointW)
-    let medWPt = mediumWidgetWidth(screenWidth: pointW)
     let leftPt = horizontalMargin(screenWidth: pointW, smallSide: smallPt)
-    let hGapPt = max(pointW - leftPt * 2 - smallPt * 2, 16)
     let topPt = topMargin(screenHeight: pointH)
     let vGapPt = verticalGap(screenHeight: pointH)
     let rows = pointH < 700 ? 2 : 3
 
     return buildRects(
+      screenWidth: w,
       left: leftPt * sx,
       top: topPt * sy,
       small: smallPt * sx,
-      medW: medWPt * sx,
-      medH: smallPt * sy,
-      hGap: hGapPt * sx,
       vGap: vGapPt * sy,
       rows: rows
     )
   }
 
   private static func buildRects(
+    screenWidth: CGFloat,
     left: CGFloat,
     top: CGFloat,
     small: CGFloat,
-    medW: CGFloat,
-    medH: CGFloat,
-    hGap: CGFloat,
     vGap: CGFloat,
     rows: Int
   ) -> [String: CGRect] {
-    let right = left + small + hGap
+    let right = screenWidth - left - small
+    let mediumWidth = screenWidth - left * 2
     let row2 = top + small + vGap
     let row3 = row2 + small + vGap
     var result: [String: CGRect] = [
       "topLeft": CGRect(x: left, y: top, width: small, height: small),
       "topRight": CGRect(x: right, y: top, width: small, height: small),
-      "mediumTop": CGRect(x: left, y: top, width: medW, height: medH),
+      "mediumTop": CGRect(x: left, y: top, width: mediumWidth, height: small),
     ]
     if rows >= 2 {
       result["midLeft"] = CGRect(x: left, y: row2, width: small, height: small)
       result["midRight"] = CGRect(x: right, y: row2, width: small, height: small)
-      result["mediumMiddle"] = CGRect(x: left, y: row2, width: medW, height: medH)
-      result["center"] = result["mediumMiddle"]!
+      result["mediumMiddle"] = CGRect(x: left, y: row2, width: mediumWidth, height: small)
     }
     if rows >= 3 {
       result["bottomLeft"] = CGRect(x: left, y: row3, width: small, height: small)
       result["bottomRight"] = CGRect(x: right, y: row3, width: small, height: small)
-      result["mediumBottom"] = CGRect(x: left, y: row3, width: medW, height: medH)
+      result["mediumBottom"] = CGRect(x: left, y: row3, width: mediumWidth, height: small)
     } else if let midL = result["midLeft"], let midR = result["midRight"] {
       result["bottomLeft"] = midL
       result["bottomRight"] = midR
@@ -161,13 +155,6 @@ enum WidgetTransparentCrop {
     if sw >= 390 { return 158 }
     if sw >= 375 { return 155 }
     return 148
-  }
-
-  private static func mediumWidgetWidth(screenWidth sw: CGFloat) -> CGFloat {
-    if sw >= 428 { return 364 }
-    if sw >= 390 { return 338 }
-    if sw >= 375 { return 329 }
-    return 321
   }
 
   private static func horizontalMargin(screenWidth sw: CGFloat, smallSide: CGFloat) -> CGFloat {

@@ -19,6 +19,10 @@ enum WidgetSync {
   static let fourCloverImageTempFileName = "petLiveActivityFourClover.tmp.png"
   static let fourCloverCompactImageFileName = "petLiveActivityCompactClover.png"
   static let fourCloverCompactImageTempFileName = "petLiveActivityCompactClover.tmp.png"
+  private static let requiredTransparentCropKeys: Set<String> = [
+    "topLeft", "topRight", "midLeft", "midRight", "bottomLeft", "bottomRight",
+    "mediumTop", "mediumMiddle", "mediumBottom",
+  ]
 
   static func appGroupContainer() -> URL? {
     FileManager.default.containerURL(
@@ -304,7 +308,9 @@ enum WidgetSync {
 
   /// 整张壁纸原图 + 按本机屏幕铺满后裁切各方位 → App Group
   static func saveTransparentWallpapers(fromScreenshot data: Data) -> Bool {
-    guard let image = UIImage(data: data) else {
+    guard let container = appGroupContainer(),
+          let defaults = UserDefaults(suiteName: AppGroupConfig.id),
+          let image = UIImage(data: data) else {
       NSLog("[TransparentWallpaper] decode screenshot failed")
       return false
     }
@@ -320,37 +326,75 @@ enum WidgetSync {
     }
 
     let crops = WidgetTransparentCrop.makeCrops(from: image)
-    guard !crops.isEmpty else {
-      NSLog("[TransparentWallpaper] no crops generated")
+    let cropKeys = Set(crops.keys)
+    guard requiredTransparentCropKeys.isSubset(of: cropKeys) else {
+      let missing = requiredTransparentCropKeys.subtracting(cropKeys).sorted()
+      NSLog("[TransparentWallpaper] incomplete crops, missing=\(missing)")
       return false
     }
-    var saved = 0
-    for (key, cropped) in crops {
-      let ok = writePng(
-        cropped,
-        fileName: "widgetTransparent_\(key).png",
-        tempFileName: "widgetTransparent_\(key).tmp.png",
+
+    // 使用唯一版本文件名写入全部裁切，最后再一次性切换 UserDefaults 指针。
+    // 这样 Widget 不会在更新过程中读到新旧混合的文件。
+    let revision = "\(Int64(Date().timeIntervalSince1970 * 1000))_\(UUID().uuidString)"
+    let revisionPrefix = "widgetTransparent_\(revision)_"
+    var writtenURLs: [URL] = []
+    for key in requiredTransparentCropKeys.sorted() {
+      guard let cropped = crops[key],
+            let png = cropped.pngData() else {
+        for url in writtenURLs { try? FileManager.default.removeItem(at: url) }
+        NSLog("[TransparentWallpaper] encode crop failed: \(key)")
+        return false
+      }
+      let fileName = "\(revisionPrefix)\(key).png"
+      let ok = writeRawData(
+        png,
+        fileName: fileName,
+        tempFileName: "\(revisionPrefix)\(key).tmp.png",
         logTag: "TransparentWallpaper"
       )
-      if ok { saved += 1 }
+      if !ok {
+        for url in writtenURLs { try? FileManager.default.removeItem(at: url) }
+        return false
+      }
+      writtenURLs.append(container.appendingPathComponent(fileName))
+    }
+
+    let revisionKey = SavedWidgetOptionsProvider.transparentRevisionDefaultsKey
+    let previousRevision = defaults.string(forKey: revisionKey)
+    defaults.set(revision, forKey: revisionKey)
+    guard defaults.synchronize() else {
+      if let previousRevision {
+        defaults.set(previousRevision, forKey: revisionKey)
+      } else {
+        defaults.removeObject(forKey: revisionKey)
+      }
+      _ = defaults.synchronize()
+      for url in writtenURLs { try? FileManager.default.removeItem(at: url) }
+      NSLog("[TransparentWallpaper] publish revision failed")
+      return false
+    }
+
+    if let previousRevision, previousRevision != revision {
+      removeTransparentCropFiles(
+        in: container,
+        prefix: "widgetTransparent_\(previousRevision)_"
+      )
     }
     let screen = UIScreen.main.nativeBounds
     NSLog(
-      "[TransparentWallpaper] saved \(saved)/\(crops.count) crops for device \(Int(screen.width))x\(Int(screen.height))"
+      "[TransparentWallpaper] published \(writtenURLs.count) crops revision=\(revision) for device \(Int(screen.width))x\(Int(screen.height))"
     )
-    return saved > 0
+    return true
   }
 
-  static func setAppTransparentPosition(_ position: String) {
-    let trimmed = position.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard let defaults = UserDefaults(suiteName: AppGroupConfig.id) else { return }
-    defaults.set(trimmed, forKey: SavedWidgetOptionsProvider.appTransparentPositionKey)
-    defaults.synchronize()
-    NSLog("[TransparentWallpaper] app position=\(trimmed)")
-  }
-
-  static func getAppTransparentPosition() -> String {
-    SavedWidgetOptionsProvider.appStoredTransparentPosition()
+  private static func removeTransparentCropFiles(in container: URL, prefix: String) {
+    let urls = (try? FileManager.default.contentsOfDirectory(
+      at: container,
+      includingPropertiesForKeys: nil
+    )) ?? []
+    for url in urls where url.lastPathComponent.hasPrefix(prefix) {
+      try? FileManager.default.removeItem(at: url)
+    }
   }
 
   private static func writeRawData(
@@ -856,10 +900,6 @@ enum WidgetChannelHandler {
         handleClearWidgetBackground(call: call, result: result)
       case "saveTransparentWallpapers":
         handleSaveTransparentWallpapers(call: call, result: result)
-      case "setAppTransparentPosition":
-        handleSetAppTransparentPosition(call: call, result: result)
-      case "getAppTransparentPosition":
-        result(WidgetSync.getAppTransparentPosition())
       case "saveWidgetDigits":
         handleSaveWidgetDigits(call: call, result: result)
       case "clearWidgetDigits":
@@ -942,17 +982,6 @@ enum WidgetChannelHandler {
         )
       )
     }
-  }
-
-  private static func handleSetAppTransparentPosition(
-    call: FlutterMethodCall,
-    result: @escaping FlutterResult
-  ) {
-    let args = call.arguments as? [String: Any] ?? [:]
-    let position = args["position"] as? String ?? SavedWidgetOptionsProvider.transparentOff
-    WidgetSync.setAppTransparentPosition(position)
-    WidgetSync.reloadTimelines()
-    result(true)
   }
 
   private static func handleClearWidgetDigits(
