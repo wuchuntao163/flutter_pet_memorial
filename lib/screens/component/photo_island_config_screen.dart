@@ -520,10 +520,16 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
         'backgroundColorARGB': bgColor,
       },
       assetPaths: {
-        if (_imagePath != null) 'photo': _imagePath,
+        'photo': _effectivePhotoPath,
         if (bannerBg.isNotEmpty) 'bannerBg': bannerBg,
       },
     );
+  }
+
+  /// 与预览一致：有相册用相册，否则用默认图
+  String get _effectivePhotoPath {
+    final path = _imagePath?.trim() ?? '';
+    return path.isNotEmpty ? path : kPhotoIslandDefaultImage;
   }
 
   Future<void> _pickImage() async {
@@ -581,7 +587,7 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
           'backgroundColorARGB': bgColor.toARGB32(),
         },
         assetPaths: {
-          if (_imagePath != null) 'photo': _imagePath,
+          'photo': _effectivePhotoPath,
           if (bannerBg.isNotEmpty) 'bannerBg': bannerBg,
         },
       );

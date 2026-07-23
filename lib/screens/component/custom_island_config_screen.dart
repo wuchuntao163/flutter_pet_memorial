@@ -408,34 +408,29 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
   }
 
   Widget _panelImage() {
-    if (_panelImagePath != null) {
-      return islandImage(
-        _panelImagePath,
-        width: kIslandPreviewCardWidth,
-        height: kIslandPreviewCardHeight,
+    return islandImage(
+      _effectivePanelPath,
+      width: kIslandPreviewCardWidth,
+      height: kIslandPreviewCardHeight,
+      fit: BoxFit.cover,
+      placeholder: Image.asset(
+        kCustomIslandDefaultPanel,
         fit: BoxFit.cover,
-        placeholder: Image.asset(
-          'assets/images/image_87.png',
-          fit: BoxFit.cover,
-        ),
-      );
-    }
+      ),
+    );
+  }
+
+  /// 与预览一致：相册 > 接口 default_bg > 本地兜底图
+  String get _effectivePanelPath {
+    final path = _panelImagePath?.trim() ?? '';
+    if (path.isNotEmpty) return path;
     final defaultBackground = WidgetDetailScope.maybeOf(
       context,
     )?.defaultBackground.trim();
     if (defaultBackground != null && defaultBackground.isNotEmpty) {
-      return islandImage(
-        defaultBackground,
-        width: kIslandPreviewCardWidth,
-        height: kIslandPreviewCardHeight,
-        fit: BoxFit.cover,
-        placeholder: Image.asset(
-          'assets/images/image_87.png',
-          fit: BoxFit.cover,
-        ),
-      );
+      return defaultBackground;
     }
-    return Image.asset('assets/images/image_87.png', fit: BoxFit.cover);
+    return kCustomIslandDefaultPanel;
   }
 
   String? get _activeIconImagePath =>
@@ -697,7 +692,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
           'compactTrailingEmoji': _rightIcon,
         },
         assetPaths: {
-          if (_panelImagePath != null) 'panel': _panelImagePath,
+          'panel': _effectivePanelPath,
           if (_leftIconImagePath != null) 'leftIcon': _leftIconImagePath,
           if (_rightIconImagePath != null) 'rightIcon': _rightIconImagePath,
         },
@@ -756,6 +751,13 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
     ]);
 
     if (next) {
+      final panelPath = _effectivePanelPath;
+      // 无用户相册时记下兜底图，便于 syncIfEnabled 恢复
+      if (_panelImagePath == null || _panelImagePath!.trim().isEmpty) {
+        await prefs.setString('${_prefix}_panel_fallback', panelPath);
+      } else {
+        await prefs.remove('${_prefix}_panel_fallback');
+      }
       final ok = await LiveActivityService.instance.startOrUpdateIsland(
         template: 6,
         payload: {
@@ -770,7 +772,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
           'compactTrailingEmoji': _rightIcon,
         },
         assetPaths: {
-          if (_panelImagePath != null) 'panel': _panelImagePath,
+          'panel': panelPath,
           if (_leftIconImagePath != null) 'leftIcon': _leftIconImagePath,
           if (_rightIconImagePath != null) 'rightIcon': _rightIconImagePath,
         },

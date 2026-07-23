@@ -84,6 +84,12 @@ Widget islandImage(
 const double kIslandPreviewCardWidth = 245;
 const double kIslandPreviewCardHeight = 82;
 
+/// 图文岛未选相册时的默认左侧图（与预览 placeholder 一致）
+const String kPhotoIslandDefaultImage = 'assets/images/addvalentine.png';
+
+/// 自定义岛未选面板时的本地兜底图
+const String kCustomIslandDefaultPanel = 'assets/images/image_87.png';
+
 /// 图文岛通知版左侧图形状：圆角矩形（非正圆）
 Widget islandCardSideImage(
   String? source, {

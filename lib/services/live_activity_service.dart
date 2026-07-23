@@ -10,6 +10,7 @@ import '../data/app_cache_store.dart';
 import '../data/auth_session_store.dart';
 import '../data/memorial_store.dart';
 import '../l10n/tr.dart';
+import '../utils/island_image_util.dart';
 import '../utils/pet_display_image.dart';
 import 'pet_image_service.dart';
 
@@ -305,11 +306,30 @@ class LiveActivityService {
     if (template == 2) {
       final photo = prefs.getString('photo_island_image');
       final banner = prefs.getString('photo_island_banner_bg');
-      if (photo != null && photo.isNotEmpty) {
-        await syncAsset(role: 'photo', imagePath: _resolveAssetRef(photo));
-      }
+      final photoPath =
+          (photo != null && photo.isNotEmpty) ? photo : kPhotoIslandDefaultImage;
+      await syncAsset(role: 'photo', imagePath: _resolveAssetRef(photoPath));
       if (banner != null && banner.isNotEmpty) {
         await syncAsset(role: 'bannerBg', imagePath: _resolveAssetRef(banner));
+      }
+    }
+    if (template == 6) {
+      final panel = prefs.getString('custom_island_panel_image');
+      final fallback = prefs.getString('custom_island_panel_fallback');
+      final panelPath = (panel != null && panel.isNotEmpty)
+          ? panel
+          : ((fallback != null && fallback.isNotEmpty)
+                ? fallback
+                : kCustomIslandDefaultPanel);
+      await syncAsset(role: 'panel', imagePath: _resolveAssetRef(panelPath));
+      final left = prefs.getString('custom_island_left_icon_image') ??
+          prefs.getString('custom_island_icon_image');
+      final right = prefs.getString('custom_island_right_icon_image');
+      if (left != null && left.isNotEmpty) {
+        await syncAsset(role: 'leftIcon', imagePath: _resolveAssetRef(left));
+      }
+      if (right != null && right.isNotEmpty) {
+        await syncAsset(role: 'rightIcon', imagePath: _resolveAssetRef(right));
       }
     }
     if (template == 5) {
