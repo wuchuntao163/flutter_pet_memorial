@@ -272,14 +272,14 @@ class LiveActivityService {
     return null;
   }
 
-  /// 网络相对路径补全；本地文件路径原样返回。
+  /// 网络相对路径补全；Flutter asset / 本地文件路径原样返回。
   String _resolveAssetRef(String raw) {
     final value = raw.trim();
     if (value.isEmpty) return value;
-    if (value.startsWith('http://') ||
-        value.startsWith('https://') ||
-        value.startsWith('assets/')) {
-      return PetImageService.resolveUrl(value);
+    // 切勿把 assets/ 拼到 API 域名，否则图文岛默认图同步必失败
+    if (value.startsWith('assets/')) return value;
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
     }
     if (value.startsWith('/uploads/') || value.startsWith('uploads/')) {
       return PetImageService.resolveUrl(value);
@@ -305,9 +305,13 @@ class LiveActivityService {
     }
     if (template == 2) {
       final photo = prefs.getString('photo_island_image');
+      final fallback = prefs.getString('photo_island_image_fallback');
       final banner = prefs.getString('photo_island_banner_bg');
-      final photoPath =
-          (photo != null && photo.isNotEmpty) ? photo : kPhotoIslandDefaultImage;
+      final photoPath = (photo != null && photo.isNotEmpty)
+          ? photo
+          : ((fallback != null && fallback.isNotEmpty)
+                ? fallback
+                : kPhotoIslandDefaultImage);
       await syncAsset(role: 'photo', imagePath: _resolveAssetRef(photoPath));
       if (banner != null && banner.isNotEmpty) {
         await syncAsset(role: 'bannerBg', imagePath: _resolveAssetRef(banner));

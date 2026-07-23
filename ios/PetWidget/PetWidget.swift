@@ -174,9 +174,9 @@ struct WidgetSetupGuideView: View {
 
     private var isMedium: Bool { family == .systemMedium }
 
-    /// 小号宽度紧，步骤文案必须单行；字号与边距略收
-    private var stepFontSize: CGFloat { isMedium ? 12 : 10 }
-    private var stepCircle: CGFloat { isMedium ? 18 : 16 }
+    /// 引导步骤文案略放大，小号仍尽量单行
+    private var stepFontSize: CGFloat { isMedium ? 15 : 13 }
+    private var stepCircle: CGFloat { isMedium ? 20 : 18 }
     private var hPadding: CGFloat { isMedium ? 18 : 12 }
     private var stepSpacing: CGFloat { isMedium ? 8 : 6 }
 
@@ -185,7 +185,7 @@ struct WidgetSetupGuideView: View {
             HStack(spacing: 6) {
                 AppBrandLogo(size: 16)
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: isMedium ? 15 : 14, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
                 Spacer(minLength: 0)
@@ -210,14 +210,14 @@ struct WidgetSetupGuideView: View {
                                         .fill(stepYellow)
                                         .frame(width: stepCircle, height: stepCircle)
                                     Text("\(index + 1)")
-                                        .font(.system(size: isMedium ? 11 : 10, weight: .bold).italic())
+                                        .font(.system(size: isMedium ? 12 : 11, weight: .bold).italic())
                                         .foregroundColor(.black)
                                 }
                                 Text(text)
                                     .font(.system(size: stepFontSize, weight: .medium))
                                     .foregroundColor(stepText)
                                     .lineLimit(1)
-                                    .minimumScaleFactor(0.75)
+                                    .minimumScaleFactor(0.85)
                                     .allowsTightening(true)
                                 Spacer(minLength: 0)
                             }

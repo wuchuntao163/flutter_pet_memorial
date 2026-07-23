@@ -576,6 +576,12 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
       } else {
         await prefs.remove('photo_island_banner_bg');
       }
+      final photoPath = _effectivePhotoPath;
+      if (_imagePath == null || _imagePath!.trim().isEmpty) {
+        await prefs.setString('photo_island_image_fallback', photoPath);
+      } else {
+        await prefs.remove('photo_island_image_fallback');
+      }
       final ok = await LiveActivityService.instance.startOrUpdateIsland(
         template: 2,
         payload: {
@@ -587,7 +593,7 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
           'backgroundColorARGB': bgColor.toARGB32(),
         },
         assetPaths: {
-          'photo': _effectivePhotoPath,
+          'photo': photoPath,
           if (bannerBg.isNotEmpty) 'bannerBg': bannerBg,
         },
       );
