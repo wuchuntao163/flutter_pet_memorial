@@ -201,7 +201,7 @@ struct PetLiveActivityWidget: Widget {
     case 2:
       EmptyView()
     case 3, 4:
-      timerText(state: state, compact: true)
+      timerText(state: state, compact: true, color: .primary)
     case 5:
       Text(state.daysText.isEmpty ? "—" : state.daysText)
         .font(.system(size: 12, weight: .semibold))
@@ -327,6 +327,8 @@ struct PetLiveActivityWidget: Widget {
           .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 3, 4:
+      // 倒计时浅底用黑字；正计时黑底用白字
+      let labelColor: Color = state.template == 4 ? .black : .white
       HStack(spacing: 12) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
@@ -348,9 +350,9 @@ struct PetLiveActivityWidget: Widget {
         VStack(alignment: .leading, spacing: 4) {
           Text(state.subtitle.isEmpty ? state.memorialTitle : state.subtitle)
             .font(.system(size: 13, weight: .medium))
-            .foregroundColor(.secondary)
+            .foregroundColor(labelColor.opacity(0.72))
             .lineLimit(1)
-          timerText(state: state, compact: false)
+          timerText(state: state, compact: false, color: labelColor)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
       }
@@ -444,16 +446,19 @@ struct PetLiveActivityWidget: Widget {
           RoundedRectangle(cornerRadius: 16, style: .continuous)
             .fill(LiveActivityShared.color(from: state.backgroundColorARGB))
         }
-        Text(state.subtitle.isEmpty ? "每天都要开心" : state.subtitle)
-          .font(.system(size: fontSize, weight: .semibold))
-          .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
-          .lineLimit(2)
-          .multilineTextAlignment(.leading)
-          .frame(maxWidth: textMaxW, alignment: .leading)
-          .offset(
-            x: max(margin, left),
-            y: max(margin, min(top, geo.size.height - margin - textBlockH))
-          )
+        // 未输入文字时不显示文案（允许纯图面板）
+        if !state.subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+          Text(state.subtitle)
+            .font(.system(size: fontSize, weight: .semibold))
+            .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
+            .lineLimit(2)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: textMaxW, alignment: .leading)
+            .offset(
+              x: max(margin, left),
+              y: max(margin, min(top, geo.size.height - margin - textBlockH))
+            )
+        }
       }
     }
     .frame(maxWidth: .infinity)
@@ -464,20 +469,41 @@ struct PetLiveActivityWidget: Widget {
   @ViewBuilder
   private func timerText(
     state: PetLiveActivityAttributes.ContentState,
-    compact: Bool
+    compact: Bool,
+    color: Color
   ) -> some View {
     let font = Font.system(size: compact ? 12 : 20, weight: .bold).monospacedDigit()
+    let target = Date(timeIntervalSince1970: state.timerTargetEpoch)
     if state.timerTargetEpoch <= 0 {
       Text("--:--")
         .font(font)
-        .foregroundColor(.primary)
+        .foregroundColor(color)
+    } else if state.template == 4 {
+      // 倒计时：始终倒数到目标时刻（与 App 预览 target.difference(now) 一致）
+      Text(
+        timerInterval: Date(timeIntervalSince1970: 0)...target,
+        countsDown: true,
+        showsHours: true
+      )
+      .font(font)
+      .foregroundColor(color)
+      .multilineTextAlignment(compact ? .trailing : .leading)
+      .monospacedDigit()
+      .lineLimit(1)
+      .minimumScaleFactor(0.7)
     } else {
-      // 过去日期正计时、未来日期倒计时，与 App 内按「目标时间」计算一致
-      Text(Date(timeIntervalSince1970: state.timerTargetEpoch), style: .timer)
-        .font(font)
-        .foregroundColor(.primary)
-        .multilineTextAlignment(compact ? .trailing : .leading)
-        .monospacedDigit()
+      // 正计时：从目标时刻起正向累计（与 App 预览 now.difference(target) 一致）
+      Text(
+        timerInterval: target...Date.distantFuture,
+        countsDown: false,
+        showsHours: true
+      )
+      .font(font)
+      .foregroundColor(color)
+      .multilineTextAlignment(compact ? .trailing : .leading)
+      .monospacedDigit()
+      .lineLimit(1)
+      .minimumScaleFactor(0.7)
     }
   }
 

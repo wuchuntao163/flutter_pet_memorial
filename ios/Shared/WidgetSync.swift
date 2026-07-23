@@ -616,7 +616,7 @@ enum WidgetSync {
         logTag: "LiveActivityBannerBg"
       )
     case "panel":
-      // 面板铺满锁屏横幅，用更高分辨率避免模糊（仍低于桌面小组件上限）
+      // 锁屏面板：控制边长 + JPEG，避免过大 PNG 被系统直接丢弃不显示
       return replaceLiveActivityPanelImage(
         with: data,
         fileName: liveActivityPanelFileName,
@@ -741,7 +741,7 @@ enum WidgetSync {
     )
   }
 
-  /// 自定义岛面板：锁屏横幅约 3x 宽屏，提高到约 900px 以减少放大模糊
+  /// 自定义岛面板：边长约 420 + JPEG，兼顾清晰与 Live Activity 体积上限
   private static func replaceLiveActivityPanelImage(
     with data: Data,
     fileName: String,
@@ -749,12 +749,13 @@ enum WidgetSync {
     logTag: String
   ) -> Bool {
     guard let image = UIImage(data: data),
-          let resized = resizeForLiveActivityPanel(image) else {
-      NSLog("[\(logTag)] replace panel image decode failed")
+          let resized = resizeForLiveActivityPanel(image),
+          let jpeg = resized.jpegData(compressionQuality: 0.82) else {
+      NSLog("[\(logTag)] replace panel image decode/encode failed")
       return false
     }
-    return writePng(
-      resized,
+    return writeImageData(
+      jpeg,
       fileName: fileName,
       tempFileName: tempFileName,
       logTag: logTag
@@ -767,9 +768,26 @@ enum WidgetSync {
     tempFileName: String,
     logTag: String
   ) -> Bool {
-    guard let container = appGroupContainer(),
-          let png = image.pngData() else {
+    guard let png = image.pngData() else {
       NSLog("[\(logTag)] png encode failed")
+      return false
+    }
+    return writeImageData(
+      png,
+      fileName: fileName,
+      tempFileName: tempFileName,
+      logTag: logTag
+    )
+  }
+
+  private static func writeImageData(
+    _ data: Data,
+    fileName: String,
+    tempFileName: String,
+    logTag: String
+  ) -> Bool {
+    guard let container = appGroupContainer() else {
+      NSLog("[\(logTag)] app group missing")
       return false
     }
 
@@ -778,13 +796,13 @@ enum WidgetSync {
     let fm = FileManager.default
 
     do {
-      try png.write(to: tempURL, options: .atomic)
+      try data.write(to: tempURL, options: .atomic)
       if fm.fileExists(atPath: finalURL.path) {
         _ = try fm.replaceItemAt(finalURL, withItemAt: tempURL)
       } else {
         try fm.moveItem(at: tempURL, to: finalURL)
       }
-      NSLog("[\(logTag)] replaced image: \(png.count) bytes")
+      NSLog("[\(logTag)] replaced image: \(data.count) bytes")
       return true
     } catch {
       NSLog("[\(logTag)] replace image failed: \(error)")
@@ -1032,8 +1050,8 @@ enum WidgetSync {
   private static let liveActivityCompactSide: CGFloat = 84
   /// 锁屏 Live Activity 内容图过大时系统会丢弃不显示
   private static let liveActivityContentMaxSide: CGFloat = 300
-  /// 自定义面板铺满横幅，略高分辨率即可保持清晰
-  private static let liveActivityPanelMaxSide: CGFloat = 900
+  /// 自定义面板：略高于 300，配合 JPEG 控制体积，避免被系统丢弃
+  private static let liveActivityPanelMaxSide: CGFloat = 420
 
   private static func resizeForLiveActivityContent(_ image: UIImage) -> UIImage? {
     resizeImage(image, maxSide: liveActivityContentMaxSide)

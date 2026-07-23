@@ -38,7 +38,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
     Color(0xFFFF6271),
   ];
 
-  final _controller = TextEditingController(text: '每天都要开心');
+  final _controller = TextEditingController();
   String? _panelImagePath;
   String? _leftIconImagePath;
   String? _rightIconImagePath;
@@ -100,6 +100,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
                           FocusManager.instance.primaryFocus?.unfocus(),
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
+                        hintText: '可选，不输入则不显示文字',
                         counterText: '',
                         filled: true,
                         fillColor: Colors.white,
@@ -357,48 +358,47 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
               fit: StackFit.expand,
               children: [
                 _panelImage(),
-                Positioned(
-                  left: left,
-                  top: top,
-                  right: 0,
-                  child: GestureDetector(
-                    onPanUpdate: (details) {
-                      setState(() {
-                        _textPosition = Offset(
-                          (_textPosition.dx +
-                                  details.delta.dx /
-                                      (constraints.maxWidth - 100))
-                              .clamp(0, 1),
-                          (_textPosition.dy +
-                                  details.delta.dy /
-                                      (constraints.maxHeight - 36))
-                              .clamp(0, 1),
-                        );
-                      });
-                    },
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 3,
-                          vertical: 3,
-                        ),
-                        child: Text(
-                          _controller.text.trim().isEmpty
-                              ? '请输入文字'
-                              : _controller.text,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: _textColor,
+                if (_controller.text.trim().isNotEmpty)
+                  Positioned(
+                    left: left,
+                    top: top,
+                    right: 0,
+                    child: GestureDetector(
+                      onPanUpdate: (details) {
+                        setState(() {
+                          _textPosition = Offset(
+                            (_textPosition.dx +
+                                    details.delta.dx /
+                                        (constraints.maxWidth - 100))
+                                .clamp(0, 1),
+                            (_textPosition.dy +
+                                    details.delta.dy /
+                                        (constraints.maxHeight - 36))
+                                .clamp(0, 1),
+                          );
+                        });
+                      },
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 3,
+                            vertical: 3,
+                          ),
+                          child: Text(
+                            _controller.text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: _textColor,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
               ],
             );
           },
@@ -687,9 +687,10 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
         template: 6,
         payload: {
           'petName': content.isEmpty ? '自定义' : content,
-          'subtitle': content.isEmpty ? '每天都要开心' : content,
+          'subtitle': content,
           'memorialTitle': '',
           'textColorARGB': _textColor.toARGB32(),
+          'textFontSize': 18,
           'textNormX': _textPosition.dx,
           'textNormY': _textPosition.dy,
           'compactLeadingEmoji': _leftIcon,
@@ -708,7 +709,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _controller.text = prefs.getString('${_prefix}_content') ?? '每天都要开心';
+      _controller.text = prefs.getString('${_prefix}_content') ?? '';
       _panelImagePath = prefs.getString('${_prefix}_panel_image');
       _leftIconImagePath =
           prefs.getString('${_prefix}_left_icon_image') ??
@@ -759,9 +760,10 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
         template: 6,
         payload: {
           'petName': content.isEmpty ? '自定义' : content,
-          'subtitle': content.isEmpty ? '每天都要开心' : content,
+          'subtitle': content,
           'memorialTitle': '',
           'textColorARGB': _textColor.toARGB32(),
+          'textFontSize': 18,
           'textNormX': _textPosition.dx,
           'textNormY': _textPosition.dy,
           'compactLeadingEmoji': _leftIcon,

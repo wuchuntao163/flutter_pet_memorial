@@ -455,7 +455,7 @@ class LiveActivityService {
 
   Map<String, dynamic> _payloadCustom(SharedPreferences prefs) {
     const prefix = 'custom_island';
-    final content = prefs.getString('${prefix}_content')?.trim() ?? '每天都要开心';
+    final content = prefs.getString('${prefix}_content')?.trim() ?? '';
     final color = prefs.getInt('${prefix}_text_color') ?? 0xFFFFFFFF;
     final x = prefs.getDouble('${prefix}_text_x') ?? 0.58;
     final y = prefs.getDouble('${prefix}_text_y') ?? 0.72;
@@ -467,7 +467,7 @@ class LiveActivityService {
     return {
       'petId': '${AppCacheStore.instance.petId ?? ''}',
       'template': 6,
-      'petName': content,
+      'petName': content.isEmpty ? '自定义' : content,
       'subtitle': content,
       'memorialTitle': '',
       'textColorARGB': color,
