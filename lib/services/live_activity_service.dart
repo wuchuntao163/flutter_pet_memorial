@@ -127,6 +127,13 @@ class LiveActivityService {
       } else {
         await _syncLiveActivityImage(force: true);
       }
+      final bannerBg = assetPaths['bannerBg'];
+      if (bannerBg != null && bannerBg.trim().isNotEmpty) {
+        await syncAsset(
+          role: 'bannerBg',
+          imagePath: _resolveAssetRef(bannerBg),
+        );
+      }
     } else {
       for (final entry in assetPaths.entries) {
         final path = entry.value;
@@ -265,6 +272,10 @@ class LiveActivityService {
 
     if (template == 1) {
       await _syncLiveActivityImage(force: force);
+      final banner = prefs.getString('pet_island_banner_bg');
+      if (banner != null && banner.isNotEmpty) {
+        await syncAsset(role: 'bannerBg', imagePath: _resolveAssetRef(banner));
+      }
     }
     if (template == 2) {
       final photo = prefs.getString('photo_island_image');
@@ -332,6 +343,7 @@ class LiveActivityService {
       'petName': petName,
       'subtitle': subtitle,
       'memorialTitle': '',
+      'backgroundColorARGB': 0xFFC5D6E2,
     };
   }
 

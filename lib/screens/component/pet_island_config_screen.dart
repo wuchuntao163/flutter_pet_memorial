@@ -453,6 +453,15 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
 
     if (nextEnabled) {
       final petUrl = _petImages.isEmpty ? '' : _petImages[_selectedPet];
+      final bannerBg =
+          WidgetDetailScope.maybeOf(context)?.defaultBackground.trim() ?? '';
+      const bgColor = Color(0xFFC5D6E2);
+      if (bannerBg.isNotEmpty) {
+        await prefs.setString('pet_island_banner_bg', bannerBg);
+      } else {
+        await prefs.remove('pet_island_banner_bg');
+      }
+      await prefs.setInt('pet_island_bg_color', bgColor.toARGB32());
       final ok = await LiveActivityService.instance.startOrUpdateIsland(
         template: 1,
         payload: {
@@ -463,10 +472,12 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
               '宠物',
           'subtitle': content.isEmpty ? '记录每个值得纪念的日子' : content,
           'memorialTitle': '',
+          'backgroundColorARGB': bgColor.toARGB32(),
         },
         assetPaths: {
           'petUrl': petUrl,
           'cloverUrl': _cloverImage,
+          if (bannerBg.isNotEmpty) 'bannerBg': bannerBg,
         },
       );
       if (!mounted) return;

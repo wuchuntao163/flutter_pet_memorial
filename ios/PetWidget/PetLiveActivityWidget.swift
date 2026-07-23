@@ -145,16 +145,15 @@ struct PetLiveActivityWidget: Widget {
     let state = context.state
     switch state.template {
     case 2:
-      // 仅相册图在灵动岛 compact 显示圆形；无图时仍用 emoji/占位
+      // 仅相册图在灵动岛 compact 显示正圆
       if let image = LiveActivityShared.loadCompactPhoto() {
-        islandCompactImage(uiImage: image, size: 28, cornerRadius: 14)
+        islandCircleImage(uiImage: image, size: 24)
       } else {
         imageOrEmoji(
           image: nil,
           emoji: state.compactLeadingEmoji,
           systemName: "photo",
-          size: 28,
-          circular: false
+          size: 24
         )
       }
     case 3, 4, 5:
@@ -162,18 +161,18 @@ struct PetLiveActivityWidget: Widget {
         image: LiveActivityShared.loadCompactIcon(),
         emoji: state.compactLeadingEmoji.isEmpty ? "❤️" : state.compactLeadingEmoji,
         systemName: "heart.fill",
-        size: 26
+        size: 24
       )
     case 6:
-      // 自定义：相册上传图标在灵动岛显示圆形（如图）
+      // 自定义：相册上传图标正圆
       if let image = LiveActivityShared.loadCompactLeftIcon() {
-        islandCompactImage(uiImage: image, size: 26, cornerRadius: 13)
+        islandCircleImage(uiImage: image, size: 24)
       } else {
         imageOrEmoji(
           image: nil,
           emoji: state.compactLeadingEmoji.isEmpty ? "🌈" : state.compactLeadingEmoji,
           systemName: "sparkles",
-          size: 26
+          size: 24
         )
       }
     default:
@@ -206,13 +205,13 @@ struct PetLiveActivityWidget: Widget {
         .lineLimit(1)
     case 6:
       if let image = LiveActivityShared.loadCompactRightIcon() {
-        islandCompactImage(uiImage: image, size: 22, cornerRadius: 11)
+        islandCircleImage(uiImage: image, size: 20)
       } else {
         imageOrEmoji(
           image: nil,
           emoji: state.compactTrailingEmoji.isEmpty ? "🔔" : state.compactTrailingEmoji,
           systemName: "bell.fill",
-          size: 22
+          size: 20
         )
       }
     default:
@@ -254,18 +253,18 @@ struct PetLiveActivityWidget: Widget {
     let state = context.state
     // 自定义面板全幅铺满，去掉外层 padding（否则上下左右会留缝）
     if state.template == 6 {
-      customPanel(state: state, height: 92)
+      customPanel(state: state, height: 104)
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
       bodyContent(context: context, expanded: false)
-        .padding(.leading, state.template == 2 ? 14 : 16)
-        .padding(.trailing, 14)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
+        .padding(.leading, state.template == 2 ? 16 : 18)
+        .padding(.trailing, 16)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
         .background {
-          if state.template == 2 || state.template == 3 || state.template == 4
-            || state.template == 5 {
+          // 含宠物岛 template=1：与 App 预览背景一致
+          if state.template >= 1 && state.template <= 5 {
             Group {
               if let bg = LiveActivityShared.loadBannerBg() {
                 Image(uiImage: bg)
@@ -278,7 +277,7 @@ struct PetLiveActivityWidget: Widget {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
           }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
   }
 
@@ -288,7 +287,7 @@ struct PetLiveActivityWidget: Widget {
     expanded: Bool
   ) -> some View {
     let state = context.state
-    let imageSize: CGFloat = expanded ? 52 : 56
+    let imageSize: CGFloat = expanded ? 56 : 62
     switch state.template {
     case 2:
       HStack(spacing: 12) {
@@ -352,7 +351,7 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 6:
-      customPanel(state: state, height: expanded ? 72 : 92)
+      customPanel(state: state, height: expanded ? 72 : 104)
         .id(state.imageRevision)
     default:
       HStack(alignment: .center, spacing: 12) {
@@ -432,15 +431,9 @@ struct PetLiveActivityWidget: Widget {
     size: CGFloat,
     circular: Bool = false
   ) -> some View {
-    if let image {
+    if (let image) {
       if circular {
-        Image(uiImage: image)
-          .resizable()
-          .interpolation(.high)
-          .antialiased(true)
-          .scaledToFill()
-          .frame(width: size, height: size)
-          .clipShape(Circle())
+        islandCircleImage(uiImage: image, size: size)
       } else {
         islandCompactImage(uiImage: image, size: size, cornerRadius: size * 0.22)
       }
@@ -454,6 +447,21 @@ struct PetLiveActivityWidget: Widget {
         .foregroundColor(.orange.opacity(0.85))
         .frame(width: size, height: size)
     }
+  }
+
+  @ViewBuilder
+  private func islandCircleImage(uiImage: UIImage, size: CGFloat) -> some View {
+    // 正圆：固定正方形 + Circle，并用 fixedSize 避免灵动岛 compact 槽位横向拉伸成椭圆
+    Image(uiImage: uiImage)
+      .resizable()
+      .interpolation(.high)
+      .antialiased(true)
+      .scaledToFill()
+      .frame(width: size, height: size)
+      .clipShape(Circle())
+      .overlay(Circle().strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5))
+      .frame(width: size, height: size)
+      .fixedSize()
   }
 
   @ViewBuilder

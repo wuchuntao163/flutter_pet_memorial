@@ -990,7 +990,8 @@ enum WidgetSync {
 
   private static func resizeForLiveActivityCompact(_ image: UIImage) -> UIImage? {
     let side = liveActivityCompactSide
-    let aspect = min(side / image.size.width, side / image.size.height)
+    // 居中裁切铺满正方形，保证灵动岛圆形裁剪后仍是正圆内容（避免 letterbox 变椭圆）
+    let aspect = max(side / image.size.width, side / image.size.height)
     let width = image.size.width * aspect
     let height = image.size.height * aspect
     let origin = CGPoint(x: (side - width) / 2, y: (side - height) / 2)
