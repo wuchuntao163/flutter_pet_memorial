@@ -431,7 +431,7 @@ struct PetLiveActivityWidget: Widget {
     size: CGFloat,
     circular: Bool = false
   ) -> some View {
-    if (let image) {
+    if let image = image {
       if circular {
         islandCircleImage(uiImage: image, size: size)
       } else {
