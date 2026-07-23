@@ -1,173 +1,193 @@
 import UIKit
 
-/// 按截图像素尺寸 / 机型推算主屏小组件裁切框（假透明壁纸）
+/// 按当前 iPhone 主屏分辨率裁切假透明壁纸。
+/// 优先使用本机像素表；未知机型则按点距布局换算。
 enum WidgetTransparentCrop {
-  /// 裁切结果 key → 像素坐标系矩形
-  static func cropRects(forPixelSize size: CGSize) -> [String: CGRect] {
-    let w = size.width
-    let h = size.height
-    guard w > 100, h > 100 else { return [:] }
-
-    let key = "\(Int(w.rounded()))x\(Int(h.rounded()))"
-    if let known = knownLayouts[key] {
-      return known
-    }
-
-    // 兼容 @2x/@3x 逻辑尺寸换算后的近似匹配
-    for (knownKey, rects) in knownLayouts {
-      let parts = knownKey.split(separator: "x")
-      guard parts.count == 2,
-            let kw = Double(parts[0]),
-            let kh = Double(parts[1]) else { continue }
-      if abs(kw - w) / w < 0.02, abs(kh - h) / h < 0.02 {
-        return scaleRects(rects, from: CGSize(width: kw, height: kh), to: size)
+  static func makeCrops(from image: UIImage) -> [String: UIImage] {
+    guard let screenImage = normalizeToPortraitScreen(image),
+          let cg = screenImage.cgImage else { return [:] }
+    let pixelSize = CGSize(width: cg.width, height: cg.height)
+    let rects = cropRects(forPixelSize: pixelSize)
+    var result: [String: UIImage] = [:]
+    for (key, rect) in rects {
+      if let cropped = crop(screenImage, toPixelRect: rect) {
+        result[key] = cropped
       }
     }
-
-    return proportionalLayout(pixelSize: size)
+    return result
   }
 
-  /// 常见竖屏主屏截图像素尺寸（含状态栏）
-  private static let knownLayouts: [String: [String: CGRect]] = [
-    // iPhone 14 / 13 / 12 (1170×2532 @3x)
-    "1170x2532": layout(
-      w: 1170, h: 2532,
-      left: 69, top: 231, small: 465, hGap: 102, vGap: 54
-    ),
-    // iPhone 14 Pro / 15 Pro (1179×2556)
-    "1179x2556": layout(
-      w: 1179, h: 2556,
-      left: 72, top: 258, small: 474, hGap: 87, vGap: 54
-    ),
-    // iPhone 14 Plus / 15 Plus / 15 Pro Max 部分 (1290×2796)
-    "1290x2796": layout(
-      w: 1290, h: 2796,
-      left: 75, top: 270, small: 516, hGap: 108, vGap: 60
-    ),
-    // iPhone 12/13 Pro Max (1284×2778)
-    "1284x2778": layout(
-      w: 1284, h: 2778,
-      left: 75, top: 264, small: 510, hGap: 114, vGap: 60
-    ),
-    // iPhone 16 Pro (1206×2622)
-    "1206x2622": layout(
-      w: 1206, h: 2622,
-      left: 72, top: 270, small: 486, hGap: 90, vGap: 57
-    ),
-    // iPhone 16 Pro Max (1320×2868)
-    "1320x2868": layout(
-      w: 1320, h: 2868,
-      left: 78, top: 282, small: 528, hGap: 108, vGap: 63
-    ),
-    // iPhone 11 / XR (828×1792 @2x)
-    "828x1792": layout(
-      w: 828, h: 1792,
-      left: 48, top: 168, small: 330, hGap: 72, vGap: 42
-    ),
-    // iPhone X / XS / 11 Pro (1125×2436)
-    "1125x2436": layout(
-      w: 1125, h: 2436,
-      left: 69, top: 231, small: 447, hGap: 93, vGap: 51
-    ),
-    // iPhone SE 2/3 (750×1334)
-    "750x1334": layout(
-      w: 750, h: 1334,
-      left: 54, top: 90, small: 297, hGap: 48, vGap: 30,
-      rows: 2
-    ),
-    // iPhone 8 Plus (1242×2208)
-    "1242x2208": layout(
-      w: 1242, h: 2208,
-      left: 81, top: 114, small: 486, hGap: 108, vGap: 48,
-      rows: 2
-    ),
-  ]
+  /// 与本机竖屏 native 分辨率对齐：已是截图则直接用，否则 aspect-fill
+  static func normalizeToPortraitScreen(_ image: UIImage) -> UIImage? {
+    let oriented = image.fixedOrientation()
+    guard let cg = oriented.cgImage else { return nil }
+    let iw = CGFloat(cg.width)
+    let ih = CGFloat(cg.height)
+    let screen = UIScreen.main.nativeBounds
+    let tw = min(screen.width, screen.height)
+    let th = max(screen.width, screen.height)
 
-  private static func layout(
-    w: CGFloat,
-    h: CGFloat,
-    left: CGFloat,
-    top: CGFloat,
-    small: CGFloat,
-    hGap: CGFloat,
-    vGap: CGFloat,
-    rows: Int = 3
-  ) -> [String: CGRect] {
-    let right = left + small + hGap
-    let row2 = top + small + vGap
-    let row3 = row2 + small + vGap
-    let mediumW = small * 2 + hGap
-    let mediumH = small
+    // 竖屏截图/壁纸已与本机像素一致
+    if abs(iw - tw) <= 2, abs(ih - th) <= 2 {
+      return oriented
+    }
+    // 横图尺寸对调时仍按竖屏目标铺满
+    return aspectFill(oriented, to: CGSize(width: tw, height: th))
+  }
 
-    var result: [String: CGRect] = [
-      "topLeft": CGRect(x: left, y: top, width: small, height: small),
-      "topRight": CGRect(x: right, y: top, width: small, height: small),
-      "mediumTop": CGRect(x: left, y: top, width: mediumW, height: mediumH),
+  static func aspectFill(_ image: UIImage, to target: CGSize) -> UIImage? {
+    guard target.width > 10, target.height > 10 else { return nil }
+    let srcSize = CGSize(
+      width: image.cgImage.map { CGFloat($0.width) } ?? image.size.width,
+      height: image.cgImage.map { CGFloat($0.height) } ?? image.size.height
+    )
+    guard srcSize.width > 1, srcSize.height > 1 else { return nil }
+    let scale = max(target.width / srcSize.width, target.height / srcSize.height)
+    let drawSize = CGSize(width: srcSize.width * scale, height: srcSize.height * scale)
+    let origin = CGPoint(
+      x: (target.width - drawSize.width) / 2,
+      y: (target.height - drawSize.height) / 2
+    )
+    let format = UIGraphicsImageRendererFormat.default()
+    format.scale = 1
+    format.opaque = true
+    let renderer = UIGraphicsImageRenderer(size: target, format: format)
+    return renderer.image { _ in
+      image.draw(in: CGRect(origin: origin, size: drawSize))
+    }
+  }
+
+  static func cropRects(forPixelSize size: CGSize) -> [String: CGRect] {
+    let w = Int(size.width.rounded())
+    let h = Int(size.height.rounded())
+    if let table = pixelTable(width: w, height: h) {
+      return table
+    }
+    return pointDerivedRects(pixelWidth: size.width, pixelHeight: size.height)
+  }
+
+  /// 常见机型像素表（小号 / 中号 / 边距）。来源：主屏空桌面实测 + Scriptable 社区表
+  private static func pixelTable(width w: Int, height h: Int) -> [String: CGRect]? {
+    // (left, top, small, mediumW, mediumH, hGap, vGap, rows)
+    typealias L = (left: CGFloat, top: CGFloat, small: CGFloat, medW: CGFloat, medH: CGFloat, hGap: CGFloat, vGap: CGFloat, rows: Int)
+    let layouts: [String: L] = [
+      // SE / mini 类
+      "750x1334": (54, 110, 296, 634, 296, 54, 46, 2),
+      "1080x2340": (54, 198, 474, 1014, 474, 66, 60, 3),
+      "1125x2436": (54, 201, 465, 1005, 465, 66, 60, 3),
+      // X / 11 Pro / 12 mini 等
+      "1170x2532": (66, 213, 474, 1032, 474, 66, 66, 3), // 12/13
+      "1179x2556": (72, 231, 474, 1014, 474, 72, 66, 3), // 14 Pro
+      "1284x2778": (84, 258, 516, 1116, 516, 72, 72, 3), // 12/13 Pro Max
+      "1290x2796": (84, 270, 510, 1092, 510, 78, 72, 3), // 14/15 Plus
+      "1320x2868": (87, 270, 510, 1092, 510, 78, 72, 3), // 16 Plus
+      "1206x2622": (75, 246, 486, 1044, 486, 72, 66, 3), // 16 Pro
+      "1290x2868": (87, 270, 510, 1092, 510, 78, 72, 3),
+      "1374x2982": (93, 285, 528, 1146, 528, 84, 75, 3), // 16 Pro Max 近似
     ]
-
-    if rows >= 2 {
-      result["midLeft"] = CGRect(x: left, y: row2, width: small, height: small)
-      result["midRight"] = CGRect(x: right, y: row2, width: small, height: small)
-      result["mediumMiddle"] = CGRect(x: left, y: row2, width: mediumW, height: mediumH)
-      result["center"] = result["mediumMiddle"]!
-    }
-
-    if rows >= 3 {
-      result["bottomLeft"] = CGRect(x: left, y: row3, width: small, height: small)
-      result["bottomRight"] = CGRect(x: right, y: row3, width: small, height: small)
-      result["mediumBottom"] = CGRect(x: left, y: row3, width: mediumW, height: mediumH)
-    } else {
-      // 矮屏：第二行当底部
-      result["bottomLeft"] = result["midLeft"]
-      result["bottomRight"] = result["midRight"]
-      result["mediumBottom"] = result["mediumMiddle"]
-    }
-
-    _ = (w, h)
-    return result.compactMapValues { $0 }
+    let key = "\(w)x\(h)"
+    guard let L = layouts[key] else { return nil }
+    return buildRects(
+      left: L.left, top: L.top, small: L.small,
+      medW: L.medW, medH: L.medH, hGap: L.hGap, vGap: L.vGap, rows: L.rows
+    )
   }
 
-  private static func proportionalLayout(pixelSize: CGSize) -> [String: CGRect] {
-    let w = pixelSize.width
-    let h = pixelSize.height
-    let aspect = h / w
-    // 刘海/灵动岛机：顶部留白更大
-    let topFrac: CGFloat = aspect > 2.0 ? 0.095 : (aspect > 1.9 ? 0.09 : 0.07)
-    let leftFrac: CGFloat = 0.059
-    let smallFrac: CGFloat = 0.397
-    let hGapFrac: CGFloat = 0.088
-    let vGapFrac: CGFloat = aspect > 1.9 ? 0.021 : 0.024
-    let rows = aspect < 1.8 ? 2 : 3
+  private static func pointDerivedRects(pixelWidth w: CGFloat, pixelHeight h: CGFloat) -> [String: CGRect] {
+    let bounds = UIScreen.main.bounds
+    let pointW = min(bounds.width, bounds.height)
+    let pointH = max(bounds.width, bounds.height)
+    let sx = w / pointW
+    let sy = h / pointH
 
-    return layout(
-      w: w,
-      h: h,
-      left: w * leftFrac,
-      top: h * topFrac,
-      small: w * smallFrac,
-      hGap: w * hGapFrac,
-      vGap: h * vGapFrac,
+    let smallPt = smallWidgetSide(screenWidth: pointW)
+    let medWPt = mediumWidgetWidth(screenWidth: pointW)
+    let leftPt = horizontalMargin(screenWidth: pointW, smallSide: smallPt)
+    let hGapPt = max(pointW - leftPt * 2 - smallPt * 2, 16)
+    let topPt = topMargin(screenHeight: pointH)
+    let vGapPt = verticalGap(screenHeight: pointH)
+    let rows = pointH < 700 ? 2 : 3
+
+    return buildRects(
+      left: leftPt * sx,
+      top: topPt * sy,
+      small: smallPt * sx,
+      medW: medWPt * sx,
+      medH: smallPt * sy,
+      hGap: hGapPt * sx,
+      vGap: vGapPt * sy,
       rows: rows
     )
   }
 
-  private static func scaleRects(
-    _ rects: [String: CGRect],
-    from: CGSize,
-    to: CGSize
+  private static func buildRects(
+    left: CGFloat,
+    top: CGFloat,
+    small: CGFloat,
+    medW: CGFloat,
+    medH: CGFloat,
+    hGap: CGFloat,
+    vGap: CGFloat,
+    rows: Int
   ) -> [String: CGRect] {
-    let sx = to.width / from.width
-    let sy = to.height / from.height
-    var out: [String: CGRect] = [:]
-    for (k, r) in rects {
-      out[k] = CGRect(
-        x: r.origin.x * sx,
-        y: r.origin.y * sy,
-        width: r.size.width * sx,
-        height: r.size.height * sy
-      )
+    let right = left + small + hGap
+    let row2 = top + small + vGap
+    let row3 = row2 + small + vGap
+    var result: [String: CGRect] = [
+      "topLeft": CGRect(x: left, y: top, width: small, height: small),
+      "topRight": CGRect(x: right, y: top, width: small, height: small),
+      "mediumTop": CGRect(x: left, y: top, width: medW, height: medH),
+    ]
+    if rows >= 2 {
+      result["midLeft"] = CGRect(x: left, y: row2, width: small, height: small)
+      result["midRight"] = CGRect(x: right, y: row2, width: small, height: small)
+      result["mediumMiddle"] = CGRect(x: left, y: row2, width: medW, height: medH)
+      result["center"] = result["mediumMiddle"]!
     }
-    return out
+    if rows >= 3 {
+      result["bottomLeft"] = CGRect(x: left, y: row3, width: small, height: small)
+      result["bottomRight"] = CGRect(x: right, y: row3, width: small, height: small)
+      result["mediumBottom"] = CGRect(x: left, y: row3, width: medW, height: medH)
+    } else if let midL = result["midLeft"], let midR = result["midRight"] {
+      result["bottomLeft"] = midL
+      result["bottomRight"] = midR
+      result["mediumBottom"] = result["mediumMiddle"]
+    }
+    return result
+  }
+
+  private static func smallWidgetSide(screenWidth sw: CGFloat) -> CGFloat {
+    if sw >= 428 { return 170 }
+    if sw >= 390 { return 158 }
+    if sw >= 375 { return 155 }
+    return 148
+  }
+
+  private static func mediumWidgetWidth(screenWidth sw: CGFloat) -> CGFloat {
+    if sw >= 428 { return 364 }
+    if sw >= 390 { return 338 }
+    if sw >= 375 { return 329 }
+    return 321
+  }
+
+  private static func horizontalMargin(screenWidth sw: CGFloat, smallSide: CGFloat) -> CGFloat {
+    let idealGap: CGFloat = sw >= 390 ? 22 : 20
+    let remaining = sw - smallSide * 2 - idealGap
+    return max(remaining / 2, 14)
+  }
+
+  private static func topMargin(screenHeight sh: CGFloat) -> CGFloat {
+    if sh >= 900 { return 90 }
+    if sh >= 850 { return 82 }
+    if sh >= 800 { return 77 }
+    if sh >= 700 { return 62 }
+    return 50
+  }
+
+  private static func verticalGap(screenHeight sh: CGFloat) -> CGFloat {
+    if sh >= 850 { return 22 }
+    if sh >= 700 { return 20 }
+    return 16
   }
 
   static func crop(_ image: UIImage, toPixelRect rect: CGRect) -> UIImage? {
@@ -183,5 +203,18 @@ enum WidgetTransparentCrop {
     guard clipped.width > 2, clipped.height > 2,
           let cut = cg.cropping(to: clipped) else { return nil }
     return UIImage(cgImage: cut, scale: 1, orientation: .up)
+  }
+}
+
+private extension UIImage {
+  func fixedOrientation() -> UIImage {
+    if imageOrientation == .up { return self }
+    let format = UIGraphicsImageRendererFormat.default()
+    format.scale = scale
+    format.opaque = false
+    let renderer = UIGraphicsImageRenderer(size: size, format: format)
+    return renderer.image { _ in
+      draw(in: CGRect(origin: .zero, size: size))
+    }
   }
 }

@@ -468,7 +468,7 @@ struct WidgetDigitNumber: View {
 struct SavedWidgetTemplateView: View {
   @Environment(\.widgetFamily) private var family
   let config: SavedWidgetConfiguration
-  /// 开启透明背景时不绘制纯色/图片底，才能透出桌面壁纸（或壁纸裁切片）
+  /// 假透明时不绘制纯色/图片底，才能叠上壁纸裁切片
   var hideBackground: Bool = false
 
   var body: some View {

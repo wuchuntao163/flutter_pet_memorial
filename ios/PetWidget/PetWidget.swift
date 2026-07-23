@@ -63,7 +63,7 @@ struct SimpleEntry: TimelineEntry, Sendable {
     /// Selected「我的组件」id；nil = 未配置，显示引导
     let widgetId: Int?
     let isGalleryPreview: Bool
-    /// 「透明位置」：关闭 / 位置名；用于壁纸透明叠加
+    /// 「透明位置」：关闭 / 跟随 App / 方位名；用于壁纸裁切假透明
     let transparentPosition: String?
 
     static func setup(date: Date = Date(), preview: Bool = false) -> SimpleEntry {

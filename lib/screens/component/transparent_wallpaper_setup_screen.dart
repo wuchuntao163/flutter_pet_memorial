@@ -29,10 +29,24 @@ class TransparentWallpaperSetupScreen extends StatefulWidget {
 
 class _TransparentWallpaperSetupScreenState
     extends State<TransparentWallpaperSetupScreen> {
-  static const _positions = ['左上', '右上', '左下', '右下', '居中'];
-  String _selectedPosition = '左上';
+  static const _positions = ['关闭', '左上', '右上', '左下', '右下', '居中'];
+  String _selectedPosition = '关闭';
   bool _ready = false;
   String? _localPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppPosition();
+  }
+
+  Future<void> _loadAppPosition() async {
+    final pos = await SavedWidgetStore.instance.getAppTransparentPosition();
+    if (!mounted) return;
+    setState(() {
+      _selectedPosition = _positions.contains(pos) ? pos : '关闭';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +62,7 @@ class _TransparentWallpaperSetupScreenState
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
           const Text(
-            '系统不允许第三方组件真正透视桌面。做法是：选用与桌面相同的整张壁纸，App 按 iPhone 型号裁出各方位小图，组件再按「透明位置」加载对应裁切。',
+            '系统不允许第三方组件真正透视桌面。做法是：选用与桌面相同的整张壁纸，App 按 iPhone 裁出各方位小图；桌面长按组件 → 编辑 →「透明位置」选方位，或选「跟随 App 内设置」。',
             style: TextStyle(
               fontSize: 14,
               height: 1.5,
@@ -63,7 +77,7 @@ class _TransparentWallpaperSetupScreenState
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  '建议先在桌面空白页截图，或从相册选择与当前壁纸一致的原图。',
+                  '建议在空桌面截图（与本机分辨率一致最准），或从相册选与当前壁纸一致的竖屏原图。',
                   style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
                 ),
                 const SizedBox(height: 12),
@@ -115,7 +129,7 @@ class _TransparentWallpaperSetupScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '桌面长按组件 → 编辑 →「透明位置」可选方位；也可选「跟随 App 内设置」。',
+                  '仅影响桌面组件选了「跟随 App 内设置」的项。选壁纸不会自动开启透明。',
                   style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
                 ),
                 const SizedBox(height: 12),
@@ -127,9 +141,7 @@ class _TransparentWallpaperSetupScreenState
                     return ChoiceChip(
                       label: Text(pos),
                       selected: selected,
-                      onSelected: _ready
-                          ? (_) => _selectPosition(pos)
-                          : null,
+                      onSelected: (_) => _selectPosition(pos),
                       selectedColor: AppColors.accent.withValues(alpha: 0.25),
                     );
                   }).toList(),
@@ -140,7 +152,7 @@ class _TransparentWallpaperSetupScreenState
           const SizedBox(height: 24),
           if (_ready)
             const Text(
-              '已生成各方位裁切。请确认系统壁纸与所选图一致，再在桌面开启透明位置。',
+              '已生成各方位裁切。请确认系统壁纸与所选图一致，再在桌面或上方选择透明位置。',
               style: TextStyle(
                 fontSize: 13,
                 color: AppColors.accentDarker,
@@ -191,9 +203,7 @@ class _TransparentWallpaperSetupScreenState
       });
       if (!mounted) return;
       if (ok == true) {
-        await SavedWidgetStore.instance.setAppTransparentPosition(
-          _selectedPosition,
-        );
+        // 只生成裁切，不改 App 透明位置，避免「跟随 App」的组件全部突然透出
         setState(() {
           _localPath = path;
           _ready = true;

@@ -302,15 +302,12 @@ enum WidgetSync {
     NSLog("[SavedBackground] removed background for widgetId=\(widgetId)")
   }
 
-  /// 整张壁纸原图 + 按机型裁切各方位 → App Group
+  /// 整张壁纸原图 + 按本机屏幕铺满后裁切各方位 → App Group
   static func saveTransparentWallpapers(fromScreenshot data: Data) -> Bool {
-    guard let image = UIImage(data: data),
-          let cg = image.cgImage else {
+    guard let image = UIImage(data: data) else {
       NSLog("[TransparentWallpaper] decode screenshot failed")
       return false
     }
-    let pixelSize = CGSize(width: cg.width, height: cg.height)
-    guard pixelSize.width > 100, pixelSize.height > 100 else { return false }
 
     // 保存原图，便于用户设为系统壁纸 / 重新裁切
     if let png = image.pngData() {
@@ -322,13 +319,13 @@ enum WidgetSync {
       )
     }
 
-    let crops = WidgetTransparentCrop.cropRects(forPixelSize: pixelSize)
+    let crops = WidgetTransparentCrop.makeCrops(from: image)
+    guard !crops.isEmpty else {
+      NSLog("[TransparentWallpaper] no crops generated")
+      return false
+    }
     var saved = 0
-    for (key, rect) in crops {
-      guard let cropped = WidgetTransparentCrop.crop(image, toPixelRect: rect) else {
-        NSLog("[TransparentWallpaper] crop failed key=\(key) rect=\(rect)")
-        continue
-      }
+    for (key, cropped) in crops {
       let ok = writePng(
         cropped,
         fileName: "widgetTransparent_\(key).png",
@@ -337,7 +334,10 @@ enum WidgetSync {
       )
       if ok { saved += 1 }
     }
-    NSLog("[TransparentWallpaper] saved \(saved)/\(crops.count) crops for \(Int(pixelSize.width))x\(Int(pixelSize.height))")
+    let screen = UIScreen.main.nativeBounds
+    NSLog(
+      "[TransparentWallpaper] saved \(saved)/\(crops.count) crops for device \(Int(screen.width))x\(Int(screen.height))"
+    )
     return saved > 0
   }
 
@@ -347,6 +347,10 @@ enum WidgetSync {
     defaults.set(trimmed, forKey: SavedWidgetOptionsProvider.appTransparentPositionKey)
     defaults.synchronize()
     NSLog("[TransparentWallpaper] app position=\(trimmed)")
+  }
+
+  static func getAppTransparentPosition() -> String {
+    SavedWidgetOptionsProvider.appStoredTransparentPosition()
   }
 
   private static func writeRawData(
@@ -854,6 +858,8 @@ enum WidgetChannelHandler {
         handleSaveTransparentWallpapers(call: call, result: result)
       case "setAppTransparentPosition":
         handleSetAppTransparentPosition(call: call, result: result)
+      case "getAppTransparentPosition":
+        result(WidgetSync.getAppTransparentPosition())
       case "saveWidgetDigits":
         handleSaveWidgetDigits(call: call, result: result)
       case "clearWidgetDigits":

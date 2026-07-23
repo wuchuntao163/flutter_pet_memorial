@@ -254,6 +254,20 @@ class SavedWidgetStore extends ChangeNotifier {
     }
   }
 
+  Future<String> getAppTransparentPosition() async {
+    if (!Platform.isIOS) return '关闭';
+    try {
+      final value = await _channel.invokeMethod<String>(
+        'getAppTransparentPosition',
+      );
+      final trimmed = value?.trim() ?? '';
+      return trimmed.isEmpty ? '关闭' : trimmed;
+    } catch (error) {
+      debugPrint('[SavedWidgetStore] get transparent position failed: $error');
+      return '关闭';
+    }
+  }
+
   /// [imageRef] 可为本地路径或 http(s) URL。
   /// 与背景列表相同：先落到 App 沙盒，再写入 App Group 供桌面读取（扩展内网络不可靠）。
   Future<void> syncBackgroundImage({

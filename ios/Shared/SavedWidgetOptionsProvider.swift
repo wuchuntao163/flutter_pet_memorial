@@ -50,21 +50,20 @@ enum SavedWidgetOptionsProvider {
   // MARK: - 透明位置
 
   static let transparentOff = "关闭"
-  /// 高版本编辑项：开启透明（不再选左上/右上等位置）
-  static let transparentEnable = "开启透明背景"
   static let transparentFollowApp = "跟随 App 内设置"
   /// 兼容旧版文案
   private static let transparentFollowAppLegacy = "跟随app内设置"
+  /// 兼容已保存的旧选项（不再展示）
+  private static let transparentEnableLegacy = "开启透明背景"
   /// App Group UserDefaults：App 内设置的透明位置（左上/右上等，或关闭）
   static let appTransparentPositionKey = "widgetTransparentPosition"
 
   private static let cornerPositions = ["左上", "右上", "左下", "右下", "居中"]
 
-  /// 编辑小组件「透明位置」选项（全版本均用壁纸裁切假透明）
+  /// 编辑小组件「透明位置」选项
   static func makeTransparentCollection() -> INObjectCollection<NSString> {
     let items: [NSString] = [
       transparentOff as NSString,
-      transparentEnable as NSString,
       transparentFollowApp as NSString,
       "左上" as NSString,
       "右上" as NSString,
@@ -79,10 +78,19 @@ enum SavedWidgetOptionsProvider {
   /// 将 Intent 选项解析为实际位置（跟随 App 时读 App Group）
   static func resolvedTransparentPosition(_ position: String?) -> String? {
     let raw = position?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    if raw.isEmpty || raw == transparentFollowApp || raw == transparentFollowAppLegacy {
+    // 未选/空 → 关闭（不要当成跟随 App，否则选壁纸后会全员透出）
+    if raw.isEmpty { return transparentOff }
+    if isFollowAppOption(raw) || raw == transparentEnableLegacy {
       return appStoredTransparentPosition()
     }
     return raw
+  }
+
+  private static func isFollowAppOption(_ raw: String) -> Bool {
+    if raw == transparentFollowApp || raw == transparentFollowAppLegacy { return true }
+    // Intent 文案偶发空格差异
+    let compact = raw.replacingOccurrences(of: " ", with: "")
+    return compact == "跟随App内设置" || compact == "跟随app内设置"
   }
 
   /// App 内保存的透明位置；未设置时视为关闭
@@ -93,6 +101,12 @@ enum SavedWidgetOptionsProvider {
           !value.isEmpty else {
       return transparentOff
     }
+    // 旧值兜底
+    if value == transparentFollowApp
+      || value == transparentFollowAppLegacy
+      || value == transparentEnableLegacy {
+      return transparentOff
+    }
     return value
   }
 
@@ -100,54 +114,20 @@ enum SavedWidgetOptionsProvider {
     let resolved = resolvedTransparentPosition(position)?
       .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     guard !resolved.isEmpty else { return false }
-    if resolved == transparentOff
-      || resolved == transparentFollowApp
-      || resolved == transparentFollowAppLegacy {
-      return false
-    }
-    // 开启透明背景，或旧版仍保存的左上/右上等
-    return resolved == transparentEnable || cornerPositions.contains(resolved)
+    if resolved == transparentOff { return false }
+    // 仅方位开启假透明；「跟随 App」已在 resolve 时展开
+    return cornerPositions.contains(resolved)
   }
 
   /// 用作 App Group 文件名片段；[preferMedium] 时优先中号裁切
   static func transparentFileKey(_ position: String?, preferMedium: Bool = false) -> String? {
     let resolved = resolvedTransparentPosition(position)?
       .trimmingCharacters(in: .whitespacesAndNewlines)
-    guard isTransparentEnabled(resolved),
-          let position = resolved else {
+    guard let resolved,
+          isTransparentEnabled(resolved) else {
       return nil
     }
-    if position == transparentEnable {
-      return wallpaperKeyForEnabledTransparency(preferMedium: preferMedium)
-    }
-    return fileKey(forCornerOrCustom: position, preferMedium: preferMedium)
-  }
-
-  /// 「开启透明背景」时：优先用 App 内已选方位壁纸，否则取已有缓存位
-  private static func wallpaperKeyForEnabledTransparency(preferMedium: Bool) -> String? {
-    let appPos = appStoredTransparentPosition()
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-    if appPos != transparentOff,
-       appPos != transparentFollowApp,
-       appPos != transparentFollowAppLegacy,
-       appPos != transparentEnable,
-       let key = fileKey(forCornerOrCustom: appPos, preferMedium: preferMedium),
-       transparentWallpaperExists(key) {
-      return key
-    }
-    let preferredKeys = preferMedium
-      ? ["mediumMiddle", "mediumTop", "mediumBottom", "center", "topLeft", "midLeft", "bottomLeft"]
-      : ["topLeft", "topRight", "midLeft", "midRight", "bottomLeft", "bottomRight", "center"]
-    for key in preferredKeys where transparentWallpaperExists(key) {
-      return key
-    }
-    for pos in cornerPositions {
-      if let key = fileKey(forCornerOrCustom: pos, preferMedium: preferMedium),
-         transparentWallpaperExists(key) {
-        return key
-      }
-    }
-    return nil
+    return fileKey(forCornerOrCustom: resolved, preferMedium: preferMedium)
   }
 
   private static func fileKey(forCornerOrCustom position: String, preferMedium: Bool) -> String? {
@@ -172,14 +152,6 @@ enum SavedWidgetOptionsProvider {
       })
       return key.isEmpty ? nil : key
     }
-  }
-
-  private static func transparentWallpaperExists(_ key: String) -> Bool {
-    guard let container = FileManager.default.containerURL(
-      forSecurityApplicationGroupIdentifier: AppGroupConfig.id
-    ) else { return false }
-    let path = container.appendingPathComponent("widgetTransparent_\(key).png").path
-    return FileManager.default.fileExists(atPath: path)
   }
 
   static func load(filter: SizeFilter) -> [Item] {
