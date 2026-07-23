@@ -60,24 +60,18 @@ enum SavedWidgetOptionsProvider {
 
   private static let cornerPositions = ["左上", "右上", "左下", "右下", "居中"]
 
-  /// 编辑小组件「透明位置」选项
-  /// iOS 17+：系统 containerBackground 可真透明，只需开关
-  /// iOS 16-：需壁纸裁切假透明，保留方位选项
+  /// 编辑小组件「透明位置」选项（全版本均用壁纸裁切假透明）
   static func makeTransparentCollection() -> INObjectCollection<NSString> {
-    var items: [NSString] = [
+    let items: [NSString] = [
       transparentOff as NSString,
       transparentEnable as NSString,
       transparentFollowApp as NSString,
+      "左上" as NSString,
+      "右上" as NSString,
+      "左下" as NSString,
+      "右下" as NSString,
+      "居中" as NSString,
     ]
-    if #unavailable(iOS 17.0) {
-      items.append(contentsOf: [
-        "左上" as NSString,
-        "右上" as NSString,
-        "左下" as NSString,
-        "右下" as NSString,
-        "居中" as NSString,
-      ])
-    }
     let section = INObjectSection(title: "透明位置", items: items)
     return INObjectCollection(sections: [section])
   }
@@ -115,8 +109,8 @@ enum SavedWidgetOptionsProvider {
     return resolved == transparentEnable || cornerPositions.contains(resolved)
   }
 
-  /// 用作 App Group 文件名片段
-  static func transparentFileKey(_ position: String?) -> String? {
+  /// 用作 App Group 文件名片段；[preferMedium] 时优先中号裁切
+  static func transparentFileKey(_ position: String?, preferMedium: Bool = false) -> String? {
     let resolved = resolvedTransparentPosition(position)?
       .trimmingCharacters(in: .whitespacesAndNewlines)
     guard isTransparentEnabled(resolved),
@@ -124,25 +118,31 @@ enum SavedWidgetOptionsProvider {
       return nil
     }
     if position == transparentEnable {
-      return wallpaperKeyForEnabledTransparency()
+      return wallpaperKeyForEnabledTransparency(preferMedium: preferMedium)
     }
-    return fileKey(forCornerOrCustom: position)
+    return fileKey(forCornerOrCustom: position, preferMedium: preferMedium)
   }
 
   /// 「开启透明背景」时：优先用 App 内已选方位壁纸，否则取已有缓存位
-  private static func wallpaperKeyForEnabledTransparency() -> String? {
+  private static func wallpaperKeyForEnabledTransparency(preferMedium: Bool) -> String? {
     let appPos = appStoredTransparentPosition()
       .trimmingCharacters(in: .whitespacesAndNewlines)
     if appPos != transparentOff,
        appPos != transparentFollowApp,
        appPos != transparentFollowAppLegacy,
        appPos != transparentEnable,
-       let key = fileKey(forCornerOrCustom: appPos),
+       let key = fileKey(forCornerOrCustom: appPos, preferMedium: preferMedium),
        transparentWallpaperExists(key) {
       return key
     }
+    let preferredKeys = preferMedium
+      ? ["mediumMiddle", "mediumTop", "mediumBottom", "center", "topLeft", "midLeft", "bottomLeft"]
+      : ["topLeft", "topRight", "midLeft", "midRight", "bottomLeft", "bottomRight", "center"]
+    for key in preferredKeys where transparentWallpaperExists(key) {
+      return key
+    }
     for pos in cornerPositions {
-      if let key = fileKey(forCornerOrCustom: pos),
+      if let key = fileKey(forCornerOrCustom: pos, preferMedium: preferMedium),
          transparentWallpaperExists(key) {
         return key
       }
@@ -150,13 +150,21 @@ enum SavedWidgetOptionsProvider {
     return nil
   }
 
-  private static func fileKey(forCornerOrCustom position: String) -> String? {
+  private static func fileKey(forCornerOrCustom position: String, preferMedium: Bool) -> String? {
+    if preferMedium {
+      switch position {
+      case "左上", "右上": return "mediumTop"
+      case "居中": return "mediumMiddle"
+      case "左下", "右下": return "mediumBottom"
+      default: break
+      }
+    }
     switch position {
     case "左上": return "topLeft"
     case "右上": return "topRight"
     case "左下": return "bottomLeft"
     case "右下": return "bottomRight"
-    case "居中": return "center"
+    case "居中": return preferMedium ? "mediumMiddle" : "center"
     default:
       let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_-"))
       let key = String(position.unicodeScalars.map {

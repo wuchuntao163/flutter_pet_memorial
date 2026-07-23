@@ -7,6 +7,7 @@ import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../data/saved_widget_store.dart';
 import '../../models/saved_widget.dart';
+import 'transparent_wallpaper_setup_screen.dart';
 
 class MyWidgetsScreen extends StatefulWidget {
   const MyWidgetsScreen({super.key});
@@ -68,7 +69,29 @@ class _MyWidgetsScreenState extends State<MyWidgetsScreen> {
             ),
           ),
         ),
-        actions: const [SizedBox(width: 72)],
+        actions: [
+          if (Platform.isIOS)
+            Padding(
+              padding: const EdgeInsets.only(
+                right: 8,
+                top: AppLayout.memorialDetailTopPadding,
+              ),
+              child: SizedBox(
+                height: _headerContentHeight,
+                child: Center(
+                  child: TextButton(
+                    onPressed: () => TransparentWallpaperSetupScreen.open(context),
+                    child: const Text(
+                      '透明壁纸',
+                      style: TextStyle(fontSize: 13, color: AppColors.accentDark),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            const SizedBox(width: 72),
+        ],
         centerTitle: true,
         title: const Padding(
           padding: EdgeInsets.only(top: AppLayout.memorialDetailTopPadding),

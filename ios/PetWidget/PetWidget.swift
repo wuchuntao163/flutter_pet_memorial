@@ -398,19 +398,24 @@ struct PetWidgetEntryView: View {
                     thumbs: Array(SavedWidgetConfiguration.loadForFamily(family).prefix(2))
                 )
                 .id("\(entry.data.updatedAt)-\(family)")
+                .petWidgetContainerBackground(wallpaper: nil)
             } else if let config = resolvedConfig {
-                // 与 App「我的组件」一致：优先显示保存时截取的预览图
+                let wallpaper = SavedWidgetHomeView.wallpaperImage(
+                    for: entry.transparentPosition,
+                    family: family
+                )
                 SavedWidgetHomeView(
                     config: config,
                     transparentPosition: entry.transparentPosition
                 )
                 .id("\(config.widgetId)-\(entry.data.updatedAt)-\(entry.transparentPosition ?? "")-\(Calendar.current.startOfDay(for: entry.date).timeIntervalSince1970)-\(WidgetShared.cachedImageRevision())-\(SavedWidgetConfiguration.backgroundRevision(widgetId: config.widgetId))")
+                .petWidgetContainerBackground(wallpaper: wallpaper)
             } else {
                 WidgetSetupGuideView()
+                    .petWidgetContainerBackground(wallpaper: nil)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .petWidgetContainerBackground()
     }
 
     private var resolvedConfig: SavedWidgetConfiguration? {
@@ -419,12 +424,12 @@ struct PetWidgetEntryView: View {
     }
 }
 
-/// iOS 17+：透明容器背景 + 清零系统 content margins，避免高版本白边；低版本无改动。
+/// iOS 17+：假透明时必须把壁纸裁切放进 containerBackground（Color.clear 会被换成白底）
 private extension View {
     @ViewBuilder
-    func petWidgetContainerBackground() -> some View {
+    func petWidgetContainerBackground(wallpaper: UIImage?) -> some View {
         if #available(iOSApplicationExtension 17.0, *) {
-            modifier(PetWidgetFullBleedModifier())
+            modifier(PetWidgetFullBleedModifier(wallpaper: wallpaper))
         } else {
             self
         }
@@ -434,18 +439,30 @@ private extension View {
 @available(iOSApplicationExtension 17.0, *)
 private struct PetWidgetFullBleedModifier: ViewModifier {
     @Environment(\.widgetContentMargins) private var margins
+    let wallpaper: UIImage?
 
     func body(content: Content) -> some View {
         content
-            // 用负 padding 抵消系统默认边距（等价于 configuration.contentMarginsDisabled）
             .padding(-margins)
-            .containerBackground(for: .widget) { Color.clear }
+            .containerBackground(for: .widget) {
+                if let wallpaper {
+                    GeometryReader { geo in
+                        Image(uiImage: wallpaper)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .clipped()
+                    }
+                } else {
+                    Color.clear
+                }
+            }
     }
 }
 
-/// 桌面已配置组件：倒计时类 = 本地背景 + 自定义数字字体 + 实时天数（与常见组件 App 一致）
-/// 系统组件库缩略图仍用完整预览图
+/// 桌面已配置组件：倒计时类 = 本地背景 + 自定义数字字体 + 实时天数
 struct SavedWidgetHomeView: View {
+    @Environment(\.widgetFamily) private var family
     let config: SavedWidgetConfiguration
     let transparentPosition: String?
 
@@ -453,16 +470,21 @@ struct SavedWidgetHomeView: View {
         SavedWidgetOptionsProvider.isTransparentEnabled(transparentPosition)
     }
 
-    private var resolvedPosition: String? {
-        SavedWidgetOptionsProvider.resolvedTransparentPosition(transparentPosition)
+    private var wallpaper: UIImage? {
+        guard isTransparent else { return nil }
+        return Self.wallpaperImage(for: transparentPosition, family: family)
+    }
+
+    private var useFakeTransparent: Bool {
+        isTransparent && wallpaper != nil
     }
 
     var body: some View {
         ZStack {
-            if isTransparent {
-                // iOS 16 及以下才铺壁纸裁切；iOS 17+ 靠 containerBackground(clear) 真透明
+            // iOS 16：壁纸铺在内容下；iOS 17+ 已在 containerBackground 里
+            if useFakeTransparent {
                 if #unavailable(iOSApplicationExtension 17.0) {
-                    if let wall = Self.wallpaperImage(for: resolvedPosition) {
+                    if let wall = wallpaper {
                         Color.clear
                             .overlay(
                                 Image(uiImage: wall)
@@ -470,11 +492,11 @@ struct SavedWidgetHomeView: View {
                                     .aspectRatio(contentMode: .fill)
                             )
                             .clipped()
-                    } else {
-                        Color.clear
                     }
                 }
-                // 去掉纯色/相册底，才能透出桌面或露出壁纸裁切
+            }
+
+            if useFakeTransparent {
                 SavedWidgetTemplateView(config: config, hideBackground: true)
             } else if config.needsLiveDayRender {
                 SavedWidgetTemplateView(config: config)
@@ -496,15 +518,32 @@ struct SavedWidgetHomeView: View {
         .clipped()
     }
 
-    private static func wallpaperImage(for position: String?) -> UIImage? {
-        guard let key = SavedWidgetOptionsProvider.transparentFileKey(position),
+    static func wallpaperImage(for position: String?, family: WidgetFamily) -> UIImage? {
+        let preferMedium = family == .systemMedium
+        guard let key = SavedWidgetOptionsProvider.transparentFileKey(
+                position,
+                preferMedium: preferMedium
+              ),
               let container = FileManager.default.containerURL(
                 forSecurityApplicationGroupIdentifier: AppGroupConfig.id
               ) else {
             return nil
         }
         let path = container.appendingPathComponent("widgetTransparent_\(key).png").path
-        return UIImage(contentsOfFile: path)
+        if let image = UIImage(contentsOfFile: path) {
+            return image
+        }
+        // 中号缺图时回退小号方位
+        if preferMedium,
+           let fallback = SavedWidgetOptionsProvider.transparentFileKey(
+             position,
+             preferMedium: false
+           ) {
+            let fallbackPath = container
+              .appendingPathComponent("widgetTransparent_\(fallback).png").path
+            return UIImage(contentsOfFile: fallbackPath)
+        }
+        return nil
     }
 }
 

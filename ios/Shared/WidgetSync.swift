@@ -302,22 +302,31 @@ enum WidgetSync {
     NSLog("[SavedBackground] removed background for widgetId=\(widgetId)")
   }
 
-  /// 桌面空白页截图 → 裁出各方位假透明壁纸
+  /// 整张壁纸原图 + 按机型裁切各方位 → App Group
   static func saveTransparentWallpapers(fromScreenshot data: Data) -> Bool {
-    guard let image = UIImage(data: data) else {
+    guard let image = UIImage(data: data),
+          let cg = image.cgImage else {
       NSLog("[TransparentWallpaper] decode screenshot failed")
       return false
     }
-    let size = image.size
-    guard size.width > 10, size.height > 10 else { return false }
+    let pixelSize = CGSize(width: cg.width, height: cg.height)
+    guard pixelSize.width > 100, pixelSize.height > 100 else { return false }
 
-    let crops = transparentCropRects(imageSize: size)
+    // 保存原图，便于用户设为系统壁纸 / 重新裁切
+    if let png = image.pngData() {
+      _ = writeRawData(
+        png,
+        fileName: "widgetTransparentSource.png",
+        tempFileName: "widgetTransparentSource.tmp.png",
+        logTag: "TransparentWallpaper"
+      )
+    }
+
+    let crops = WidgetTransparentCrop.cropRects(forPixelSize: pixelSize)
     var saved = 0
     for (key, rect) in crops {
-      guard let cropped = cropImage(image, to: rect),
-            let png = cropped.pngData(),
-            !png.isEmpty else {
-        NSLog("[TransparentWallpaper] crop failed key=\(key)")
+      guard let cropped = WidgetTransparentCrop.crop(image, toPixelRect: rect) else {
+        NSLog("[TransparentWallpaper] crop failed key=\(key) rect=\(rect)")
         continue
       }
       let ok = writePng(
@@ -328,7 +337,7 @@ enum WidgetSync {
       )
       if ok { saved += 1 }
     }
-    NSLog("[TransparentWallpaper] saved \(saved)/\(crops.count) crops")
+    NSLog("[TransparentWallpaper] saved \(saved)/\(crops.count) crops for \(Int(pixelSize.width))x\(Int(pixelSize.height))")
     return saved > 0
   }
 
@@ -340,40 +349,33 @@ enum WidgetSync {
     NSLog("[TransparentWallpaper] app position=\(trimmed)")
   }
 
-  /// 竖屏主屏截图上的近似裁切框（小/中组件常见 2 列布局）
-  private static func transparentCropRects(imageSize: CGSize) -> [String: CGRect] {
-    let w = imageSize.width
-    let h = imageSize.height
-    let left = w * 0.074
-    let top = h * 0.168
-    let small = w * 0.395
-    let hGap = w * 0.062
-    let vGap = h * 0.022
-    let midTop = top + small + vGap
-    let bottom = midTop + small + vGap
-    let right = left + small + hGap
-    let mediumW = small * 2 + hGap
-    let mediumH = small
-
-    return [
-      "topLeft": CGRect(x: left, y: top, width: small, height: small),
-      "topRight": CGRect(x: right, y: top, width: small, height: small),
-      "bottomLeft": CGRect(x: left, y: bottom, width: small, height: small),
-      "bottomRight": CGRect(x: right, y: bottom, width: small, height: small),
-      "center": CGRect(x: left, y: midTop, width: mediumW, height: mediumH),
-    ]
-  }
-
-  private static func cropImage(_ image: UIImage, to rect: CGRect) -> UIImage? {
-    let scale = image.scale
-    let scaled = CGRect(
-      x: rect.origin.x * scale,
-      y: rect.origin.y * scale,
-      width: rect.size.width * scale,
-      height: rect.size.height * scale
-    )
-    guard let cg = image.cgImage?.cropping(to: scaled) else { return nil }
-    return UIImage(cgImage: cg, scale: scale, orientation: image.imageOrientation)
+  private static func writeRawData(
+    _ data: Data,
+    fileName: String,
+    tempFileName: String,
+    logTag: String
+  ) -> Bool {
+    guard let container = appGroupContainer() else { return false }
+    let finalURL = container.appendingPathComponent(fileName)
+    let tempURL = container.appendingPathComponent(tempFileName)
+    let fm = FileManager.default
+    do {
+      if fm.fileExists(atPath: tempURL.path) {
+        try fm.removeItem(at: tempURL)
+      }
+      try data.write(to: tempURL, options: .atomic)
+      if fm.fileExists(atPath: finalURL.path) {
+        _ = try fm.replaceItemAt(finalURL, withItemAt: tempURL)
+      } else {
+        try fm.moveItem(at: tempURL, to: finalURL)
+      }
+      NSLog("[\(logTag)] wrote \(fileName): \(data.count) bytes")
+      return true
+    } catch {
+      NSLog("[\(logTag)] write \(fileName) failed: \(error)")
+      try? fm.removeItem(at: tempURL)
+      return false
+    }
   }
 
   static func saveWidgetBackground(widgetId: Int, fromPath path: String) -> Bool {

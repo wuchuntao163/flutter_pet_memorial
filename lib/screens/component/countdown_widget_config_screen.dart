@@ -25,6 +25,7 @@ import '../../widgets/common/memorial_type_info.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 import 'pet_widget_config_screen.dart' show showComponentColorPicker;
+import 'transparent_wallpaper_setup_screen.dart';
 
 enum CountdownWidgetVariant {
   photo,
@@ -1534,67 +1535,9 @@ class _CountdownWidgetConfigScreenState
     if (!mounted) return;
     await IosDesktopPetGuideDialog.show(context, liveActivityEnabled: enabled);
     if (!mounted) return;
-    // 仅 iOS 16 及以下需要壁纸裁切假透明；iOS 17+ 用系统真透明，选「开启透明背景」即可
-    if (Platform.isIOS && !_isIos17OrAbove) {
-      final setup = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('设置透明壁纸'),
-          content: const Text(
-            '当前系统为 iOS 16 及以下，需用与桌面壁纸匹配的裁切图模拟透明。请先在桌面空白页截图，再选择该截图；然后长按桌面组件选择透明方位。',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('稍后'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('选择截图'),
-            ),
-          ],
-        ),
-      );
-      if (setup == true && mounted) {
-        await _setupTransparentWallpaper();
-      }
-    }
-  }
-
-  /// iOS 17+ 可用 WidgetKit containerBackground 真透明
-  bool get _isIos17OrAbove {
-    if (!Platform.isIOS) return false;
-    final raw = Platform.operatingSystemVersion;
-    final match = RegExp(r'Version\s+(\d+)').firstMatch(raw);
-    if (match != null) {
-      return (int.tryParse(match.group(1)!) ?? 0) >= 17;
-    }
-    final digits = RegExp(r'(\d+)').firstMatch(raw);
-    return digits != null && (int.tryParse(digits.group(1)!) ?? 0) >= 17;
-  }
-
-  Future<void> _setupTransparentWallpaper() async {
-    try {
-      final path = await PetImagePicker.pickFromGallery(context);
-      if (path == null || path.isEmpty || !mounted) return;
-      final ok = await withSavingOverlay(context, () async {
-        return SavedWidgetStore.instance
-            .setupTransparentWallpapersFromScreenshot(path);
-      });
-      if (!mounted) return;
-      if (ok == true) {
-        await SavedWidgetStore.instance.setAppTransparentPosition('左上');
-        await showCenterTip(context, '透明壁纸已设置，请在桌面编辑组件选择方位');
-      } else {
-        await showCenterTip(context, '透明壁纸设置失败');
-      }
-    } on AppPermissionDeniedException catch (error) {
-      if (!mounted) return;
-      await AppPermissionUtil.showDeniedDialog(context, error);
-    } catch (error) {
-      if (!mounted) return;
-      debugPrint('[CountdownWidget] transparent wallpaper failed: $error');
-      await showCenterTip(context, '透明壁纸设置失败');
+    // 全版本均用壁纸裁切实现桌面假透明
+    if (Platform.isIOS) {
+      await TransparentWallpaperSetupScreen.open(context);
     }
   }
 

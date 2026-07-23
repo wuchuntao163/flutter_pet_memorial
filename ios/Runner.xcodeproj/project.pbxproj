@@ -21,6 +21,7 @@
 		BBAACC011234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
 		BBAACC031234567890ABCDEF /* AppGroupConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC001234567890ABCDEF /* AppGroupConfig.swift */; };
 		BBAACC051234567890ABCDEF /* WidgetSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAACC041234567890ABCDEF /* WidgetSync.swift */; };
+		FFAA00011234567890ABCDEF /* WidgetTransparentCrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA00001234567890ABCDEF /* WidgetTransparentCrop.swift */; };
 		CCBB00011234567890ABCDEF /* PetLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBB00041234567890ABCDEF /* PetLiveActivityAttributes.swift */; };
 		CCBB00021234567890ABCDEF /* PetLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBB00041234567890ABCDEF /* PetLiveActivityAttributes.swift */; };
 		CCBB00031234567890ABCDEF /* LiveActivitySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBB00051234567890ABCDEF /* LiveActivitySync.swift */; };
@@ -121,6 +122,7 @@
 		AAD38DD99A61494B723D42B7 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		BBAACC001234567890ABCDEF /* AppGroupConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupConfig.swift; sourceTree = "<group>"; };
 		BBAACC041234567890ABCDEF /* WidgetSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSync.swift; sourceTree = "<group>"; };
+		FFAA00001234567890ABCDEF /* WidgetTransparentCrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTransparentCrop.swift; sourceTree = "<group>"; };
 		C6295B647994C34585FEA7D0 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		CCBB00041234567890ABCDEF /* PetLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetLiveActivityAttributes.swift; sourceTree = "<group>"; };
 		CCBB00051234567890ABCDEF /* LiveActivitySync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivitySync.swift; sourceTree = "<group>"; };
@@ -268,6 +270,7 @@
 			children = (
 				BBAACC001234567890ABCDEF /* AppGroupConfig.swift */,
 				BBAACC041234567890ABCDEF /* WidgetSync.swift */,
+				FFAA00001234567890ABCDEF /* WidgetTransparentCrop.swift */,
 				EEFF00081234567890ABCDEF /* SavedWidgetOptionsProvider.swift */,
 				CCBB00041234567890ABCDEF /* PetLiveActivityAttributes.swift */,
 				CCBB00051234567890ABCDEF /* LiveActivitySync.swift */,
@@ -607,6 +610,7 @@
 				EEFF000B1234567890ABCDEF /* SavedWidgetOptionsProvider.swift in Sources */,
 				BBAACC011234567890ABCDEF /* AppGroupConfig.swift in Sources */,
 				BBAACC051234567890ABCDEF /* WidgetSync.swift in Sources */,
+				FFAA00011234567890ABCDEF /* WidgetTransparentCrop.swift in Sources */,
 				CCBB00011234567890ABCDEF /* PetLiveActivityAttributes.swift in Sources */,
 				CCBB00031234567890ABCDEF /* LiveActivitySync.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,

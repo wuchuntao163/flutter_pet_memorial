@@ -18,6 +18,7 @@ import '../../utils/pet_image_picker.dart';
 import '../../utils/saving_overlay.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
+import 'transparent_wallpaper_setup_screen.dart';
 
 Future<Color?> showComponentColorPicker(
   BuildContext context, {
@@ -578,6 +579,10 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
     final enabled = await LiveActivityService.instance.isEnabled();
     if (!mounted) return;
     await IosDesktopPetGuideDialog.show(context, liveActivityEnabled: enabled);
+    if (!mounted) return;
+    if (Platform.isIOS) {
+      await TransparentWallpaperSetupScreen.open(context);
+    }
   }
 
   Widget _petImage(String source) {
