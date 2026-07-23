@@ -296,10 +296,14 @@ struct PetLiveActivityWidget: Widget {
     switch state.template {
     case 2:
       HStack(spacing: 12) {
-        // 锁屏卡片相册图也用正圆；无图才 emoji
+        // 锁屏/展开：与 App 预览卡片一致的圆角矩形（正圆仅用于灵动岛 compact）
         Group {
           if let image = LiveActivityShared.loadPhoto() {
-            islandCircleImage(uiImage: image, size: imageSize)
+            islandCompactImage(
+              uiImage: image,
+              size: imageSize,
+              cornerRadius: imageSize * 0.22
+            )
           } else {
             imageOrEmoji(
               image: nil,
@@ -326,7 +330,11 @@ struct PetLiveActivityWidget: Widget {
       HStack(spacing: 12) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
-            islandCircleImage(uiImage: image, size: imageSize)
+            islandCompactImage(
+              uiImage: image,
+              size: imageSize,
+              cornerRadius: imageSize * 0.22
+            )
           } else {
             imageOrEmoji(
               image: nil,
@@ -350,7 +358,11 @@ struct PetLiveActivityWidget: Widget {
       HStack(spacing: 12) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
-            islandCircleImage(uiImage: image, size: imageSize)
+            islandCompactImage(
+              uiImage: image,
+              size: imageSize,
+              cornerRadius: imageSize * 0.22
+            )
           } else {
             imageOrEmoji(
               image: nil,
@@ -381,7 +393,11 @@ struct PetLiveActivityWidget: Widget {
       HStack(alignment: .center, spacing: 12) {
         Group {
           if let image = LiveActivityShared.loadCachedPetImage() {
-            islandCircleImage(uiImage: image, size: imageSize)
+            islandCompactImage(
+              uiImage: image,
+              size: imageSize,
+              cornerRadius: imageSize * 0.22
+            )
           } else {
             petImageView(size: imageSize)
           }
@@ -407,16 +423,20 @@ struct PetLiveActivityWidget: Widget {
   ) -> some View {
     GeometryReader { geo in
       let margin: CGFloat = 14
+      let fontSize = CGFloat(max(14, min(24, state.textFontSize > 0 ? state.textFontSize : 18)))
+      let textBlockH: CGFloat = fontSize * 1.35 + 4
       let normX = min(1, max(0, state.textNormX))
       let normY = min(1, max(0, state.textNormY))
       // 与 App 预览一致：左上角定位，预留右侧空间避免贴边溢出
       let left = margin + (geo.size.width - margin * 2 - 100) * normX
-      let top = margin + (geo.size.height - margin * 2 - 28) * normY
+      let top = margin + (geo.size.height - margin * 2 - textBlockH) * normY
       let textMaxW = max(60, geo.size.width - left - margin)
       ZStack(alignment: .topLeading) {
         if let panel = LiveActivityShared.loadPanel() {
           Image(uiImage: panel)
             .resizable()
+            .interpolation(.high)
+            .antialiased(true)
             .scaledToFill()
             .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
@@ -425,12 +445,15 @@ struct PetLiveActivityWidget: Widget {
             .fill(LiveActivityShared.color(from: state.backgroundColorARGB))
         }
         Text(state.subtitle.isEmpty ? "每天都要开心" : state.subtitle)
-          .font(.system(size: 14, weight: .semibold))
+          .font(.system(size: fontSize, weight: .semibold))
           .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
           .lineLimit(2)
           .multilineTextAlignment(.leading)
           .frame(maxWidth: textMaxW, alignment: .leading)
-          .offset(x: max(margin, left), y: max(margin, min(top, geo.size.height - margin - 28)))
+          .offset(
+            x: max(margin, left),
+            y: max(margin, min(top, geo.size.height - margin - textBlockH))
+          )
       }
     }
     .frame(maxWidth: .infinity)

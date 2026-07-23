@@ -616,7 +616,8 @@ enum WidgetSync {
         logTag: "LiveActivityBannerBg"
       )
     case "panel":
-      return replaceLiveActivityContentImage(
+      // 面板铺满锁屏横幅，用更高分辨率避免模糊（仍低于桌面小组件上限）
+      return replaceLiveActivityPanelImage(
         with: data,
         fileName: liveActivityPanelFileName,
         tempFileName: liveActivityPanelTempFileName,
@@ -730,6 +731,26 @@ enum WidgetSync {
     guard let image = UIImage(data: data),
           let resized = resizeForLiveActivityContent(image) else {
       NSLog("[\(logTag)] replace content image decode failed")
+      return false
+    }
+    return writePng(
+      resized,
+      fileName: fileName,
+      tempFileName: tempFileName,
+      logTag: logTag
+    )
+  }
+
+  /// 自定义岛面板：锁屏横幅约 3x 宽屏，提高到约 900px 以减少放大模糊
+  private static func replaceLiveActivityPanelImage(
+    with data: Data,
+    fileName: String,
+    tempFileName: String,
+    logTag: String
+  ) -> Bool {
+    guard let image = UIImage(data: data),
+          let resized = resizeForLiveActivityPanel(image) else {
+      NSLog("[\(logTag)] replace panel image decode failed")
       return false
     }
     return writePng(
@@ -1011,12 +1032,22 @@ enum WidgetSync {
   private static let liveActivityCompactSide: CGFloat = 84
   /// 锁屏 Live Activity 内容图过大时系统会丢弃不显示
   private static let liveActivityContentMaxSide: CGFloat = 300
+  /// 自定义面板铺满横幅，略高分辨率即可保持清晰
+  private static let liveActivityPanelMaxSide: CGFloat = 900
 
   private static func resizeForLiveActivityContent(_ image: UIImage) -> UIImage? {
+    resizeImage(image, maxSide: liveActivityContentMaxSide)
+  }
+
+  private static func resizeForLiveActivityPanel(_ image: UIImage) -> UIImage? {
+    resizeImage(image, maxSide: liveActivityPanelMaxSide)
+  }
+
+  private static func resizeImage(_ image: UIImage, maxSide: CGFloat) -> UIImage? {
     let size = image.size
-    let maxSide = max(size.width, size.height)
-    guard maxSide > liveActivityContentMaxSide else { return image }
-    let scale = liveActivityContentMaxSide / maxSide
+    let longest = max(size.width, size.height)
+    guard longest > maxSide else { return image }
+    let scale = maxSide / longest
     let target = CGSize(
       width: max(1, floor(size.width * scale)),
       height: max(1, floor(size.height * scale))

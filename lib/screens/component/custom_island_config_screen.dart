@@ -352,7 +352,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final left = _textPosition.dx * (constraints.maxWidth - 100);
-            final top = _textPosition.dy * (constraints.maxHeight - 28);
+            final top = _textPosition.dy * (constraints.maxHeight - 36);
             return Stack(
               fit: StackFit.expand,
               children: [
@@ -371,7 +371,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
                               .clamp(0, 1),
                           (_textPosition.dy +
                                   details.delta.dy /
-                                      (constraints.maxHeight - 28))
+                                      (constraints.maxHeight - 36))
                               .clamp(0, 1),
                         );
                       });
@@ -390,7 +390,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: _textColor,
                           ),

@@ -471,6 +471,7 @@ class LiveActivityService {
       'subtitle': content,
       'memorialTitle': '',
       'textColorARGB': color,
+      'textFontSize': 18,
       'textNormX': x,
       'textNormY': y,
       'compactLeadingEmoji': left,
