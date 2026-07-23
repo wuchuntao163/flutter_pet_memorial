@@ -49,6 +49,7 @@ class _PetMemorialAppState extends State<PetMemorialApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // 含灵动岛：按 active template 刷新天数 / 计时目标
       PlatformPetSync.afterProfileUpdate();
       MemorialStore.instance.resyncReminders();
     }

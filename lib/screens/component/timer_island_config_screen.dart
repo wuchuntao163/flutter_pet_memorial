@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/colors.dart';
 import '../../config/layout.dart';
+import '../../services/live_activity_service.dart';
+import '../../utils/center_tip_util.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
@@ -573,18 +575,66 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
     setState(() => _busy = true);
     final next = !_enabled;
     final prefs = await SharedPreferences.getInstance();
+    final title = _titleController.text.trim();
     await Future.wait([
-      prefs.setString('${_storagePrefix}_title', _titleController.text.trim()),
+      prefs.setString('${_storagePrefix}_title', title),
       prefs.setInt('${_storagePrefix}_hour', _targetTime.hour),
       prefs.setInt('${_storagePrefix}_minute', _targetTime.minute),
       prefs.setString('${_storagePrefix}_icon', _icon),
       if (_imagePath != null)
         prefs.setString('${_storagePrefix}_image', _imagePath!),
-      prefs.setBool('${_storagePrefix}_enabled', next),
     ]);
+
+    final template = _isCountUp ? 3 : 4;
+    if (next) {
+      final now = DateTime.now();
+      var target = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        _targetTime.hour,
+        _targetTime.minute,
+      );
+      if (_isCountUp) {
+        if (target.isAfter(now)) {
+          target = target.subtract(const Duration(days: 1));
+        }
+      } else if (!target.isAfter(now)) {
+        target = target.add(const Duration(days: 1));
+      }
+      final ok = await LiveActivityService.instance.startOrUpdateIsland(
+        template: template,
+        payload: {
+          'petName': title.isEmpty ? _pageTitle : title,
+          'subtitle': title.isEmpty ? _defaultTitle : title,
+          'memorialTitle': title.isEmpty ? _defaultTitle : title,
+          'timerTargetEpoch': target.millisecondsSinceEpoch / 1000.0,
+          'compactLeadingEmoji': _icon,
+        },
+        assetPaths: {
+          if (_imagePath != null) 'icon': _imagePath,
+        },
+      );
+      if (!mounted) return;
+      if (!ok) {
+        setState(() => _busy = false);
+        await showCenterTip(context, '上岛失败，请在系统设置中开启实时活动');
+        return;
+      }
+      await prefs.setBool('${_storagePrefix}_enabled', true);
+      setState(() {
+        _enabled = true;
+        _busy = false;
+      });
+      await showCenterTip(context, '已上岛');
+      return;
+    }
+
+    await LiveActivityService.instance.disableIsland(template);
+    await prefs.setBool('${_storagePrefix}_enabled', false);
     if (!mounted) return;
     setState(() {
-      _enabled = next;
+      _enabled = false;
       _busy = false;
     });
   }

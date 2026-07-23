@@ -224,21 +224,23 @@ class SavedWidgetStore extends ChangeNotifier {
     }
   }
 
-  /// 桌面空白页截图 → 裁切各透明位置壁纸到 App Group
+  /// 桌面空白页截图 / 相册壁纸 → 裁切各透明位置到 App Group
   Future<bool> setupTransparentWallpapersFromScreenshot(
     String localPath,
   ) async {
     if (!Platform.isIOS) return false;
     try {
-      final bytes = await File(
-        localPath.startsWith('file://')
-            ? Uri.parse(localPath).toFilePath()
-            : localPath,
-      ).readAsBytes();
-      if (bytes.isEmpty) return false;
+      final path = localPath.startsWith('file://')
+          ? Uri.parse(localPath).toFilePath()
+          : localPath;
+      if (path.isEmpty || !File(path).existsSync()) {
+        debugPrint('[SavedWidgetStore] wallpaper path missing: $path');
+        return false;
+      }
+      // 传文件路径，避免相册原图 base64 过大导致 MethodChannel 失败
       final ok = await _channel.invokeMethod<bool>(
         'saveTransparentWallpapers',
-        {'imageBase64': base64Encode(bytes)},
+        {'imagePath': path},
       );
       return ok == true;
     } catch (error) {

@@ -1,6 +1,7 @@
 import ActivityKit
 import Flutter
 import Foundation
+import UIKit
 
 enum LiveActivitySync {
   static let activityIdKey = "petLiveActivityId"
@@ -35,6 +36,34 @@ enum LiveActivitySync {
       return 0
     }
     return Int64(modified.timeIntervalSince1970 * 1000)
+  }
+
+  static func contentState(from args: [String: Any]) -> PetLiveActivityAttributes.ContentState {
+    let template = intValue(args["template"]) ?? 1
+    let petName = stringValue(args["petName"])
+    let subtitle = stringValue(args["subtitle"])
+    let memorialTitle = stringValue(args["memorialTitle"])
+    let timerTargetEpoch = doubleValue(args["timerTargetEpoch"]) ?? 0
+    let daysText = stringValue(args["daysText"])
+    let textColorARGB = uInt32Value(args["textColorARGB"]) ?? 0xFFFFFFFF
+    let textNormX = doubleValue(args["textNormX"]) ?? 0.58
+    let textNormY = doubleValue(args["textNormY"]) ?? 0.72
+    let leadingEmoji = stringValue(args["compactLeadingEmoji"])
+    let trailingEmoji = stringValue(args["compactTrailingEmoji"])
+    return PetLiveActivityAttributes.ContentState(
+      template: template,
+      petName: petName,
+      subtitle: subtitle,
+      memorialTitle: memorialTitle,
+      imageRevision: imageRevision(),
+      timerTargetEpoch: timerTargetEpoch,
+      daysText: daysText,
+      textColorARGB: textColorARGB,
+      textNormX: textNormX,
+      textNormY: textNormY,
+      compactLeadingEmoji: leadingEmoji,
+      compactTrailingEmoji: trailingEmoji
+    )
   }
 
   static func syncImages(
@@ -77,32 +106,43 @@ enum LiveActivitySync {
     }
   }
 
-  static func syncImage(
-    from urlString: String,
-    authToken: String,
+  static func syncAsset(
+    role: String,
+    imagePath: String?,
+    imageBase64: String?,
     completion: @escaping (Bool) -> Void
   ) {
-    syncImages(petUrl: urlString, fourCloverUrl: "", authToken: authToken, completion: completion)
+    DispatchQueue.global(qos: .userInitiated).async {
+      let data: Data?
+      if let path = imagePath?.trimmingCharacters(in: .whitespacesAndNewlines),
+         !path.isEmpty {
+        let cleaned = path.hasPrefix("file://")
+          ? (URL(string: path)?.path ?? path)
+          : path
+        data = try? Data(contentsOf: URL(fileURLWithPath: cleaned))
+      } else if let base64 = imageBase64, !base64.isEmpty {
+        data = Data(base64Encoded: base64)
+      } else {
+        data = nil
+      }
+      guard let data, !data.isEmpty else {
+        DispatchQueue.main.async { completion(false) }
+        return
+      }
+      let ok = WidgetSync.replaceLiveActivityAsset(role: role, data: data)
+      DispatchQueue.main.async { completion(ok) }
+    }
   }
 
   @available(iOS 16.2, *)
-  static func start(
-    petId: String,
-    petName: String,
-    subtitle: String,
-    memorialTitle: String
-  ) throws -> String {
+  static func start(petId: String, state: PetLiveActivityAttributes.ContentState) throws -> String {
     endAllSync()
 
     let attributes = PetLiveActivityAttributes(petId: petId)
-    let state = PetLiveActivityAttributes.ContentState(
-      petName: petName,
-      subtitle: subtitle,
-      memorialTitle: memorialTitle,
-      imageRevision: imageRevision()
-    )
+    var next = state
+    next.imageRevision = imageRevision()
     let staleDate = Calendar.current.date(byAdding: .hour, value: 8, to: Date())
-    let content = ActivityContent(state: state, staleDate: staleDate)
+    let content = ActivityContent(state: next, staleDate: staleDate)
 
     let activity = try Activity.request(
       attributes: attributes,
@@ -110,25 +150,17 @@ enum LiveActivitySync {
       pushType: nil
     )
     saveActivityId(activity.id)
-    NSLog("[LiveActivity] started id=\(activity.id)")
+    NSLog("[LiveActivity] started id=\(activity.id) template=\(next.template)")
     return activity.id
   }
 
   @available(iOS 16.2, *)
   @discardableResult
-  static func update(
-    petName: String,
-    subtitle: String,
-    memorialTitle: String
-  ) -> Bool {
-    let state = PetLiveActivityAttributes.ContentState(
-      petName: petName,
-      subtitle: subtitle,
-      memorialTitle: memorialTitle,
-      imageRevision: imageRevision()
-    )
+  static func update(state: PetLiveActivityAttributes.ContentState) -> Bool {
+    var next = state
+    next.imageRevision = imageRevision()
     let staleDate = Calendar.current.date(byAdding: .hour, value: 8, to: Date())
-    let content = ActivityContent(state: state, staleDate: staleDate)
+    let content = ActivityContent(state: next, staleDate: staleDate)
 
     let activities = Activity<PetLiveActivityAttributes>.activities
     guard !activities.isEmpty else { return false }
@@ -141,7 +173,7 @@ enum LiveActivitySync {
     if let first = activities.first {
       saveActivityId(first.id)
     }
-    NSLog("[LiveActivity] updated count=\(activities.count)")
+    NSLog("[LiveActivity] updated count=\(activities.count) template=\(next.template)")
     return true
   }
 
@@ -168,6 +200,33 @@ enum LiveActivitySync {
   private static func clearActivityId() {
     UserDefaults(suiteName: AppGroupConfig.id)?.removeObject(forKey: activityIdKey)
   }
+
+  private static func stringValue(_ raw: Any?) -> String {
+    (raw as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+  }
+
+  private static func intValue(_ raw: Any?) -> Int? {
+    if let n = raw as? Int { return n }
+    if let n = raw as? NSNumber { return n.intValue }
+    if let s = raw as? String { return Int(s) }
+    return nil
+  }
+
+  private static func doubleValue(_ raw: Any?) -> Double? {
+    if let n = raw as? Double { return n }
+    if let n = raw as? Int { return Double(n) }
+    if let n = raw as? NSNumber { return n.doubleValue }
+    if let s = raw as? String { return Double(s) }
+    return nil
+  }
+
+  private static func uInt32Value(_ raw: Any?) -> UInt32? {
+    if let n = raw as? UInt32 { return n }
+    if let n = raw as? Int { return UInt32(truncatingIfNeeded: n) }
+    if let n = raw as? NSNumber { return n.uint32Value }
+    if let s = raw as? String, let v = UInt32(s) { return v }
+    return nil
+  }
 }
 
 enum LiveActivityChannelHandler {
@@ -191,6 +250,8 @@ enum LiveActivityChannelHandler {
         handleUpdate(call: call, result: result)
       case "syncImage":
         handleSyncImage(call: call, result: result)
+      case "syncAsset":
+        handleSyncAsset(call: call, result: result)
       case "endActivity":
         LiveActivitySync.endAllSync()
         result(nil)
@@ -211,25 +272,23 @@ enum LiveActivityChannelHandler {
     }
 
     let args = call.arguments as? [String: Any] ?? [:]
-    let petId = args["petId"] as? String ?? ""
-    let petName = args["petName"] as? String ?? ""
-    let subtitle = args["subtitle"] as? String ?? ""
-    let memorialTitle = args["memorialTitle"] as? String ?? ""
+    let petId = (args["petId"] as? String) ?? ""
+    let state = LiveActivitySync.contentState(from: args)
 
-    guard !petName.isEmpty else {
+    // 模板 1 仍要求有宠物名；其它模板可用 subtitle / memorialTitle 兜底
+    let hasIdentity = !state.petName.isEmpty
+      || !state.subtitle.isEmpty
+      || !state.memorialTitle.isEmpty
+      || state.template != 1
+    guard hasIdentity else {
       result(
-        FlutterError(code: "INVALID_ARGS", message: "petName 不能为空", details: nil)
+        FlutterError(code: "INVALID_ARGS", message: "内容不能为空", details: nil)
       )
       return
     }
 
     do {
-      let activityId = try LiveActivitySync.start(
-        petId: petId,
-        petName: petName,
-        subtitle: subtitle,
-        memorialTitle: memorialTitle
-      )
+      let activityId = try LiveActivitySync.start(petId: petId, state: state)
       result(activityId)
     } catch {
       NSLog("[LiveActivity] start failed: \(error)")
@@ -250,34 +309,16 @@ enum LiveActivityChannelHandler {
     }
 
     let args = call.arguments as? [String: Any] ?? [:]
-    let petName = args["petName"] as? String ?? ""
-    let subtitle = args["subtitle"] as? String ?? ""
-    let memorialTitle = args["memorialTitle"] as? String ?? ""
+    let state = LiveActivitySync.contentState(from: args)
 
     if LiveActivitySync.isActive() {
-      result(
-        LiveActivitySync.update(
-          petName: petName,
-          subtitle: subtitle,
-          memorialTitle: memorialTitle
-        )
-      )
-      return
-    }
-
-    guard !petName.isEmpty else {
-      result(false)
+      result(LiveActivitySync.update(state: state))
       return
     }
 
     do {
-      let petId = args["petId"] as? String ?? ""
-      _ = try LiveActivitySync.start(
-        petId: petId,
-        petName: petName,
-        subtitle: subtitle,
-        memorialTitle: memorialTitle
-      )
+      let petId = (args["petId"] as? String) ?? ""
+      _ = try LiveActivitySync.start(petId: petId, state: state)
       result(true)
     } catch {
       NSLog("[LiveActivity] update-as-start failed: \(error)")
@@ -299,6 +340,22 @@ enum LiveActivityChannelHandler {
       DispatchQueue.main.async {
         result(ok)
       }
+    }
+  }
+
+  private static func handleSyncAsset(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    let args = call.arguments as? [String: Any] ?? [:]
+    let role = (args["role"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !role.isEmpty else {
+      result(false)
+      return
+    }
+    LiveActivitySync.syncAsset(
+      role: role,
+      imagePath: args["imagePath"] as? String,
+      imageBase64: args["imageBase64"] as? String
+    ) { ok in
+      result(ok)
     }
   }
 }

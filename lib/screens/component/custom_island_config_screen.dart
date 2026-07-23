@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/colors.dart';
 import '../../config/layout.dart';
+import '../../services/live_activity_service.dart';
+import '../../utils/center_tip_util.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
@@ -690,8 +692,9 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
     setState(() => _busy = true);
     final next = !_enabled;
     final prefs = await SharedPreferences.getInstance();
+    final content = _controller.text.trim();
     await Future.wait([
-      prefs.setString('${_prefix}_content', _controller.text.trim()),
+      prefs.setString('${_prefix}_content', content),
       if (_panelImagePath != null)
         prefs.setString('${_prefix}_panel_image', _panelImagePath!),
       _leftIconImagePath != null
@@ -705,11 +708,47 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
       prefs.setInt('${_prefix}_text_color', _textColor.toARGB32()),
       prefs.setDouble('${_prefix}_text_x', _textPosition.dx),
       prefs.setDouble('${_prefix}_text_y', _textPosition.dy),
-      prefs.setBool('${_prefix}_enabled', next),
     ]);
+
+    if (next) {
+      final ok = await LiveActivityService.instance.startOrUpdateIsland(
+        template: 6,
+        payload: {
+          'petName': content.isEmpty ? '自定义' : content,
+          'subtitle': content.isEmpty ? '每天都要开心' : content,
+          'memorialTitle': '',
+          'textColorARGB': _textColor.toARGB32(),
+          'textNormX': _textPosition.dx,
+          'textNormY': _textPosition.dy,
+          'compactLeadingEmoji': _leftIcon,
+          'compactTrailingEmoji': _rightIcon,
+        },
+        assetPaths: {
+          if (_panelImagePath != null) 'panel': _panelImagePath,
+          if (_leftIconImagePath != null) 'leftIcon': _leftIconImagePath,
+          if (_rightIconImagePath != null) 'rightIcon': _rightIconImagePath,
+        },
+      );
+      if (!mounted) return;
+      if (!ok) {
+        setState(() => _busy = false);
+        await showCenterTip(context, '上岛失败，请在系统设置中开启实时活动');
+        return;
+      }
+      await prefs.setBool('${_prefix}_enabled', true);
+      setState(() {
+        _enabled = true;
+        _busy = false;
+      });
+      await showCenterTip(context, '已上岛');
+      return;
+    }
+
+    await LiveActivityService.instance.disableIsland(6);
+    await prefs.setBool('${_prefix}_enabled', false);
     if (!mounted) return;
     setState(() {
-      _enabled = next;
+      _enabled = false;
       _busy = false;
     });
   }

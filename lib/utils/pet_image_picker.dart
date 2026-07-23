@@ -57,12 +57,34 @@ class PetImagePicker {
     await AppPermissionUtil.ensureGalleryAccess();
     if (!context.mounted) return null;
 
+    // 优先取相册原图路径（含 HEIC），避免临时压缩副本
+    try {
+      final assets = await AssetPicker.pickAssets(
+        context,
+        pickerConfig: AssetPickerConfig(
+          maxAssets: 1,
+          requestType: RequestType.image,
+          textDelegate: const AssetPickerTextDelegate(),
+          pickerTheme: AssetPicker.themeData(AppColors.accent, light: true),
+        ),
+      );
+      if (assets == null || assets.isEmpty) return null;
+      final file = await assets.first.originFile;
+      if (file != null && file.path.isNotEmpty) return file.path;
+    } catch (error) {
+      debugPrint('[PetImagePicker] origin wallpaper pick fallback: $error');
+    }
+
+    if (!context.mounted) return null;
     if (!Platform.isIOS) {
       return pickFromGallery(context);
     }
 
     try {
-      final file = await _cameraPicker.pickImage(source: ImageSource.gallery);
+      final file = await _cameraPicker.pickImage(
+        source: ImageSource.gallery,
+        requestFullMetadata: true,
+      );
       return file?.path;
     } on PlatformException catch (e) {
       if (e.code == 'photo_access_denied' ||

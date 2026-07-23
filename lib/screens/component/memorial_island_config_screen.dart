@@ -10,6 +10,8 @@ import '../../config/layout.dart';
 import '../../data/memorial_store.dart';
 import '../../models/memorial_day.dart';
 import '../../router/app_routes.dart';
+import '../../services/live_activity_service.dart';
+import '../../utils/center_tip_util.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
@@ -598,11 +600,44 @@ class _MemorialIslandConfigScreenState
       prefs.setString(_selectedKey, selected.id),
       prefs.setString(_iconKey, _icon),
       if (_imagePath != null) prefs.setString(_imageKey, _imagePath!),
-      prefs.setBool(_enabledKey, next),
     ]);
+
+    final daysRaw = selected.formattedDayCount;
+    final daysText = daysRaw.contains('天') ? daysRaw : '$daysRaw天';
+    if (next) {
+      final ok = await LiveActivityService.instance.startOrUpdateIsland(
+        template: 5,
+        payload: {
+          'petName': selected.title.trim().isEmpty ? '纪念日' : selected.title,
+          'subtitle': selected.title,
+          'memorialTitle': selected.title,
+          'daysText': daysText,
+          'compactLeadingEmoji': _icon,
+        },
+        assetPaths: {
+          if (_imagePath != null) 'icon': _imagePath,
+        },
+      );
+      if (!mounted) return;
+      if (!ok) {
+        setState(() => _busy = false);
+        await showCenterTip(context, '上岛失败，请在系统设置中开启实时活动');
+        return;
+      }
+      await prefs.setBool(_enabledKey, true);
+      setState(() {
+        _enabled = true;
+        _busy = false;
+      });
+      await showCenterTip(context, '已上岛');
+      return;
+    }
+
+    await LiveActivityService.instance.disableIsland(5);
+    await prefs.setBool(_enabledKey, false);
     if (!mounted) return;
     setState(() {
-      _enabled = next;
+      _enabled = false;
       _busy = false;
     });
   }

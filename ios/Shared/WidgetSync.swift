@@ -19,6 +19,24 @@ enum WidgetSync {
   static let fourCloverImageTempFileName = "petLiveActivityFourClover.tmp.png"
   static let fourCloverCompactImageFileName = "petLiveActivityCompactClover.png"
   static let fourCloverCompactImageTempFileName = "petLiveActivityCompactClover.tmp.png"
+  static let liveActivityPhotoFileName = "petLiveActivityPhoto.png"
+  static let liveActivityPhotoTempFileName = "petLiveActivityPhoto.tmp.png"
+  static let liveActivityPhotoCompactFileName = "petLiveActivityCompactPhoto.png"
+  static let liveActivityPhotoCompactTempFileName = "petLiveActivityCompactPhoto.tmp.png"
+  static let liveActivityIconFileName = "petLiveActivityIcon.png"
+  static let liveActivityIconTempFileName = "petLiveActivityIcon.tmp.png"
+  static let liveActivityIconCompactFileName = "petLiveActivityCompactIcon.png"
+  static let liveActivityIconCompactTempFileName = "petLiveActivityCompactIcon.tmp.png"
+  static let liveActivityPanelFileName = "petLiveActivityPanel.png"
+  static let liveActivityPanelTempFileName = "petLiveActivityPanel.tmp.png"
+  static let liveActivityLeftIconFileName = "petLiveActivityLeftIcon.png"
+  static let liveActivityLeftIconTempFileName = "petLiveActivityLeftIcon.tmp.png"
+  static let liveActivityLeftIconCompactFileName = "petLiveActivityCompactLeftIcon.png"
+  static let liveActivityLeftIconCompactTempFileName = "petLiveActivityCompactLeftIcon.tmp.png"
+  static let liveActivityRightIconFileName = "petLiveActivityRightIcon.png"
+  static let liveActivityRightIconTempFileName = "petLiveActivityRightIcon.tmp.png"
+  static let liveActivityRightIconCompactFileName = "petLiveActivityCompactRightIcon.png"
+  static let liveActivityRightIconCompactTempFileName = "petLiveActivityCompactRightIcon.tmp.png"
   private static let requiredTransparentCropKeys: Set<String> = [
     "topLeft", "topRight", "midLeft", "midRight", "bottomLeft", "bottomRight",
     "mediumTop", "mediumMiddle", "mediumBottom",
@@ -306,21 +324,44 @@ enum WidgetSync {
     NSLog("[SavedBackground] removed background for widgetId=\(widgetId)")
   }
 
+  /// 从本地文件路径加载壁纸（避免超大图走 base64 MethodChannel）
+  static func saveTransparentWallpapers(fromFilePath path: String) -> Bool {
+    let cleaned = path.hasPrefix("file://")
+      ? (URL(string: path)?.path ?? path)
+      : path
+    let fileURL = URL(fileURLWithPath: cleaned)
+    let image =
+      UIImage(contentsOfFile: cleaned)
+      ?? ((try? Data(contentsOf: fileURL)).flatMap { UIImage(data: $0) })
+    guard let image else {
+      NSLog("[TransparentWallpaper] load file failed: \(cleaned)")
+      return false
+    }
+    return saveTransparentWallpapers(from: image)
+  }
+
   /// 整张壁纸原图 + 按本机屏幕铺满后裁切各方位 → App Group
   static func saveTransparentWallpapers(fromScreenshot data: Data) -> Bool {
+    guard let image = UIImage(data: data) else {
+      NSLog("[TransparentWallpaper] decode screenshot failed bytes=\(data.count)")
+      return false
+    }
+    return saveTransparentWallpapers(from: image)
+  }
+
+  private static func saveTransparentWallpapers(from image: UIImage) -> Bool {
     guard let container = appGroupContainer(),
-          let defaults = UserDefaults(suiteName: AppGroupConfig.id),
-          let image = UIImage(data: data) else {
-      NSLog("[TransparentWallpaper] decode screenshot failed")
+          let defaults = UserDefaults(suiteName: AppGroupConfig.id) else {
+      NSLog("[TransparentWallpaper] App Group unavailable")
       return false
     }
 
-    // 保存原图，便于用户设为系统壁纸 / 重新裁切
-    if let png = image.pngData() {
+    // 原图用 JPEG 备份，避免相册大图转 PNG 撑爆
+    if let jpeg = image.jpegData(compressionQuality: 0.92) {
       _ = writeRawData(
-        png,
-        fileName: "widgetTransparentSource.png",
-        tempFileName: "widgetTransparentSource.tmp.png",
+        jpeg,
+        fileName: "widgetTransparentSource.jpg",
+        tempFileName: "widgetTransparentSource.tmp.jpg",
         logTag: "TransparentWallpaper"
       )
     }
@@ -329,12 +370,13 @@ enum WidgetSync {
     let cropKeys = Set(crops.keys)
     guard requiredTransparentCropKeys.isSubset(of: cropKeys) else {
       let missing = requiredTransparentCropKeys.subtracting(cropKeys).sorted()
-      NSLog("[TransparentWallpaper] incomplete crops, missing=\(missing)")
+      let cg = image.cgImage
+      NSLog(
+        "[TransparentWallpaper] incomplete crops, missing=\(missing) image=\(cg?.width ?? 0)x\(cg?.height ?? 0)"
+      )
       return false
     }
 
-    // 使用唯一版本文件名写入全部裁切，最后再一次性切换 UserDefaults 指针。
-    // 这样 Widget 不会在更新过程中读到新旧混合的文件。
     let revision = "\(Int64(Date().timeIntervalSince1970 * 1000))_\(UUID().uuidString)"
     let revisionPrefix = "widgetTransparent_\(revision)_"
     var writtenURLs: [URL] = []
@@ -362,17 +404,8 @@ enum WidgetSync {
     let revisionKey = SavedWidgetOptionsProvider.transparentRevisionDefaultsKey
     let previousRevision = defaults.string(forKey: revisionKey)
     defaults.set(revision, forKey: revisionKey)
-    guard defaults.synchronize() else {
-      if let previousRevision {
-        defaults.set(previousRevision, forKey: revisionKey)
-      } else {
-        defaults.removeObject(forKey: revisionKey)
-      }
-      _ = defaults.synchronize()
-      for url in writtenURLs { try? FileManager.default.removeItem(at: url) }
-      NSLog("[TransparentWallpaper] publish revision failed")
-      return false
-    }
+    // synchronize() 在新系统上常返回 false，不能当作写入失败
+    defaults.synchronize()
 
     if let previousRevision, previousRevision != revision {
       removeTransparentCropFiles(
@@ -548,6 +581,91 @@ enum WidgetSync {
       fileName: fourCloverCompactImageFileName,
       tempFileName: fourCloverCompactImageTempFileName,
       logTag: "LiveActivityCompactClover"
+    )
+    return fullOk && compactOk
+  }
+
+  /// role: photo | icon | panel | leftIcon | rightIcon
+  static func replaceLiveActivityAsset(role: String, data: Data) -> Bool {
+    switch role {
+    case "photo":
+      return replacePair(
+        data: data,
+        fullName: liveActivityPhotoFileName,
+        fullTemp: liveActivityPhotoTempFileName,
+        compactName: liveActivityPhotoCompactFileName,
+        compactTemp: liveActivityPhotoCompactTempFileName,
+        logTag: "LiveActivityPhoto"
+      )
+    case "icon":
+      return replacePair(
+        data: data,
+        fullName: liveActivityIconFileName,
+        fullTemp: liveActivityIconTempFileName,
+        compactName: liveActivityIconCompactFileName,
+        compactTemp: liveActivityIconCompactTempFileName,
+        logTag: "LiveActivityIcon"
+      )
+    case "panel":
+      return replaceAppGroupImage(
+        with: data,
+        fileName: liveActivityPanelFileName,
+        tempFileName: liveActivityPanelTempFileName,
+        logTag: "LiveActivityPanel"
+      )
+    case "leftIcon":
+      return replacePair(
+        data: data,
+        fullName: liveActivityLeftIconFileName,
+        fullTemp: liveActivityLeftIconTempFileName,
+        compactName: liveActivityLeftIconCompactFileName,
+        compactTemp: liveActivityLeftIconCompactTempFileName,
+        logTag: "LiveActivityLeftIcon"
+      )
+    case "rightIcon":
+      return replacePair(
+        data: data,
+        fullName: liveActivityRightIconFileName,
+        fullTemp: liveActivityRightIconTempFileName,
+        compactName: liveActivityRightIconCompactFileName,
+        compactTemp: liveActivityRightIconCompactTempFileName,
+        logTag: "LiveActivityRightIcon"
+      )
+    case "pet":
+      return replaceLiveActivityImage(with: data)
+    case "clover":
+      return replaceFourCloverImage(with: data)
+    default:
+      NSLog("[LiveActivityAsset] unknown role=\(role)")
+      return false
+    }
+  }
+
+  private static func replacePair(
+    data: Data,
+    fullName: String,
+    fullTemp: String,
+    compactName: String,
+    compactTemp: String,
+    logTag: String
+  ) -> Bool {
+    guard let image = UIImage(data: data),
+          let full = resizeForWidget(image),
+          let compact = resizeForLiveActivityCompact(image) else {
+      NSLog("[\(logTag)] replace image decode failed")
+      return false
+    }
+    let fullOk = writePng(
+      full,
+      fileName: fullName,
+      tempFileName: fullTemp,
+      logTag: logTag
+    )
+    let compactOk = writePng(
+      compact,
+      fileName: compactName,
+      tempFileName: compactTemp,
+      logTag: "\(logTag)Compact"
     )
     return fullOk && compactOk
   }
@@ -751,6 +869,15 @@ enum WidgetSync {
       + fourCloverImageRevision()
       + fileRevision(for: liveActivityCompactPetFileName)
       + fileRevision(for: fourCloverCompactImageFileName)
+      + fileRevision(for: liveActivityPhotoFileName)
+      + fileRevision(for: liveActivityPhotoCompactFileName)
+      + fileRevision(for: liveActivityIconFileName)
+      + fileRevision(for: liveActivityIconCompactFileName)
+      + fileRevision(for: liveActivityPanelFileName)
+      + fileRevision(for: liveActivityLeftIconFileName)
+      + fileRevision(for: liveActivityLeftIconCompactFileName)
+      + fileRevision(for: liveActivityRightIconFileName)
+      + fileRevision(for: liveActivityRightIconCompactFileName)
   }
 
   private static func fileRevision(for fileName: String) -> Int64 {
@@ -958,8 +1085,16 @@ enum WidgetChannelHandler {
       return
     }
     let args = call.arguments as? [String: Any] ?? [:]
+    let imagePath = (args["imagePath"] as? String)?
+      .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     let base64 = args["imageBase64"] as? String ?? ""
-    guard !base64.isEmpty, let data = Data(base64Encoded: base64) else {
+
+    let ok: Bool
+    if !imagePath.isEmpty {
+      ok = WidgetSync.saveTransparentWallpapers(fromFilePath: imagePath)
+    } else if !base64.isEmpty, let data = Data(base64Encoded: base64) {
+      ok = WidgetSync.saveTransparentWallpapers(fromScreenshot: data)
+    } else {
       result(
         FlutterError(
           code: "INVALID_SCREENSHOT",
@@ -969,7 +1104,7 @@ enum WidgetChannelHandler {
       )
       return
     }
-    let ok = WidgetSync.saveTransparentWallpapers(fromScreenshot: data)
+
     if ok {
       WidgetSync.reloadTimelines()
       result(true)

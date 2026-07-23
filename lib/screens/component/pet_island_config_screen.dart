@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../data/app_cache_store.dart';
+import '../../services/live_activity_service.dart';
 import '../../services/pet_image_service.dart';
+import '../../utils/center_tip_util.dart';
 import '../../utils/pet_display_image.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
@@ -440,19 +442,52 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
     setState(() => _busy = true);
     final prefs = await SharedPreferences.getInstance();
     final nextEnabled = !_enabled;
+    final content = _contentController.text.trim();
     await Future.wait([
       prefs.setInt(_petKey, _selectedPet),
-      prefs.setString(_contentKey, _contentController.text.trim()),
-      prefs.setBool(_enabledKey, nextEnabled),
+      prefs.setString(_contentKey, content),
     ]);
+
+    if (nextEnabled) {
+      final petUrl = _petImages.isEmpty ? '' : _petImages[_selectedPet];
+      final ok = await LiveActivityService.instance.startOrUpdateIsland(
+        template: 1,
+        payload: {
+          'petName': AppCacheStore.instance.petProfile?['nickname']
+                  ?.toString()
+                  .trim() ??
+              AppCacheStore.instance.petProfile?['name']?.toString().trim() ??
+              '宠物',
+          'subtitle': content.isEmpty ? '记录每个值得纪念的日子' : content,
+          'memorialTitle': '',
+        },
+        assetPaths: {
+          'petUrl': petUrl,
+          'cloverUrl': _cloverImage,
+        },
+      );
+      if (!mounted) return;
+      if (!ok) {
+        setState(() => _busy = false);
+        await showCenterTip(context, '上岛失败，请在系统设置中开启实时活动');
+        return;
+      }
+      await prefs.setBool(_enabledKey, true);
+      setState(() {
+        _enabled = true;
+        _busy = false;
+      });
+      await _showIslandSuccessDialog();
+      return;
+    }
+
+    await LiveActivityService.instance.disableIsland(1);
+    await prefs.setBool(_enabledKey, false);
     if (!mounted) return;
     setState(() {
-      _enabled = nextEnabled;
+      _enabled = false;
       _busy = false;
     });
-    if (nextEnabled) {
-      await _showIslandSuccessDialog();
-    }
   }
 
   Future<void> _showIslandSuccessDialog() async {

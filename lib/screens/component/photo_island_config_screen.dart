@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/colors.dart';
 import '../../config/layout.dart';
+import '../../services/live_activity_service.dart';
+import '../../utils/center_tip_util.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
@@ -532,16 +534,47 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
     setState(() => _busy = true);
     final next = !_enabled;
     final prefs = await SharedPreferences.getInstance();
+    final content = _controller.text.trim();
     await Future.wait([
-      prefs.setString(_contentKey, _controller.text.trim()),
+      prefs.setString(_contentKey, content),
       if (_imagePath != null) prefs.setString(_imageKey, _imagePath!),
       prefs.setInt(_colorKey, _textColor.toARGB32()),
       prefs.setDouble(_sizeKey, _fontSize),
-      prefs.setBool(_enabledKey, next),
     ]);
+
+    if (next) {
+      final ok = await LiveActivityService.instance.startOrUpdateIsland(
+        template: 2,
+        payload: {
+          'petName': content.isEmpty ? '图文岛' : content,
+          'subtitle': content.isEmpty ? '笨猫真可爱 >.<' : content,
+          'memorialTitle': '',
+          'textColorARGB': _textColor.toARGB32(),
+        },
+        assetPaths: {
+          if (_imagePath != null) 'photo': _imagePath,
+        },
+      );
+      if (!mounted) return;
+      if (!ok) {
+        setState(() => _busy = false);
+        await showCenterTip(context, '上岛失败，请在系统设置中开启实时活动');
+        return;
+      }
+      await prefs.setBool(_enabledKey, true);
+      setState(() {
+        _enabled = true;
+        _busy = false;
+      });
+      await showCenterTip(context, '已上岛');
+      return;
+    }
+
+    await LiveActivityService.instance.disableIsland(2);
+    await prefs.setBool(_enabledKey, false);
     if (!mounted) return;
     setState(() {
-      _enabled = next;
+      _enabled = false;
       _busy = false;
     });
   }

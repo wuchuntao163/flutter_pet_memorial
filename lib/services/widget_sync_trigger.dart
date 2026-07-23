@@ -12,5 +12,6 @@ void scheduleWidgetSync() {
 
 void scheduleLiveActivitySync() {
   if (!Platform.isIOS) return;
+  // 按 active_island_template 重算 payload（纪念日天数、计时跨日目标等）
   unawaited(LiveActivityService.instance.syncIfEnabled());
 }
