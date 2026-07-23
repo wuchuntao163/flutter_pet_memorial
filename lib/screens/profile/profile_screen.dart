@@ -200,132 +200,120 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, _) => Scaffold(
         backgroundColor: AppColors.bgPrimary,
         body: SafeArea(
-          child: Padding(
+          child: ListView(
             padding: const EdgeInsets.fromLTRB(
               16,
               AppLayout.homeTopPadding,
               16,
-              0,
+              12 + AppLayout.bottomNavBarInset,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ListenableBuilder(
-                  listenable: AppCacheStore.instance,
-                  builder: (context, _) => _buildProfileCard(),
+            children: [
+              ListenableBuilder(
+                listenable: AppCacheStore.instance,
+                builder: (context, _) => _buildProfileCard(),
+              ),
+              const SizedBox(height: 10),
+              ActionButton(
+                text: tr('profile.reselect_pet'),
+                icon: const Icon(
+                  Icons.pets,
+                  size: 16,
+                  color: AppColors.accentDarker,
                 ),
-                const SizedBox(height: 10),
-                ActionButton(
-                  text: tr('profile.reselect_pet'),
-                  icon: const Icon(
-                    Icons.pets,
-                    size: 16,
-                    color: AppColors.accentDarker,
-                  ),
-                  textColor: AppColors.accentDarker,
-                  borderRadius: 12,
-                  onTap: () => _onReselectPetTap(context),
+                textColor: AppColors.accentDarker,
+                borderRadius: 12,
+                onTap: () => _onReselectPetTap(context),
+              ),
+              const SizedBox(height: 10),
+              _buildBannerSection(),
+              const SizedBox(height: 10),
+              if (Platform.isIOS)
+                SettingsItem(
+                  iconAsset: _iconDesktopPet,
+                  title: tr('profile.desktop_pet'),
+                  showArrow: true,
+                  onTap: _openDesktopPetGuide,
+                )
+              else
+                SwitchSettingsItem(
+                  iconAsset: _iconDesktopPet,
+                  title: tr('profile.desktop_pet'),
+                  value: _showFloatingPet,
+                  onChanged: _onDesktopPetChanged,
                 ),
-                const SizedBox(height: 10),
-                _buildBannerSection(),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.only(
-                      bottom: 12 + AppLayout.bottomNavBarInset,
-                    ),
-                    children: [
-                      if (Platform.isIOS)
-                        SettingsItem(
-                          iconAsset: _iconDesktopPet,
-                          title: tr('profile.desktop_pet'),
-                          showArrow: true,
-                          onTap: _openDesktopPetGuide,
-                        )
-                      else
-                        SwitchSettingsItem(
-                          iconAsset: _iconDesktopPet,
-                          title: tr('profile.desktop_pet'),
-                          value: _showFloatingPet,
-                          onChanged: _onDesktopPetChanged,
-                        ),
-                      const SizedBox(height: 8),
-                      SwitchSettingsItem(
-                        iconAsset: _iconCloudSync,
-                        title: tr('profile.cloud_sync'),
-                        value: cloudSync,
-                        onChanged: _onCloudSyncChanged,
-                      ),
-                      const SizedBox(height: 8),
-                      SettingsItem(
-                        iconAsset: _iconLanguage,
-                        title: tr('profile.switch_language'),
-                        showArrow: true,
-                        onTap: () => LanguagePickerDialog.show(context),
-                      ),
-                      const SizedBox(height: 8),
-                      SettingsItem(
-                        iconAsset: _iconContactService,
-                        title: tr('profile.contact_service'),
-                        showArrow: true,
-                        onTap: () => _onContactService(context),
-                      ),
-                      const SizedBox(height: 8),
-                      SettingsItem(
-                        iconAsset: _iconFeedback,
-                        title: tr('profile.feedback'),
-                        showArrow: true,
-                        onTap: () => context.push(AppRoutes.feedback),
-                      ),
-                      const SizedBox(height: 8),
-                      SettingsItem(
-                        iconAsset: _iconShare,
-                        title: tr('profile.share_app'),
-                        showArrow: true,
-                        onTap: () => _onShareRecommend(context),
-                      ),
-                      const SizedBox(height: 8),
-                      SettingsItem(
-                        iconAsset: _iconRate,
-                        title: tr('profile.rate_us'),
-                        showArrow: true,
-                        onTap: () => _onRateApp(context),
-                      ),
-                      const SizedBox(height: 8),
-                      SettingsItem(
-                        iconAsset: _iconPrivacy,
-                        title: tr('profile.privacy_policy'),
-                        showArrow: true,
-                        onTap: () => context.push(AppRoutes.privacyPolicy),
-                      ),
-                      const SizedBox(height: 8),
-                      SettingsItem(
-                        iconAsset: _iconVersion,
-                        title: tr('profile.version'),
-                        trailing: Text(
-                          'v$_appVersion',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                        showArrow: true,
-                        onTap: () => AppUpdateUtil.checkOnVersionTap(context),
-                      ),
-                      if (cloudSync) ...[
-                        const SizedBox(height: 8),
-                        SettingsItem(
-                          icon: Icons.logout,
-                          title: tr('profile.logout'),
-                          showArrow: true,
-                          onTap: _onLogoutTap,
-                        ),
-                      ],
-                    ],
+              const SizedBox(height: 8),
+              SwitchSettingsItem(
+                iconAsset: _iconCloudSync,
+                title: tr('profile.cloud_sync'),
+                value: cloudSync,
+                onChanged: _onCloudSyncChanged,
+              ),
+              const SizedBox(height: 8),
+              SettingsItem(
+                iconAsset: _iconLanguage,
+                title: tr('profile.switch_language'),
+                showArrow: true,
+                onTap: () => LanguagePickerDialog.show(context),
+              ),
+              const SizedBox(height: 8),
+              SettingsItem(
+                iconAsset: _iconContactService,
+                title: tr('profile.contact_service'),
+                showArrow: true,
+                onTap: () => _onContactService(context),
+              ),
+              const SizedBox(height: 8),
+              SettingsItem(
+                iconAsset: _iconFeedback,
+                title: tr('profile.feedback'),
+                showArrow: true,
+                onTap: () => context.push(AppRoutes.feedback),
+              ),
+              const SizedBox(height: 8),
+              SettingsItem(
+                iconAsset: _iconShare,
+                title: tr('profile.share_app'),
+                showArrow: true,
+                onTap: () => _onShareRecommend(context),
+              ),
+              const SizedBox(height: 8),
+              SettingsItem(
+                iconAsset: _iconRate,
+                title: tr('profile.rate_us'),
+                showArrow: true,
+                onTap: () => _onRateApp(context),
+              ),
+              const SizedBox(height: 8),
+              SettingsItem(
+                iconAsset: _iconPrivacy,
+                title: tr('profile.privacy_policy'),
+                showArrow: true,
+                onTap: () => context.push(AppRoutes.privacyPolicy),
+              ),
+              const SizedBox(height: 8),
+              SettingsItem(
+                iconAsset: _iconVersion,
+                title: tr('profile.version'),
+                trailing: Text(
+                  'v$_appVersion',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textTertiary,
                   ),
+                ),
+                showArrow: true,
+                onTap: () => AppUpdateUtil.checkOnVersionTap(context),
+              ),
+              if (cloudSync) ...[
+                const SizedBox(height: 8),
+                SettingsItem(
+                  icon: Icons.logout,
+                  title: tr('profile.logout'),
+                  showArrow: true,
+                  onTap: _onLogoutTap,
                 ),
               ],
-            ),
+            ],
           ),
         ),
       ),
