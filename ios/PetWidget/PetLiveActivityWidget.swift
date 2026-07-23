@@ -157,14 +157,19 @@ struct PetLiveActivityWidget: Widget {
         )
       }
     case 3, 4, 5:
-      imageOrEmoji(
-        image: LiveActivityShared.loadCompactIcon(),
-        emoji: state.compactLeadingEmoji.isEmpty ? "❤️" : state.compactLeadingEmoji,
-        systemName: "heart.fill",
-        size: 24
-      )
+      // 相册图正圆；纯 emoji 图标不裁圆
+      if let image = LiveActivityShared.loadCompactIcon() {
+        islandCircleImage(uiImage: image, size: 24)
+      } else {
+        imageOrEmoji(
+          image: nil,
+          emoji: state.compactLeadingEmoji.isEmpty ? "❤️" : state.compactLeadingEmoji,
+          systemName: "heart.fill",
+          size: 24
+        )
+      }
     case 6:
-      // 自定义：相册上传图标正圆
+      // 自定义：相册图正圆；emoji 不裁圆
       if let image = LiveActivityShared.loadCompactLeftIcon() {
         islandCircleImage(uiImage: image, size: 24)
       } else {
@@ -177,12 +182,12 @@ struct PetLiveActivityWidget: Widget {
       }
     default:
       if let image = LiveActivityShared.loadCompactPetImage() {
-        islandCompactImage(uiImage: image, size: 28, cornerRadius: 28 * 0.22)
+        islandCircleImage(uiImage: image, size: 24)
       } else {
         Image(systemName: "pawprint.fill")
           .font(.system(size: 14))
           .foregroundColor(.orange.opacity(0.8))
-          .frame(width: 28, height: 28)
+          .frame(width: 24, height: 24)
       }
     }
   }
@@ -216,12 +221,12 @@ struct PetLiveActivityWidget: Widget {
       }
     default:
       if let image = LiveActivityShared.loadCompactCloverImage() {
-        islandCompactImage(uiImage: image, size: 22, cornerRadius: 22 * 0.18)
+        islandCircleImage(uiImage: image, size: 20)
       } else {
         Image(systemName: "leaf.fill")
           .font(.system(size: 12))
           .foregroundColor(.orange.opacity(0.85))
-          .frame(width: 22, height: 22)
+          .frame(width: 20, height: 20)
       }
     }
   }
@@ -253,15 +258,15 @@ struct PetLiveActivityWidget: Widget {
     let state = context.state
     // 自定义面板全幅铺满，去掉外层 padding（否则上下左右会留缝）
     if state.template == 6 {
-      customPanel(state: state, height: 104)
+      customPanel(state: state, height: 118)
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
       bodyContent(context: context, expanded: false)
         .padding(.leading, state.template == 2 ? 16 : 18)
         .padding(.trailing, 16)
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
         .background {
           // 含宠物岛 template=1：与 App 预览背景一致
           if state.template >= 1 && state.template <= 5 {
@@ -287,16 +292,21 @@ struct PetLiveActivityWidget: Widget {
     expanded: Bool
   ) -> some View {
     let state = context.state
-    let imageSize: CGFloat = expanded ? 56 : 62
+    let imageSize: CGFloat = expanded ? 56 : 64
     switch state.template {
     case 2:
       HStack(spacing: 12) {
-        imageOrEmoji(
-          image: LiveActivityShared.loadPhoto(),
-          emoji: state.compactLeadingEmoji,
-          systemName: "photo",
-          size: imageSize
-        )
+        // 锁屏卡片相册图也用正圆；无图才 emoji
+        if let image = LiveActivityShared.loadPhoto() {
+          islandCircleImage(uiImage: image, size: imageSize)
+        } else {
+          imageOrEmoji(
+            image: nil,
+            emoji: state.compactLeadingEmoji,
+            systemName: "photo",
+            size: imageSize
+          )
+        }
         .id(state.imageRevision)
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
           .font(
@@ -312,12 +322,16 @@ struct PetLiveActivityWidget: Widget {
       }
     case 3, 4:
       HStack(spacing: 12) {
-        imageOrEmoji(
-          image: LiveActivityShared.loadIcon(),
-          emoji: state.compactLeadingEmoji.isEmpty ? "🔔" : state.compactLeadingEmoji,
-          systemName: "bell.fill",
-          size: imageSize
-        )
+        if let image = LiveActivityShared.loadIcon() {
+          islandCircleImage(uiImage: image, size: imageSize)
+        } else {
+          imageOrEmoji(
+            image: nil,
+            emoji: state.compactLeadingEmoji.isEmpty ? "🔔" : state.compactLeadingEmoji,
+            systemName: "bell.fill",
+            size: imageSize
+          )
+        }
         .id(state.imageRevision)
         VStack(alignment: .leading, spacing: 4) {
           Text(state.subtitle.isEmpty ? state.memorialTitle : state.subtitle)
@@ -330,33 +344,41 @@ struct PetLiveActivityWidget: Widget {
       }
     case 5:
       HStack(spacing: 12) {
-        imageOrEmoji(
-          image: LiveActivityShared.loadIcon(),
-          emoji: state.compactLeadingEmoji.isEmpty ? "❤️" : state.compactLeadingEmoji,
-          systemName: "heart.fill",
-          size: imageSize
-        )
+        if let image = LiveActivityShared.loadIcon() {
+          islandCircleImage(uiImage: image, size: imageSize)
+        } else {
+          imageOrEmoji(
+            image: nil,
+            emoji: state.compactLeadingEmoji.isEmpty ? "❤️" : state.compactLeadingEmoji,
+            systemName: "heart.fill",
+            size: imageSize
+          )
+        }
         .id(state.imageRevision)
         VStack(alignment: .leading, spacing: 4) {
           Text(state.memorialTitle.isEmpty ? state.subtitle : state.memorialTitle)
             .font(.system(size: 13, weight: .medium))
-            .foregroundColor(.secondary)
+            .foregroundColor(.black.opacity(0.72))
             .lineLimit(1)
           Text(state.daysText.isEmpty ? "—" : state.daysText)
             .font(.system(size: 22, weight: .bold))
-            .foregroundColor(.primary)
+            .foregroundColor(.black)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 6:
-      customPanel(state: state, height: expanded ? 72 : 104)
+      customPanel(state: state, height: expanded ? 72 : 118)
         .id(state.imageRevision)
     default:
       HStack(alignment: .center, spacing: 12) {
-        petImageView(size: imageSize)
-          .id(state.imageRevision)
+        if let image = LiveActivityShared.loadCachedPetImage() {
+          islandCircleImage(uiImage: image, size: imageSize)
+        } else {
+          petImageView(size: imageSize)
+        }
+        .id(state.imageRevision)
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
           .font(.body)
           .fontWeight(.semibold)
@@ -376,6 +398,13 @@ struct PetLiveActivityWidget: Widget {
     height: CGFloat
   ) -> some View {
     GeometryReader { geo in
+      let margin: CGFloat = 14
+      let normX = min(1, max(0, state.textNormX))
+      let normY = min(1, max(0, state.textNormY))
+      // 与 App 预览一致：左上角定位，预留右侧空间避免贴边溢出
+      let left = margin + (geo.size.width - margin * 2 - 100) * normX
+      let top = margin + (geo.size.height - margin * 2 - 28) * normY
+      let textMaxW = max(60, geo.size.width - left - margin)
       ZStack(alignment: .topLeading) {
         if let panel = LiveActivityShared.loadPanel() {
           Image(uiImage: panel)
@@ -391,11 +420,9 @@ struct PetLiveActivityWidget: Widget {
           .font(.system(size: 14, weight: .semibold))
           .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
           .lineLimit(2)
-          .padding(8)
-          .position(
-            x: max(24, min(geo.size.width - 24, geo.size.width * state.textNormX)),
-            y: max(16, min(geo.size.height - 16, geo.size.height * state.textNormY))
-          )
+          .multilineTextAlignment(.leading)
+          .frame(maxWidth: textMaxW, alignment: .leading)
+          .offset(x: max(margin, left), y: max(margin, min(top, geo.size.height - margin - 28)))
       }
     }
     .frame(maxWidth: .infinity)

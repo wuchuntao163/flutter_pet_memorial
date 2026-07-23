@@ -572,6 +572,28 @@ class _MemorialIslandConfigScreenState
       _icon = value;
       _imagePath = null;
     });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_imageKey);
+    await prefs.setString(_iconKey, value);
+    await LiveActivityService.instance.clearAsset('icon');
+    if (_enabled) {
+      final selected = _selected;
+      if (selected == null) return;
+      final daysRaw = selected.formattedDayCount;
+      final daysText = daysRaw.contains('天') ? daysRaw : '$daysRaw天';
+      await LiveActivityService.instance.startOrUpdateIsland(
+        template: 5,
+        payload: {
+          'petName': selected.title.trim().isEmpty ? '纪念日' : selected.title,
+          'subtitle': selected.title,
+          'memorialTitle': selected.title,
+          'daysText': daysText,
+          'compactLeadingEmoji': value,
+          'backgroundColorARGB': const Color(0xFFF8E4EB).toARGB32(),
+        },
+        assetPaths: const {},
+      );
+    }
   }
 
   Future<void> _load() async {
@@ -596,7 +618,9 @@ class _MemorialIslandConfigScreenState
     await Future.wait([
       prefs.setString(_selectedKey, selected.id),
       prefs.setString(_iconKey, _icon),
-      if (_imagePath != null) prefs.setString(_imageKey, _imagePath!),
+      _imagePath != null
+          ? prefs.setString(_imageKey, _imagePath!)
+          : prefs.remove(_imageKey),
     ]);
 
     final daysRaw = selected.formattedDayCount;

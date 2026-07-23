@@ -135,11 +135,24 @@ class LiveActivityService {
         );
       }
     } else {
+      final clearable = <String>{
+        if (template == 2) 'photo',
+        if (template == 3 || template == 4 || template == 5) 'icon',
+        if (template == 6) ...['panel', 'leftIcon', 'rightIcon'],
+      };
+      final provided = <String>{};
       for (final entry in assetPaths.entries) {
         final path = entry.value;
         if (path == null || path.trim().isEmpty) continue;
         if (entry.key == 'petUrl' || entry.key == 'cloverUrl') continue;
+        provided.add(entry.key);
         await syncAsset(role: entry.key, imagePath: _resolveAssetRef(path));
+      }
+      // 未再上传的图片角色：清掉 App Group，避免切回 emoji 仍显示旧图
+      for (final role in clearable) {
+        if (!provided.contains(role)) {
+          await clearAsset(role);
+        }
       }
     }
 
@@ -209,6 +222,18 @@ class LiveActivityService {
       return ok;
     } catch (e, st) {
       debugPrint('[LiveActivityService] syncAsset $role failed: $e\n$st');
+      return false;
+    }
+  }
+
+  /// 清除某角色 App Group 图片（相册切回 emoji 时）
+  Future<bool> clearAsset(String role) async {
+    if (!await isSupported()) return false;
+    try {
+      return await _channel.invokeMethod<bool>('clearAsset', {'role': role}) ??
+          false;
+    } catch (e, st) {
+      debugPrint('[LiveActivityService] clearAsset $role failed: $e\n$st');
       return false;
     }
   }

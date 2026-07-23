@@ -670,6 +670,38 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
         _leftIconImagePath = null;
       }
     });
+    final prefs = await SharedPreferences.getInstance();
+    if (_editingRightIcon) {
+      await prefs.remove('${_prefix}_right_icon_image');
+      await prefs.setString('${_prefix}_right_icon', value);
+      await LiveActivityService.instance.clearAsset('rightIcon');
+    } else {
+      await prefs.remove('${_prefix}_left_icon_image');
+      await prefs.remove('${_prefix}_icon_image');
+      await prefs.setString('${_prefix}_left_icon', value);
+      await LiveActivityService.instance.clearAsset('leftIcon');
+    }
+    if (_enabled) {
+      final content = _controller.text.trim();
+      await LiveActivityService.instance.startOrUpdateIsland(
+        template: 6,
+        payload: {
+          'petName': content.isEmpty ? '自定义' : content,
+          'subtitle': content.isEmpty ? '每天都要开心' : content,
+          'memorialTitle': '',
+          'textColorARGB': _textColor.toARGB32(),
+          'textNormX': _textPosition.dx,
+          'textNormY': _textPosition.dy,
+          'compactLeadingEmoji': _leftIcon,
+          'compactTrailingEmoji': _rightIcon,
+        },
+        assetPaths: {
+          if (_panelImagePath != null) 'panel': _panelImagePath,
+          if (_leftIconImagePath != null) 'leftIcon': _leftIconImagePath,
+          if (_rightIconImagePath != null) 'rightIcon': _rightIconImagePath,
+        },
+      );
+    }
   }
 
   Future<void> _load() async {

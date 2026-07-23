@@ -555,6 +555,42 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
         _icon = value;
         _imagePath = null;
       });
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('${_storagePrefix}_image');
+      await prefs.setString('${_storagePrefix}_icon', value);
+      await LiveActivityService.instance.clearAsset('icon');
+      if (_enabled) {
+        // 重新上岛内容，去掉旧相册图
+        final now = DateTime.now();
+        var target = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          _targetTime.hour,
+          _targetTime.minute,
+        );
+        if (_isCountUp) {
+          if (target.isAfter(now)) {
+            target = target.subtract(const Duration(days: 1));
+          }
+        } else if (!target.isAfter(now)) {
+          target = target.add(const Duration(days: 1));
+        }
+        final title = _titleController.text.trim();
+        await LiveActivityService.instance.startOrUpdateIsland(
+          template: _isCountUp ? 3 : 4,
+          payload: {
+            'petName': title.isEmpty ? _pageTitle : title,
+            'subtitle': title.isEmpty ? _defaultTitle : title,
+            'memorialTitle': title.isEmpty ? _defaultTitle : title,
+            'timerTargetEpoch': target.millisecondsSinceEpoch / 1000.0,
+            'compactLeadingEmoji': value,
+            'backgroundColorARGB':
+                (_isCountUp ? Colors.black : const Color(0xFFE4F0FF)).toARGB32(),
+          },
+          assetPaths: const {},
+        );
+      }
     }
   }
 
@@ -587,8 +623,9 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
       prefs.setInt('${_storagePrefix}_hour', _targetTime.hour),
       prefs.setInt('${_storagePrefix}_minute', _targetTime.minute),
       prefs.setString('${_storagePrefix}_icon', _icon),
-      if (_imagePath != null)
-        prefs.setString('${_storagePrefix}_image', _imagePath!),
+      _imagePath != null
+          ? prefs.setString('${_storagePrefix}_image', _imagePath!)
+          : prefs.remove('${_storagePrefix}_image'),
     ]);
 
     final template = _isCountUp ? 3 : 4;

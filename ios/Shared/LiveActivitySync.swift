@@ -25,17 +25,19 @@ enum LiveActivitySync {
 
   static func imageRevision() -> Int64 {
     let combined = WidgetSync.liveActivityCombinedImageRevision()
-    if combined > 0 {
-      return combined
+    let stamp = UserDefaults(suiteName: AppGroupConfig.id)?
+      .object(forKey: "liveActivityAssetClearStamp") as? Int64 ?? 0
+    if combined > 0 || stamp > 0 {
+      return combined + stamp
     }
-    guard let container = WidgetSync.appGroupContainer() else { return 0 }
+    guard let container = WidgetSync.appGroupContainer() else { return stamp }
     let path = container.appendingPathComponent(WidgetSync.imageFileName).path
     guard FileManager.default.fileExists(atPath: path),
           let attrs = try? FileManager.default.attributesOfItem(atPath: path),
           let modified = attrs[.modificationDate] as? Date else {
-      return 0
+      return stamp
     }
-    return Int64(modified.timeIntervalSince1970 * 1000)
+    return Int64(modified.timeIntervalSince1970 * 1000) + stamp
   }
 
   static func contentState(from args: [String: Any]) -> PetLiveActivityAttributes.ContentState {
@@ -263,6 +265,8 @@ enum LiveActivityChannelHandler {
         handleSyncImage(call: call, result: result)
       case "syncAsset":
         handleSyncAsset(call: call, result: result)
+      case "clearAsset":
+        handleClearAsset(call: call, result: result)
       case "endActivity":
         LiveActivitySync.endAllSync()
         result(nil)
@@ -272,6 +276,17 @@ enum LiveActivityChannelHandler {
     }
 
     NSLog("[LiveActivity] Method channel registered")
+  }
+
+  private static func handleClearAsset(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    let args = call.arguments as? [String: Any] ?? [:]
+    let role = (args["role"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    guard !role.isEmpty else {
+      result(false)
+      return
+    }
+    let ok = WidgetSync.clearLiveActivityAsset(role: role)
+    result(ok)
   }
 
   private static func handleStart(call: FlutterMethodCall, result: @escaping FlutterResult) {

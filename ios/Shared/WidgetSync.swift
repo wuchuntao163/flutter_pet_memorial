@@ -650,6 +650,47 @@ enum WidgetSync {
     }
   }
 
+  /// 清除灵动岛某角色图片（切回 emoji 时调用）
+  @discardableResult
+  static func clearLiveActivityAsset(role: String) -> Bool {
+    guard let container = appGroupContainer() else { return false }
+    let names: [String]
+    switch role {
+    case "photo":
+      names = [liveActivityPhotoFileName, liveActivityPhotoCompactFileName]
+    case "icon":
+      names = [liveActivityIconFileName, liveActivityIconCompactFileName]
+    case "panel":
+      names = [liveActivityPanelFileName]
+    case "bannerBg":
+      names = [liveActivityBannerBgFileName]
+    case "leftIcon":
+      names = [liveActivityLeftIconFileName, liveActivityLeftIconCompactFileName]
+    case "rightIcon":
+      names = [liveActivityRightIconFileName, liveActivityRightIconCompactFileName]
+    default:
+      NSLog("[LiveActivityAsset] clear unknown role=\(role)")
+      return false
+    }
+    var ok = true
+    for name in names {
+      let url = container.appendingPathComponent(name)
+      if FileManager.default.fileExists(atPath: url.path) {
+        do {
+          try FileManager.default.removeItem(at: url)
+          NSLog("[LiveActivityAsset] cleared \(name)")
+        } catch {
+          NSLog("[LiveActivityAsset] clear \(name) failed: \(error)")
+          ok = false
+        }
+      }
+    }
+    // 变更 revision，强制 Live Activity 刷新（删文件 alone 可能让 revision 变小不触发）
+    let stamp = Int64(Date().timeIntervalSince1970 * 1000)
+    UserDefaults(suiteName: AppGroupConfig.id)?.set(stamp, forKey: "liveActivityAssetClearStamp")
+    return ok
+  }
+
   private static func replacePair(
     data: Data,
     fullName: String,
