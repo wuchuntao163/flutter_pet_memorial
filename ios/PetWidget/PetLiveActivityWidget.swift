@@ -5,11 +5,21 @@ import WidgetKit
 
 private enum LiveActivityShared {
   static let appGroupId = AppGroupConfig.id
-  static let liveActivityImageName = WidgetSync.liveActivityImageFileName
-  static let liveActivityCompactPetName = WidgetSync.liveActivityCompactPetFileName
-  static let fourCloverImageName = WidgetSync.fourCloverImageFileName
-  static let fourCloverCompactImageName = WidgetSync.fourCloverCompactImageFileName
-  static let widgetImageName = WidgetSync.imageFileName
+  // 文件名需与 Runner 侧 WidgetSync 写入保持一致（扩展目标不编译 WidgetSync）
+  static let liveActivityImageName = "petLiveActivityImage.png"
+  static let liveActivityCompactPetName = "petLiveActivityCompactPet.png"
+  static let fourCloverImageName = "petLiveActivityFourClover.png"
+  static let fourCloverCompactImageName = "petLiveActivityCompactClover.png"
+  static let widgetImageName = "petWidgetImage.png"
+  static let photoFileName = "petLiveActivityPhoto.png"
+  static let photoCompactFileName = "petLiveActivityCompactPhoto.png"
+  static let iconFileName = "petLiveActivityIcon.png"
+  static let iconCompactFileName = "petLiveActivityCompactIcon.png"
+  static let panelFileName = "petLiveActivityPanel.png"
+  static let leftIconFileName = "petLiveActivityLeftIcon.png"
+  static let leftIconCompactFileName = "petLiveActivityCompactLeftIcon.png"
+  static let rightIconFileName = "petLiveActivityRightIcon.png"
+  static let rightIconCompactFileName = "petLiveActivityCompactRightIcon.png"
 
   static func cachedImagePath(named fileName: String) -> String? {
     guard let container = FileManager.default.containerURL(
@@ -48,35 +58,33 @@ private enum LiveActivityShared {
   }
 
   static func loadPhoto() -> UIImage? {
-    loadValidUIImage(named: WidgetSync.liveActivityPhotoFileName)
+    loadValidUIImage(named: photoFileName)
   }
 
   static func loadCompactPhoto() -> UIImage? {
-    loadValidUIImage(named: WidgetSync.liveActivityPhotoCompactFileName)
-      ?? loadPhoto()
+    loadValidUIImage(named: photoCompactFileName) ?? loadPhoto()
   }
 
   static func loadIcon() -> UIImage? {
-    loadValidUIImage(named: WidgetSync.liveActivityIconFileName)
+    loadValidUIImage(named: iconFileName)
   }
 
   static func loadCompactIcon() -> UIImage? {
-    loadValidUIImage(named: WidgetSync.liveActivityIconCompactFileName)
-      ?? loadIcon()
+    loadValidUIImage(named: iconCompactFileName) ?? loadIcon()
   }
 
   static func loadPanel() -> UIImage? {
-    loadValidUIImage(named: WidgetSync.liveActivityPanelFileName)
+    loadValidUIImage(named: panelFileName)
   }
 
   static func loadCompactLeftIcon() -> UIImage? {
-    loadValidUIImage(named: WidgetSync.liveActivityLeftIconCompactFileName)
-      ?? loadValidUIImage(named: WidgetSync.liveActivityLeftIconFileName)
+    loadValidUIImage(named: leftIconCompactFileName)
+      ?? loadValidUIImage(named: leftIconFileName)
   }
 
   static func loadCompactRightIcon() -> UIImage? {
-    loadValidUIImage(named: WidgetSync.liveActivityRightIconCompactFileName)
-      ?? loadValidUIImage(named: WidgetSync.liveActivityRightIconFileName)
+    loadValidUIImage(named: rightIconCompactFileName)
+      ?? loadValidUIImage(named: rightIconFileName)
   }
 
   static func color(from argb: UInt32) -> Color {
