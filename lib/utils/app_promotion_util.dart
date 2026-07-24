@@ -12,7 +12,7 @@ import '../l10n/tr.dart';
 class AppPromotionUtil {
   AppPromotionUtil._();
 
-  static const _androidPackage = 'com.example.flutter_pet_memorial';
+  static const _androidPackage = 'com.jnr.flutter_pet_memorial';
 
   static String get _appName {
     final info = AppCacheStore.instance.info;

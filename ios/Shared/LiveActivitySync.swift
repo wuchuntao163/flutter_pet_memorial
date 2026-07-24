@@ -245,7 +245,7 @@ enum LiveActivitySync {
 enum LiveActivityChannelHandler {
   static func register(with controller: FlutterViewController) {
     let channel = FlutterMethodChannel(
-      name: "com.example.flutterPetMemorial/live_activity",
+      name: "com.jnr.flutterPetMemorial/live_activity",
       binaryMessenger: controller.binaryMessenger
     )
 

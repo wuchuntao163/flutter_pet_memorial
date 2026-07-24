@@ -31,7 +31,7 @@ class LiveActivityService {
   static const customIslandEnabledKey = 'custom_island_enabled';
 
   static const _channel = MethodChannel(
-    'com.example.flutterPetMemorial/live_activity',
+    'com.jnr.flutterPetMemorial/live_activity',
   );
 
   bool? _supportedCache;

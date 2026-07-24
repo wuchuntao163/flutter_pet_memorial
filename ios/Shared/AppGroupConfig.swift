@@ -8,6 +8,6 @@ enum AppGroupConfig {
         return value
       }
     }
-    return "group.com.example.flutterPetMemorial"
+    return "group.com.jnr.flutterPetMemorial"
   }()
 }

@@ -28,7 +28,7 @@ class PetMemorialApp extends StatefulWidget {
 class _PetMemorialAppState extends State<PetMemorialApp>
     with WidgetsBindingObserver {
   static const _navChannel = MethodChannel(
-    'com.example.flutter_pet_memorial/navigation',
+    'com.jnr.flutter_pet_memorial/navigation',
   );
 
   @override

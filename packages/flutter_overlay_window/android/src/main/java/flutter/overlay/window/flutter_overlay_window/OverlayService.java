@@ -621,7 +621,7 @@ public class OverlayService extends Service implements View.OnTouchListener {
         try {
             Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
             if (launch == null) {
-                launch = new Intent(getApplicationContext(), Class.forName("com.example.flutter_pet_memorial.MainActivity"));
+                launch = new Intent(getApplicationContext(), Class.forName("com.jnr.flutter_pet_memorial.MainActivity"));
             }
             if (openProfile) {
                 launch.putExtra("open_route", "/page/profile");

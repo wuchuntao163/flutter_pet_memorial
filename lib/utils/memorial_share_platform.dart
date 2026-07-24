@@ -7,7 +7,7 @@ class MemorialSharePlatform {
   MemorialSharePlatform._();
 
   static const _channel =
-      MethodChannel('com.example.flutter_pet_memorial/share');
+      MethodChannel('com.jnr.flutter_pet_memorial/share');
 
   static const wechatPackage = 'com.tencent.mm';
   static const xiaohongshuPackage = 'com.xingin.xhs';

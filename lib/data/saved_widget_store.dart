@@ -18,7 +18,7 @@ class SavedWidgetStore extends ChangeNotifier {
   static final SavedWidgetStore instance = SavedWidgetStore._();
   static const _storageKey = 'saved_widget_library_v1';
   static const _channel = MethodChannel(
-    'com.example.flutterPetMemorial/widget',
+    'com.jnr.flutterPetMemorial/widget',
   );
 
   final List<SavedWidget> _items = [];

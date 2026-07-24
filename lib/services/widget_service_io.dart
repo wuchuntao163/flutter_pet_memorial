@@ -12,7 +12,7 @@ import 'widget_service_stub.dart' as stub;
 /// iOS 桌面组件数据同步；其他平台直接 no-op。
 class WidgetServiceImpl {
   static const _channel =
-      MethodChannel('com.example.flutterPetMemorial/widget');
+      MethodChannel('com.jnr.flutterPetMemorial/widget');
 
   Future<void> updateWidget() async {
     if (!Platform.isIOS) {

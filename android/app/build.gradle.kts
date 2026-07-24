@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.flutter_pet_memorial"
+    namespace = "com.jnr.flutter_pet_memorial"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
     signingConfigs {
@@ -30,7 +30,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.flutter_pet_memorial"
+        applicationId = "com.jnr.flutter_pet_memorial"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

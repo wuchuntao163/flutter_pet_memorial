@@ -1,4 +1,4 @@
-package com.example.flutter_pet_memorial
+package com.jnr.flutter_pet_memorial
 
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -15,8 +15,8 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
-    private val channelName = "com.example.flutter_pet_memorial/share"
-    private val navChannelName = "com.example.flutter_pet_memorial/navigation"
+    private val channelName = "com.jnr.flutter_pet_memorial/share"
+    private val navChannelName = "com.jnr.flutter_pet_memorial/navigation"
 
     private var pendingRoute: String? = null
 

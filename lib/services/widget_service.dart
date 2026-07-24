@@ -20,7 +20,7 @@ class WidgetService {
   static final WidgetService instance = WidgetService._();
 
   static const _channel = MethodChannel(
-    'com.example.flutterPetMemorial/widget',
+    'com.jnr.flutterPetMemorial/widget',
   );
 
   static const _widgetImageMaxSide = 512;

@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 class AppLauncherChannel {
   AppLauncherChannel._();
 
-  static const _channel = MethodChannel('com.example.flutter_pet_memorial/launcher');
+  static const _channel = MethodChannel('com.jnr.flutter_pet_memorial/launcher');
 
   static Future<bool> launchMainApp() async {
     try {

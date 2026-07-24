@@ -1116,7 +1116,7 @@ enum WidgetSync {
 enum WidgetChannelHandler {
   static func register(with controller: FlutterViewController) {
     let channel = FlutterMethodChannel(
-      name: "com.example.flutterPetMemorial/widget",
+      name: "com.jnr.flutterPetMemorial/widget",
       binaryMessenger: controller.binaryMessenger
     )
 

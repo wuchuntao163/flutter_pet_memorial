@@ -33,7 +33,7 @@ resolve_app_group_id() {
     printf '%s\n' "${from_plist}"
     return 0
   fi
-  printf '%s\n' "group.com.example.flutterPetMemorial"
+  printf '%s\n' "group.com.jnr.flutterPetMemorial"
 }
 
 APP_GROUP_ID="$(resolve_app_group_id)"

@@ -17,7 +17,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     GeneratedPluginRegistrant.register(with: flutterViewController)
 
     let widgetChannel = FlutterMethodChannel(
-      name: "com.example.flutterPetMemorial/widget",
+      name: "com.jnr.flutterPetMemorial/widget",
       binaryMessenger: flutterViewController.binaryMessenger
     )
     widgetChannel.setMethodCallHandler { [weak self] (call, result) in
