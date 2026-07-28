@@ -262,12 +262,12 @@ struct PetLiveActivityWidget: Widget {
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
-      // 高度 / 左边距对齐展示台（117 高、左侧约 30）
+      // 普通岛：高度 125，左边距 35（再右移 5）
       bodyContent(context: context, expanded: false)
-        .padding(.leading, 30)
+        .padding(.leading, 35)
         .padding(.trailing, 16)
-        .padding(.vertical, 20)
-        .frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
         .background {
           // 含宠物岛 template=1：与 App 预览背景一致
           if state.template >= 1 && state.template <= 5 {
@@ -319,7 +319,7 @@ struct PetLiveActivityWidget: Widget {
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
           .font(
             .system(
-              size: CGFloat(max(12, min(24, state.textFontSize))),
+              size: CGFloat(max(16, min(26, state.textFontSize + (expanded ? 0 : 2)))),
               weight: .semibold
             )
           )
@@ -351,7 +351,7 @@ struct PetLiveActivityWidget: Widget {
         .id(state.imageRevision)
         VStack(alignment: .leading, spacing: 4) {
           Text(state.subtitle.isEmpty ? state.memorialTitle : state.subtitle)
-            .font(.system(size: 13, weight: .medium))
+            .font(.system(size: expanded ? 13 : 15, weight: .medium))
             .foregroundColor(labelColor.opacity(0.72))
             .lineLimit(1)
           timerText(state: state, compact: false, color: labelColor)
@@ -379,11 +379,11 @@ struct PetLiveActivityWidget: Widget {
         .id(state.imageRevision)
         VStack(alignment: .leading, spacing: 4) {
           Text(state.memorialTitle.isEmpty ? state.subtitle : state.memorialTitle)
-            .font(.system(size: 13, weight: .medium))
+            .font(.system(size: expanded ? 13 : 15, weight: .medium))
             .foregroundColor(.black.opacity(0.72))
             .lineLimit(1)
           Text(state.daysText.isEmpty ? "—" : state.daysText)
-            .font(.system(size: 22, weight: .bold))
+            .font(.system(size: expanded ? 22 : 24, weight: .bold))
             .foregroundColor(.black)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
@@ -408,8 +408,7 @@ struct PetLiveActivityWidget: Widget {
         }
         .id(state.imageRevision)
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
-          .font(.body)
-          .fontWeight(.semibold)
+          .font(.system(size: expanded ? 16 : 18, weight: .semibold))
           .foregroundColor(.primary)
           .lineLimit(1)
           .minimumScaleFactor(0.8)
@@ -474,7 +473,7 @@ struct PetLiveActivityWidget: Widget {
     compact: Bool,
     color: Color
   ) -> some View {
-    let font = Font.system(size: compact ? 12 : 20, weight: .bold).monospacedDigit()
+    let font = Font.system(size: compact ? 12 : 22, weight: .bold).monospacedDigit()
     let target = Date(timeIntervalSince1970: state.timerTargetEpoch)
     if state.timerTargetEpoch <= 0 {
       Text("--:--")
