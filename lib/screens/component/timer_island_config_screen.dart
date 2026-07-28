@@ -12,6 +12,7 @@ import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/island_image_util.dart';
 import '../../utils/island_success_dialog.dart';
+import '../../widgets/common/tutorial_action_button.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 
@@ -36,6 +37,8 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
   String? _imagePath;
   bool _enabled = false;
   bool _busy = false;
+  bool _prefsLoaded = false;
+  bool _userPickedIconThisSession = false;
   late DateTime _previewNow;
   Timer? _previewTicker;
 
@@ -87,6 +90,12 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _applyDefaultIconFromDetail();
+  }
+
+  @override
   void dispose() {
     _previewTicker?.cancel();
     _titleController.dispose();
@@ -100,136 +109,160 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
       appBar: _buildAppBar(),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+            child: Column(
+              children: [
+                Center(child: _buildCompactIsland()),
+                const SizedBox(height: 12),
+                Center(child: _buildExpandedIsland()),
+              ],
+            ),
+          ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(child: _buildCompactIsland()),
-                  const SizedBox(height: 12),
-                  Center(child: _buildExpandedIsland()),
-                  const SizedBox(height: 28),
-                  if (widgetOptionEnabled(context, 'custom_text')) ...[
-                    _sectionTitle(
-                      widgetOptionLabel(context, 'custom_text', '编辑内容'),
-                    ),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widgetOptionEnabled(context, 'custom_text')) ...[
+                      _sectionTitle(
+                        widgetOptionLabel(context, 'custom_text', '编辑内容'),
+                      ),
+                      const SizedBox(height: 9),
+                      TextField(
+                        controller: _titleController,
+                        maxLength: 18,
+                        maxLines: 1,
+                        style: const TextStyle(fontSize: 13),
+                        onTapOutside: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        onChanged: (_) => setState(() {}),
+                        decoration: _inputDecoration('请输入目标名称'),
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+                    _sectionTitle('目标时间'),
                     const SizedBox(height: 9),
-                    TextField(
-                      controller: _titleController,
-                      maxLength: 18,
-                      maxLines: 1,
-                      style: const TextStyle(fontSize: 13),
-                      onTapOutside: (_) =>
-                          FocusManager.instance.primaryFocus?.unfocus(),
-                      onChanged: (_) => setState(() {}),
-                      decoration: _inputDecoration('请输入目标名称'),
-                    ),
-                  ],
-                  const SizedBox(height: 18),
-                  _sectionTitle('目标时间'),
-                  const SizedBox(height: 9),
-                  InkWell(
-                    onTap: _pickTime,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      width: double.infinity,
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.borderLight),
-                      ),
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        _formatTime(_targetTime),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.accent,
+                    InkWell(
+                      onTap: _pickTime,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: double.infinity,
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _formatTime(_targetTime),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.accent,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  if (widgetOptionEnabled(context, 'icon')) ...[
-                    _sectionTitle(widgetOptionLabel(context, 'icon', '图标')),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _iconButton(
-                          onTap: _pickImage,
-                          child: const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.photo_outlined, size: 20),
-                              SizedBox(height: 2),
-                              Text('相册', style: TextStyle(fontSize: 9)),
-                            ],
+                    const SizedBox(height: 20),
+                    if (widgetOptionEnabled(context, 'icon')) ...[
+                      _sectionTitle(widgetOptionLabel(context, 'icon', '图标')),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _iconButton(
+                            onTap: _pickImage,
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.photo_outlined, size: 20),
+                                SizedBox(height: 2),
+                                Text('相册', style: TextStyle(fontSize: 9)),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        _iconButton(
-                          selected: _imagePath == null,
-                          onTap: _showEmojiPicker,
-                          child: Text(
-                            _icon,
-                            style: const TextStyle(fontSize: 23),
+                          const SizedBox(width: 12),
+                          _iconButton(
+                            selected: _imagePath == null,
+                            onTap: _showEmojiPicker,
+                            child: Text(
+                              _icon,
+                              style: const TextStyle(fontSize: 23),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
-          const Text(
-            '系统限制灵动岛后台最多保持8-12小时\n消失后请重新开启',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              height: 1.5,
-              fontSize: 11,
-              color: AppColors.textPlaceholder,
-            ),
-          ),
-          SafeArea(
-            top: false,
-            minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
-            child: SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: AppColors.avatarGenerateGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _busy ? null : _toggle,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Center(
-                      child: _busy
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.accent,
-                              ),
-                            )
-                          : Text(
-                              _enabled ? '关闭灵动岛' : '开启灵动岛',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.accentDarker,
-                              ),
-                            ),
+          ColoredBox(
+            color: Colors.white,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.avatarGenerateGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _busy ? null : _toggle,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Center(
+                            child: _busy
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.accent,
+                                    ),
+                                  )
+                                : Text(
+                                    _enabled ? '关闭灵动岛' : '开启灵动岛',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.accentDarker,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (MediaQuery.viewInsetsOf(context).bottom == 0) ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      '系统限制灵动岛后台最多保持8-12小时\n消失后请重新开启',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        height: 1.5,
+                        fontSize: 11,
+                        color: AppColors.textPlaceholder,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -295,53 +328,12 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
         ),
       ),
       actions: [
-        GestureDetector(
+        TutorialActionButton(
           onTap: () => IosDesktopPetGuideDialog.show(
             context,
             liveActivityEnabled: false,
           ),
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 10,
-              top: AppLayout.memorialDetailTopPadding,
-            ),
-            child: SizedBox(
-              height: _headerContentHeight,
-              child: Center(
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFF0EC),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.question_mark,
-                        size: 13,
-                        color: AppColors.accent,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(top: 1),
-                        child: Text(
-                          '教程',
-                          style: TextStyle(
-                            height: 1,
-                            fontSize: 8,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          height: _headerContentHeight,
         ),
       ],
     );
@@ -349,23 +341,24 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
 
   Widget _buildCompactIsland() {
     return Container(
-      width: 150,
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
+      width: kIslandCompactWidth,
+      height: kIslandCompactHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: Colors.black,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
       ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _selectedIcon(19, circular: true),
+        _selectedIcon(22, circular: true),
         const Spacer(),
         Text(
           _timerText,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
             height: 1,
           ),
@@ -379,7 +372,7 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
     return Container(
       width: kIslandPreviewCardWidth,
       height: kIslandPreviewCardHeight,
-      padding: const EdgeInsets.fromLTRB(28, 0, 8, 0),
+      padding: const EdgeInsets.fromLTRB(44, 0, 8, 0),
       decoration: BoxDecoration(
         color: _isCountUp ? Colors.black : const Color(0xFFE4F0FF),
         image: widgetDefaultBackgroundDecoration(context),
@@ -387,8 +380,8 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
       ),
       child: Row(
         children: [
-          _selectedIcon(34),
-          const SizedBox(width: 12),
+          _selectedIcon(64),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -401,7 +394,7 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 18,
                     fontWeight: FontWeight.w600,
                     color: _isCountUp ? Colors.white : AppColors.textPrimary,
                   ),
@@ -410,7 +403,7 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
                 Text(
                   _timerText,
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 26,
                     fontWeight: FontWeight.w700,
                     color: _isCountUp ? Colors.white : AppColors.textPrimary,
                   ),
@@ -425,7 +418,12 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
 
   Widget _selectedIcon(double size, {bool circular = false}) {
     if (_imagePath != null) {
-      return islandCardSideImage(_imagePath, size: size, circular: circular);
+      return islandCardSideImage(
+        _imagePath,
+        size: size,
+        circular: circular,
+        fit: BoxFit.contain,
+      );
     }
     return SizedBox(
       width: size,
@@ -433,7 +431,8 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
       child: Center(
         child: Text(
           _icon,
-          style: TextStyle(fontSize: size * .75, height: 1),
+          style: TextStyle(fontSize: size, height: 1),
+          textAlign: TextAlign.center,
         ),
       ),
     );
@@ -507,7 +506,10 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
   Future<void> _pickImage() async {
     final url = await pickAndUploadIslandImage(context);
     if (url != null && url.isNotEmpty && mounted) {
-      setState(() => _imagePath = url);
+      setState(() {
+        _imagePath = url;
+        _userPickedIconThisSession = true;
+      });
     }
   }
 
@@ -554,6 +556,7 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
       setState(() {
         _icon = value;
         _imagePath = null;
+        _userPickedIconThisSession = true;
       });
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('${_storagePrefix}_image');
@@ -604,10 +607,33 @@ class _TimerIslandConfigScreenState extends State<TimerIslandConfigScreen> {
         hour: prefs.getInt('${_storagePrefix}_hour') ?? 18,
         minute: prefs.getInt('${_storagePrefix}_minute') ?? 30,
       );
-      _icon = prefs.getString('${_storagePrefix}_icon') ?? '🔔';
-      _imagePath = prefs.getString('${_storagePrefix}_image');
       _enabled = prefs.getBool('${_storagePrefix}_enabled') ?? false;
+      _icon = '🔔';
+      _imagePath = null;
+      _userPickedIconThisSession = false;
+      _prefsLoaded = true;
     });
+    _applyDefaultIconFromDetail();
+  }
+
+  void _applyDefaultIconFromDetail() {
+    if (!_prefsLoaded || _userPickedIconThisSession || !mounted) return;
+    final defaultIcon =
+        WidgetDetailScope.maybeOf(context)?.defaultIcon.trim() ?? '';
+    if (defaultIcon.isEmpty) return;
+    if (islandDefaultIconIsImage(defaultIcon)) {
+      if (_imagePath == defaultIcon) return;
+      setState(() {
+        _imagePath = defaultIcon;
+        _icon = '🔔';
+      });
+    } else {
+      if (_icon == defaultIcon && _imagePath == null) return;
+      setState(() {
+        _icon = defaultIcon;
+        _imagePath = null;
+      });
+    }
   }
 
   Future<void> _toggle() async {

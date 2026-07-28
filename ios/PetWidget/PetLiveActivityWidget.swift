@@ -147,47 +147,47 @@ struct PetLiveActivityWidget: Widget {
     case 2:
       // 仅相册图在灵动岛 compact 显示正圆
       if let image = LiveActivityShared.loadCompactPhoto() {
-        islandCircleImage(uiImage: image, size: 24)
+        islandCircleImage(uiImage: image, size: 28)
       } else {
         imageOrEmoji(
           image: nil,
           emoji: state.compactLeadingEmoji,
           systemName: "photo",
-          size: 24
+          size: 28
         )
       }
     case 3, 4, 5:
       // 相册图正圆；纯 emoji 图标不裁圆
       if let image = LiveActivityShared.loadCompactIcon() {
-        islandCircleImage(uiImage: image, size: 24)
+        islandCircleImage(uiImage: image, size: 28)
       } else {
         imageOrEmoji(
           image: nil,
           emoji: state.compactLeadingEmoji.isEmpty ? "❤️" : state.compactLeadingEmoji,
           systemName: "heart.fill",
-          size: 24
+          size: 28
         )
       }
     case 6:
       // 自定义：相册图正圆；emoji 不裁圆
       if let image = LiveActivityShared.loadCompactLeftIcon() {
-        islandCircleImage(uiImage: image, size: 24)
+        islandCircleImage(uiImage: image, size: 28)
       } else {
         imageOrEmoji(
           image: nil,
           emoji: state.compactLeadingEmoji.isEmpty ? "🌈" : state.compactLeadingEmoji,
           systemName: "sparkles",
-          size: 24
+          size: 28
         )
       }
     default:
       if let image = LiveActivityShared.loadCompactPetImage() {
-        islandCircleImage(uiImage: image, size: 24)
+        islandCircleImage(uiImage: image, size: 28)
       } else {
         Image(systemName: "pawprint.fill")
-          .font(.system(size: 14))
+          .font(.system(size: 16))
           .foregroundColor(.orange.opacity(0.8))
-          .frame(width: 24, height: 24)
+          .frame(width: 28, height: 28)
       }
     }
   }
@@ -210,23 +210,22 @@ struct PetLiveActivityWidget: Widget {
         .lineLimit(1)
     case 6:
       if let image = LiveActivityShared.loadCompactRightIcon() {
-        islandCircleImage(uiImage: image, size: 20)
+        islandCircleImage(uiImage: image, size: 24)
+      } else if !state.compactTrailingEmoji.isEmpty {
+        Text(state.compactTrailingEmoji)
+          .font(.system(size: 24 * 0.9))
+          .frame(width: 24, height: 24)
       } else {
-        imageOrEmoji(
-          image: nil,
-          emoji: state.compactTrailingEmoji.isEmpty ? "🔔" : state.compactTrailingEmoji,
-          systemName: "bell.fill",
-          size: 20
-        )
+        EmptyView()
       }
     default:
       if let image = LiveActivityShared.loadCompactCloverImage() {
-        islandCircleImage(uiImage: image, size: 20)
+        islandCircleImage(uiImage: image, size: 24)
       } else {
         Image(systemName: "leaf.fill")
-          .font(.system(size: 12))
+          .font(.system(size: 14))
           .foregroundColor(.orange.opacity(0.85))
-          .frame(width: 20, height: 20)
+          .frame(width: 24, height: 24)
       }
     }
   }
@@ -430,7 +429,7 @@ struct PetLiveActivityWidget: Widget {
       let normX = min(1, max(0, state.textNormX))
       let normY = min(1, max(0, state.textNormY))
       // 与 App 预览一致：左上角定位，预留右侧空间避免贴边溢出
-      let left = margin + (geo.size.width - margin * 2 - 100) * normX
+      let left = margin + (geo.size.width - margin * 2 - CGFloat(100)) * normX
       let top = margin + (geo.size.height - margin * 2 - textBlockH) * normY
       let textMaxW = max(60, geo.size.width - left - margin)
       ZStack(alignment: .topLeading) {
@@ -523,7 +522,7 @@ struct PetLiveActivityWidget: Widget {
       }
     } else if !emoji.isEmpty {
       Text(emoji)
-        .font(.system(size: size * 0.72))
+        .font(.system(size: size * 0.9))
         .frame(width: size, height: size)
     } else {
       Image(systemName: systemName)

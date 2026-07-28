@@ -168,8 +168,7 @@ class _IosDesktopPetGuideDialogState extends State<IosDesktopPetGuideDialog> {
     );
   }
 
-  bool get _showLiveActivitySwitch =>
-      _tabIndex == _tabIsland && _pageIndex == 0;
+  bool get _showLiveActivitySwitch => false;
 
   @override
   Widget build(BuildContext context) {

@@ -425,17 +425,23 @@ struct PetWidgetEntryView: View {
 }
 
 /// iOS 17+：假透明时必须把壁纸裁切放进 containerBackground（Color.clear 会被换成白底）
+/// Xcode 14 / Swift 5.7 无 widgetContentMargins / containerBackground，整段仅在 Swift 5.9+ 编译
 private extension View {
     @ViewBuilder
     func petWidgetContainerBackground(wallpaper: UIImage?) -> some View {
+        #if swift(>=5.9)
         if #available(iOSApplicationExtension 17.0, *) {
             modifier(PetWidgetFullBleedModifier(wallpaper: wallpaper))
         } else {
             self
         }
+        #else
+        self
+        #endif
     }
 }
 
+#if swift(>=5.9)
 @available(iOSApplicationExtension 17.0, *)
 private struct PetWidgetFullBleedModifier: ViewModifier {
     @Environment(\.widgetContentMargins) private var margins
@@ -459,6 +465,7 @@ private struct PetWidgetFullBleedModifier: ViewModifier {
             }
     }
 }
+#endif
 
 /// 桌面已配置组件：倒计时类 = 本地背景 + 自定义数字字体 + 实时天数
 struct SavedWidgetHomeView: View {

@@ -12,6 +12,8 @@ import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/island_image_util.dart';
 import '../../utils/island_success_dialog.dart';
+import '../../widgets/common/add_memorial_chip.dart';
+import '../../widgets/common/tutorial_action_button.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 
@@ -36,6 +38,10 @@ class _MemorialIslandConfigScreenState
   String? _imagePath;
   bool _enabled = false;
   bool _busy = false;
+  bool _showAllMemorials = false;
+  bool _prefsLoaded = false;
+  /// 仅本次进入后用户手动选过图标；离开页面不保留
+  bool _userPickedIconThisSession = false;
 
   List<MemorialDay> get _items => MemorialStore.instance.items;
 
@@ -52,6 +58,12 @@ class _MemorialIslandConfigScreenState
     MemorialStore.instance.addListener(_onMemorialsChanged);
     MemorialStore.instance.ensureMemorialsLoaded();
     _load();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _applyDefaultIconFromDetail();
   }
 
   @override
@@ -76,137 +88,133 @@ class _MemorialIslandConfigScreenState
       appBar: _buildAppBar(),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+            child: Column(
+              children: [
+                Center(child: _buildCompactIsland()),
+                const SizedBox(height: 12),
+                Center(child: _buildExpandedIsland()),
+              ],
+            ),
+          ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(child: _buildCompactIsland()),
-                  const SizedBox(height: 12),
-                  Center(child: _buildExpandedIsland()),
-                  const SizedBox(height: 28),
-                  if (widgetOptionEnabled(context, 'anniversary_select')) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            widgetOptionLabel(
-                              context,
-                              'anniversary_select',
-                              '选择纪念日事项',
-                            ),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () => context.push(AppRoutes.memorialAdd),
-                          borderRadius: BorderRadius.circular(7),
-                          child: Container(
-                            width: 27,
-                            height: 27,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0F1F4),
-                              borderRadius: BorderRadius.circular(7),
-                            ),
-                            child: const Icon(Icons.add, size: 18),
-                          ),
-                        ),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widgetOptionEnabled(context, 'anniversary_select')) ...[
+                      _buildAnniversarySelectHeader(),
+                      if (_items.isNotEmpty) ...[
+                        const SizedBox(height: 9),
+                        _buildMemorialList(),
                       ],
-                    ),
-                    const SizedBox(height: 9),
-                    _buildMemorialList(),
-                  ],
-                  if (widgetOptionEnabled(context, 'icon')) ...[
-                    const SizedBox(height: 20),
-                    Text(
-                      widgetOptionLabel(context, 'icon', '图标'),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                    ],
+                    if (widgetOptionEnabled(context, 'icon')) ...[
+                      const SizedBox(height: 20),
+                      Text(
+                        widgetOptionLabel(context, 'icon', '图标'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _iconButton(
-                          onTap: _pickImage,
-                          child: const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.photo_outlined, size: 20),
-                              SizedBox(height: 2),
-                              Text('相册', style: TextStyle(fontSize: 9)),
-                            ],
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _iconButton(
+                            onTap: _pickImage,
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.photo_outlined, size: 20),
+                                SizedBox(height: 2),
+                                Text('相册', style: TextStyle(fontSize: 9)),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        _iconButton(
-                          selected: _imagePath == null,
-                          onTap: _showEmojiPicker,
-                          child: Text(
-                            _icon,
-                            style: const TextStyle(fontSize: 23),
+                          const SizedBox(width: 12),
+                          _iconButton(
+                            selected: _imagePath == null,
+                            onTap: _showEmojiPicker,
+                            child: Text(
+                              _icon,
+                              style: const TextStyle(fontSize: 23),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
-          const Text(
-            '系统限制灵动岛后台最多保持8-12小时\n消失后请重新开启',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              height: 1.5,
-              fontSize: 11,
-              color: AppColors.textPlaceholder,
-            ),
-          ),
-          SafeArea(
-            top: false,
-            minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
-            child: SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: AppColors.avatarGenerateGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _busy || _selected == null ? null : _toggle,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Center(
-                      child: _busy
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.accent,
-                              ),
-                            )
-                          : Text(
-                              _enabled ? '关闭灵动岛' : '开启灵动岛',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.accentDarker,
-                              ),
-                            ),
+          ColoredBox(
+            color: Colors.white,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.avatarGenerateGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _busy || _selected == null ? null : _toggle,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Center(
+                            child: _busy
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.accent,
+                                    ),
+                                  )
+                                : Text(
+                                    _enabled ? '关闭灵动岛' : '开启灵动岛',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.accentDarker,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (MediaQuery.viewInsetsOf(context).bottom == 0) ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      '系统限制灵动岛后台最多保持8-12小时\n消失后请重新开启',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        height: 1.5,
+                        fontSize: 11,
+                        color: AppColors.textPlaceholder,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -261,7 +269,7 @@ class _MemorialIslandConfigScreenState
           height: _headerContentHeight,
           child: Center(
             child: Text(
-              '纪念日',
+              '纪念日岛',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
@@ -272,53 +280,12 @@ class _MemorialIslandConfigScreenState
         ),
       ),
       actions: [
-        GestureDetector(
+        TutorialActionButton(
           onTap: () => IosDesktopPetGuideDialog.show(
             context,
             liveActivityEnabled: false,
           ),
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 10,
-              top: AppLayout.memorialDetailTopPadding,
-            ),
-            child: SizedBox(
-              height: _headerContentHeight,
-              child: Center(
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFF0EC),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.question_mark,
-                        size: 13,
-                        color: AppColors.accent,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(top: 1),
-                        child: Text(
-                          '教程',
-                          style: TextStyle(
-                            height: 1,
-                            fontSize: 8,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          height: _headerContentHeight,
         ),
       ],
     );
@@ -326,23 +293,24 @@ class _MemorialIslandConfigScreenState
 
   Widget _buildCompactIsland() {
     return Container(
-      width: 150,
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
+      width: kIslandCompactWidth,
+      height: kIslandCompactHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: Colors.black,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _selectedIcon(19, circular: true),
+          _selectedIcon(22, circular: true),
           const Spacer(),
           Text(
             '${_days(_selected)}天',
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               height: 1,
             ),
@@ -357,7 +325,7 @@ class _MemorialIslandConfigScreenState
     return Container(
       width: kIslandPreviewCardWidth,
       height: kIslandPreviewCardHeight,
-      padding: const EdgeInsets.fromLTRB(32, 0, 4, 0),
+      padding: const EdgeInsets.fromLTRB(44, 0, 8, 0),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFF8E4EB), Color(0xFFDCEAFF)],
@@ -367,7 +335,7 @@ class _MemorialIslandConfigScreenState
       ),
       child: Row(
         children: [
-          _selectedIcon(42),
+          _selectedIcon(64),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -379,7 +347,7 @@ class _MemorialIslandConfigScreenState
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 18,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
@@ -388,7 +356,7 @@ class _MemorialIslandConfigScreenState
                 Text(
                   '${_days(item)}天',
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 26,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
@@ -401,6 +369,38 @@ class _MemorialIslandConfigScreenState
     );
   }
 
+  Widget _buildAnniversarySelectHeader() {
+    final hasItems = _items.isNotEmpty;
+    final title = Text(
+      widgetOptionLabel(context, 'anniversary_select', '选择纪念日事项'),
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textSecondary,
+      ),
+    );
+    final addButton = AddMemorialChip(
+      size: hasItems ? 27 : 40,
+      onTap: () => context.push(AppRoutes.memorialAdd),
+    );
+    if (hasItems) {
+      return Row(
+        children: [
+          Expanded(child: title),
+          addButton,
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        title,
+        const SizedBox(height: 10),
+        addButton,
+      ],
+    );
+  }
+
   Widget _buildMemorialList() {
     if (MemorialStore.instance.isLoadingList && _items.isEmpty) {
       return const Center(
@@ -410,78 +410,104 @@ class _MemorialIslandConfigScreenState
         ),
       );
     }
-    if (_items.isEmpty) {
-      return Container(
-        height: 48,
-        alignment: Alignment.center,
+    final visibleItems = _showAllMemorials ? _items : _items.take(3).toList();
+    return Column(
+      children: [
+        for (var index = 0; index < visibleItems.length; index++) ...[
+          _buildMemorialRow(visibleItems[index]),
+          if (index != visibleItems.length - 1) const SizedBox(height: 7),
+        ],
+        if (_items.length > 3) ...[
+          const SizedBox(height: 7),
+          GestureDetector(
+            onTap: () => setState(() => _showAllMemorials = !_showAllMemorials),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Column(
+                children: [
+                  Text(
+                    _showAllMemorials ? '收起' : '更多',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textPlaceholder,
+                    ),
+                  ),
+                  Icon(
+                    _showAllMemorials
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 15,
+                    color: AppColors.textPlaceholder,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildMemorialRow(MemorialDay item) {
+    final selected = item.id == _selected?.id;
+    return InkWell(
+      onTap: () => _select(item.id),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: const Color(0xFFF0F1F4),
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? AppColors.accent : Colors.transparent,
+            width: 1.5,
+          ),
         ),
-        child: const Text(
-          '暂无纪念日事项',
-          style: TextStyle(fontSize: 13, color: AppColors.textPlaceholder),
-        ),
-      );
-    }
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 7),
-      itemBuilder: (context, index) {
-        final item = _items[index];
-        final selected = item.id == _selected?.id;
-        return InkWell(
-          onTap: () => _select(item.id),
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            height: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F1F4),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: selected ? AppColors.accent : Colors.transparent,
-                width: 1.5,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14),
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${_days(item)}天',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.accent,
-                  ),
-                ),
-              ],
+            const SizedBox(width: 8),
+            Text(
+              '${_days(item)}天',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.accent,
+              ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
   Widget _selectedIcon(double size, {bool circular = false}) {
     if (_imagePath != null) {
-      return islandCardSideImage(_imagePath, size: size, circular: circular);
+      return islandCardSideImage(
+        _imagePath,
+        size: size,
+        circular: circular,
+        fit: BoxFit.contain,
+      );
     }
     return SizedBox(
       width: size,
       height: size,
       child: Center(
-        child: Text(_icon, style: TextStyle(fontSize: size * .75, height: 1)),
+        child: Text(
+          _icon,
+          style: TextStyle(fontSize: size, height: 1),
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }
@@ -526,7 +552,10 @@ class _MemorialIslandConfigScreenState
   Future<void> _pickImage() async {
     final url = await pickAndUploadIslandImage(context);
     if (url != null && url.isNotEmpty && mounted) {
-      setState(() => _imagePath = url);
+      setState(() {
+        _imagePath = url;
+        _userPickedIconThisSession = true;
+      });
     }
   }
 
@@ -571,6 +600,7 @@ class _MemorialIslandConfigScreenState
     setState(() {
       _icon = value;
       _imagePath = null;
+      _userPickedIconThisSession = true;
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_imageKey);
@@ -601,10 +631,35 @@ class _MemorialIslandConfigScreenState
     if (!mounted) return;
     setState(() {
       _selectedId = prefs.getString(_selectedKey);
-      _icon = prefs.getString(_iconKey) ?? '❤️';
-      _imagePath = prefs.getString(_imageKey);
       _enabled = prefs.getBool(_enabledKey) ?? false;
+      // 每次进入都用接口 default_icon，不恢复本地图标
+      _icon = '❤️';
+      _imagePath = null;
+      _userPickedIconThisSession = false;
+      _prefsLoaded = true;
     });
+    _applyDefaultIconFromDetail();
+  }
+
+  /// 详情接口晚于首帧返回时补上 default_icon
+  void _applyDefaultIconFromDetail() {
+    if (!_prefsLoaded || _userPickedIconThisSession || !mounted) return;
+    final defaultIcon =
+        WidgetDetailScope.maybeOf(context)?.defaultIcon.trim() ?? '';
+    if (defaultIcon.isEmpty) return;
+    if (islandDefaultIconIsImage(defaultIcon)) {
+      if (_imagePath == defaultIcon) return;
+      setState(() {
+        _imagePath = defaultIcon;
+        _icon = '❤️';
+      });
+    } else {
+      if (_icon == defaultIcon && _imagePath == null) return;
+      setState(() {
+        _icon = defaultIcon;
+        _imagePath = null;
+      });
+    }
   }
 
   Future<void> _toggle() async {

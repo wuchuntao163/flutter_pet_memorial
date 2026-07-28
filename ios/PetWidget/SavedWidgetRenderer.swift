@@ -553,21 +553,12 @@ struct SavedWidgetTemplateView: View {
   }
 
   private var photoCountdownTemplate: some View {
-    VStack(spacing: 5) {
-      HStack(spacing: 3) {
-        Text(config.string("memorial_title", fallback: config.title))
-          .font(.system(size: 12, weight: .semibold))
-          .lineLimit(1)
-        if let icon = config.iconUIImage() {
-          Image(uiImage: icon)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: 14, height: 14)
-        } else {
-          Image(systemName: "heart.fill").font(.system(size: 13))
-        }
-      }
-      Spacer(minLength: 0)
+    VStack(spacing: 0) {
+      Text(config.string("memorial_title", fallback: config.title))
+        .font(.system(size: 14, weight: .semibold))
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+      Spacer(minLength: 7)
       WidgetDigitNumber(
         value: config.liveMemorialDays,
         config: config,
@@ -576,13 +567,13 @@ struct SavedWidgetTemplateView: View {
         weight: .semibold,
         color: config.textColor
       )
-      Spacer(minLength: 0)
+      Spacer(minLength: 7)
       Text(dateText)
-        .font(.system(size: 10, weight: .medium))
+        .font(.system(size: 12, weight: .medium))
         .opacity(0.82)
     }
     .foregroundColor(config.textColor)
-    .padding(EdgeInsets(top: 14, leading: 8, bottom: 14, trailing: 8))
+    .padding(EdgeInsets(top: 20, leading: 10, bottom: 20, trailing: 10))
   }
 
   /// 对应 Flutter simple 预览：右上角天数 + Days，底部标题与日期
@@ -594,23 +585,24 @@ struct SavedWidgetTemplateView: View {
           WidgetDigitNumber(
             value: config.liveMemorialDays,
             config: config,
-            digitHeight: 40,
-            fontSize: 40,
+            digitHeight: 41,
+            fontSize: 41,
             weight: .semibold,
             color: config.textColor
           )
           Text("Days")
-            .font(.system(size: 15, weight: .medium))
+            .font(.system(size: 16, weight: .medium))
             .opacity(0.38)
+            .offset(y: -5)
         }
       }
       Spacer(minLength: 0)
       Text(config.string("memorial_title", fallback: "纪念日还有"))
-        .font(.system(size: 14, weight: .semibold))
+        .font(.system(size: 15, weight: .semibold))
         .lineLimit(1)
       Spacer().frame(height: 5)
       Text(shortDateText)
-        .font(.system(size: 11, weight: .regular))
+        .font(.system(size: 12, weight: .regular))
         .opacity(0.42)
     }
     .foregroundColor(config.textColor)
@@ -620,38 +612,43 @@ struct SavedWidgetTemplateView: View {
   private var multiMemorialTemplate: some View {
     let items = config.liveMemorialItems
     let isMedium = family == .systemMedium
-    let rowHeight: CGFloat = isMedium ? 36 : 34
-    let rowSpacing: CGFloat = isMedium ? 6 : 6
+    // 小号：条高 36、字号 13；中号：条高 37、字号 15。条间距大小号一致
+    let rowHeight: CGFloat = isMedium ? 37 : 36
+    let rowSpacing: CGFloat = 5
+    let titleSize: CGFloat = isMedium ? 15 : 13
+    let daysSize: CGFloat = isMedium ? 15 : 13
+    let daysWidth: CGFloat = isMedium ? 60 : 50
     return VStack(spacing: rowSpacing) {
       ForEach(Array(items.enumerated()), id: \.offset) { _, item in
         HStack(spacing: 0) {
-          // 天数+天同一组件内基线对齐
+          // 天数：用 WidgetDigitNumber（自定义数字图 / Avenir），不用系统 SF 数字
           WidgetDigitNumber(
             value: item.days,
             config: config,
-            digitHeight: 12,
-            fontSize: 12,
+            digitHeight: daysSize,
+            fontSize: daysSize,
             weight: .bold,
             color: Color(argb: item.badgeText),
             digitSpacing: 0,
             unit: "天",
-            unitFontSize: 12,
+            unitFontSize: daysSize,
             unitBottomPadding: 1
           )
-          .frame(width: isMedium ? 54 : 47)
+          .frame(width: daysWidth)
           .frame(maxHeight: .infinity)
           .background(Color(argb: item.badgeBg))
           Text(item.title)
-            .font(.system(size: 12, weight: .semibold))
+            .font(.system(size: titleSize, weight: .semibold))
             .foregroundColor(.black)
             .lineLimit(1)
             .padding(.leading, 6)
+            .padding(.trailing, isMedium ? 0 : 7)
             .frame(maxWidth: .infinity, alignment: .leading)
           if isMedium, !item.typeLabel.isEmpty {
             Text(item.typeLabel)
               .font(.system(size: 10, weight: .medium))
               .foregroundColor(Color(argb: item.badgeText))
-              .padding(.horizontal, 5)
+              .padding(.horizontal, 6)
               .padding(.vertical, 2)
               .background(Color(argb: item.badgeBg))
               .clipShape(RoundedRectangle(cornerRadius: 5))
@@ -666,33 +663,52 @@ struct SavedWidgetTemplateView: View {
     }
     .padding(
       isMedium
-        // 中号条形框略收窄
         ? EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
-        : EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+        : EdgeInsets(top: 7, leading: 8, bottom: 7, trailing: 8)
     )
   }
 
   private var calendarTemplate: some View {
     let now = Date()
-    // 与 Flutter 波点日历预览一致：月份 / 星期固定英文
+    // 月份 / 星期固定英文；表头黑色条固定；天数按整卡（含表头）垂直居中
+    // 桌面组件字号/尺寸大于 Flutter 预览
     let month = Self.format(now, pattern: "LLLL", locale: "en_US")
     let day = Calendar.current.component(.day, from: now)
     let weekday = Self.format(now, pattern: "EEEE", locale: "en_US")
-    let textSelected = config.string("text_color_selected") == "1"
-    return VStack(spacing: 4) {
-      Text(month)
-        .font(.system(size: 13, weight: .semibold))
-        .foregroundColor(textSelected ? config.textColor : .white)
-      Spacer(minLength: 0)
-      Text("\(day)")
-        .font(.system(size: 48, weight: .bold))
-        .foregroundColor(config.textColor)
-      Text(weekday)
-        .font(.system(size: 10, weight: .medium))
-        .foregroundColor(config.textColor)
-      Spacer(minLength: 0)
+    let dayBoxH: CGFloat = 87
+    let weekdayGap: CGFloat = 4
+    return GeometryReader { geo in
+      let dayTop = (geo.size.height - dayBoxH) / 2
+      ZStack(alignment: .topLeading) {
+        VStack(spacing: 0) {
+          Text(month)
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 34)
+            .background(Color.black)
+          Spacer(minLength: 0)
+        }
+        .frame(width: geo.size.width, height: geo.size.height)
+
+        WidgetDigitNumber(
+          value: day,
+          config: config,
+          digitHeight: 70,
+          fontSize: 80,
+          weight: .bold,
+          color: config.textColor
+        )
+        .frame(width: geo.size.width, height: dayBoxH)
+        .offset(y: dayTop)
+
+        Text(weekday)
+          .font(.system(size: 14, weight: .medium))
+          .foregroundColor(config.textColor)
+          .frame(width: geo.size.width)
+          .offset(y: dayTop + dayBoxH + weekdayGap)
+      }
     }
-    .padding(12)
   }
 
   /// 对应 Flutter medium 预览：星期 / 标题 / 天数+天 / 日期
@@ -714,28 +730,29 @@ struct SavedWidgetTemplateView: View {
     }()
     return VStack(alignment: .leading, spacing: 0) {
       Text(weekday)
-        .font(.system(size: 10, weight: .semibold))
+        .font(.system(size: 11, weight: .semibold))
       Spacer(minLength: 0)
       // 名称紧贴倒数日；倒数日与右侧日期底对齐
       VStack(alignment: .leading, spacing: 2) {
         Text(config.string("memorial_title", fallback: config.title))
-          .font(.system(size: 12, weight: .semibold))
+          .font(.system(size: 13, weight: .semibold))
           .lineLimit(1)
+          .offset(y: 5)
         HStack(alignment: config.hasCustomDigits ? .bottom : .lastTextBaseline, spacing: 2) {
           WidgetDigitNumber(
             value: config.liveMemorialDays,
             config: config,
-            digitHeight: 48,
-            fontSize: 50,
+            digitHeight: 49,
+            fontSize: 51,
             weight: .semibold,
             color: config.textColor,
             unit: "天",
-            unitFontSize: 14,
+            unitFontSize: 15,
             unitBottomPadding: 5
           )
           Spacer(minLength: 0)
           Text(dateLabel)
-            .font(.system(size: 10, weight: .medium))
+            .font(.system(size: 11, weight: .medium))
             .opacity(0.82)
         }
       }

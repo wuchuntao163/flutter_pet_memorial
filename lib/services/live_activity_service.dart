@@ -334,6 +334,8 @@ class LiveActivityService {
       }
       if (right != null && right.isNotEmpty) {
         await syncAsset(role: 'rightIcon', imagePath: _resolveAssetRef(right));
+      } else {
+        await clearAsset('rightIcon');
       }
     }
     if (template == 5) {
@@ -487,7 +489,7 @@ class LiveActivityService {
         prefs.getString('${prefix}_left_icon') ??
         prefs.getString('${prefix}_icon') ??
         '🌈';
-    final right = prefs.getString('${prefix}_right_icon') ?? '🔔';
+    final right = prefs.getString('${prefix}_right_icon') ?? '';
     return {
       'petId': '${AppCacheStore.instance.petId ?? ''}',
       'template': 6,

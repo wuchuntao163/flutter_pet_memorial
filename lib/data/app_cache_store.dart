@@ -55,7 +55,7 @@ class AppCacheStore extends ChangeNotifier {
     return value;
   }
 
-  /// 档案 type / pet_type：1 狗，2 猫
+  /// 档案 type / pet_type：1 狗，2 猫，3 自家生成
   int? get petTypeCode {
     final profile = petProfile;
     if (profile == null) return null;
@@ -65,6 +65,7 @@ class AppCacheStore extends ChangeNotifier {
     final text = raw.toString().trim().toLowerCase();
     if (text == 'dog' || text == '1') return 1;
     if (text == 'cat' || text == '2') return 2;
+    if (text == 'custom' || text == '3') return 3;
     return int.tryParse(text);
   }
 

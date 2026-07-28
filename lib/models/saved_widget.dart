@@ -34,4 +34,11 @@ class SavedWidget {
     'saved_at': savedAt.toIso8601String(),
     'settings': settings,
   };
+
+  /// 与桌面小组件分类一致：column>1，或模板 5/7 为中号
+  bool get isMediumSize {
+    final column = int.tryParse('${settings['widget_column'] ?? ''}') ?? 0;
+    if (column > 1) return true;
+    return template == 5 || template == 7;
+  }
 }

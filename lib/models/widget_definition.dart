@@ -9,6 +9,7 @@ class WidgetDefinition {
     required this.rowSpan,
     required this.columnSpan,
     this.defaultBackground = '',
+    this.defaultIcon = '',
     this.options = const {},
   });
 
@@ -21,6 +22,7 @@ class WidgetDefinition {
   final int rowSpan;
   final int columnSpan;
   final String defaultBackground;
+  final String defaultIcon;
   final Map<String, String> options;
 
   bool get isIsland => type == 2;
@@ -42,6 +44,7 @@ class WidgetDefinition {
       rowSpan: _asInt(json['widget_row'], fallback: 1).clamp(1, 20),
       columnSpan: _asInt(json['widget_column'], fallback: 1).clamp(1, 3),
       defaultBackground: '${json['default_bg'] ?? ''}'.trim(),
+      defaultIcon: '${json['default_icon'] ?? ''}'.trim(),
       options: options,
     );
   }
@@ -60,7 +63,10 @@ class WidgetDefinition {
       template: parsed.template == 0 ? template : parsed.template,
       rowSpan: parsed.rowSpan,
       columnSpan: parsed.columnSpan,
-      defaultBackground: parsed.defaultBackground,
+      defaultBackground: parsed.defaultBackground.isEmpty
+          ? defaultBackground
+          : parsed.defaultBackground,
+      defaultIcon: parsed.defaultIcon.isEmpty ? defaultIcon : parsed.defaultIcon,
       options: detailOptions,
     );
   }

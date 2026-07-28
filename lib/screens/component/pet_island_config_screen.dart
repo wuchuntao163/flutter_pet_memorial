@@ -11,6 +11,9 @@ import '../../utils/center_tip_util.dart';
 import '../../utils/island_image_util.dart';
 import '../../utils/island_success_dialog.dart';
 import '../../utils/pet_display_image.dart';
+import '../../utils/reselect_pet_util.dart';
+import '../../widgets/common/add_custom_pet_chip.dart';
+import '../../widgets/common/tutorial_action_button.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 
@@ -31,6 +34,9 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
   final List<String> _petImages = [];
   String? _cloverImage;
   int _selectedPet = 0;
+  /// 档案 type=3 表示已有自家生成虚拟形象
+  bool _hasCustomPet = false;
+  bool _petsReady = false;
   bool _enabled = false;
   bool _busy = false;
 
@@ -53,120 +59,145 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
       appBar: _buildAppBar(),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+            child: Column(
+              children: [
+                Center(child: _buildCompactIsland()),
+                const SizedBox(height: 14),
+                Center(child: _buildExpandedIsland()),
+              ],
+            ),
+          ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(child: _buildCompactIsland()),
-                  const SizedBox(height: 14),
-                  Center(child: _buildExpandedIsland()),
-                  const SizedBox(height: 28),
-                  if (widgetOptionEnabled(context, 'pet_select')) ...[
-                    Text(
-                      widgetOptionLabel(context, 'pet_select', '选择显示宠物'),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildPetPicker(),
-                  ],
-                  if (widgetOptionEnabled(context, 'custom_text')) ...[
-                    const SizedBox(height: 20),
-                    Text(
-                      widgetOptionLabel(context, 'custom_text', '编辑内容'),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _contentController,
-                      maxLength: 24,
-                      maxLines: 1,
-                      keyboardType: TextInputType.text,
-                      textInputAction: TextInputAction.done,
-                      onTapOutside: (_) =>
-                          FocusManager.instance.primaryFocus?.unfocus(),
-                      style: const TextStyle(fontSize: 13),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 14,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widgetOptionEnabled(context, 'pet_select')) ...[
+                      Text(
+                        widgetOptionLabel(context, 'pet_select', '选择显示宠物'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.borderLight,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildPetPicker(),
+                    ],
+                    if (widgetOptionEnabled(context, 'custom_text')) ...[
+                      const SizedBox(height: 20),
+                      Text(
+                        widgetOptionLabel(context, 'custom_text', '编辑内容'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _contentController,
+                        maxLength: 48,
+                        maxLines: 4,
+                        minLines: 1,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        onTapOutside: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        style: const TextStyle(fontSize: 13),
+                        decoration: InputDecoration(
+                          counterText: '',
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.borderLight,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.accent),
                           ),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.accent),
-                        ),
+                        onChanged: (_) => setState(() {}),
                       ),
-                      onChanged: (_) => setState(() {}),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
-          const Text(
-            '系统限制灵动岛后台最多保持8-12小时\n消失后请重新开启',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              height: 1.5,
-              fontSize: 11,
-              color: AppColors.textPlaceholder,
-            ),
-          ),
-          SafeArea(
-            top: false,
-            minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
-            child: SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: AppColors.avatarGenerateGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _busy ? null : _toggleIsland,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Center(
-                      child: _busy
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.accent,
-                              ),
-                            )
-                          : Text(
-                              _enabled ? '关闭灵动岛' : '开启灵动岛',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.accentDarker,
-                              ),
-                            ),
+          ColoredBox(
+            color: Colors.white,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.avatarGenerateGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _busy ? null : _toggleIsland,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Center(
+                            child: _busy
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.accent,
+                                    ),
+                                  )
+                                : Text(
+                                    _enabled ? '关闭灵动岛' : '开启灵动岛',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.accentDarker,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (MediaQuery.viewInsetsOf(context).bottom == 0) ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      '系统限制灵动岛后台最多保持8-12小时\n消失后请重新开启',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        height: 1.5,
+                        fontSize: 11,
+                        color: AppColors.textPlaceholder,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -232,74 +263,30 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
         ),
       ),
       actions: [
-        GestureDetector(
-          onTap: _showTutorial,
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 10,
-              top: AppLayout.memorialDetailTopPadding,
-            ),
-            child: SizedBox(
-              height: _headerContentHeight,
-              child: Center(
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFF0EC),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.question_mark,
-                        size: 13,
-                        color: AppColors.accent,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(top: 1),
-                        child: Text(
-                          '教程',
-                          style: TextStyle(
-                            height: 1,
-                            fontSize: 8,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+        TutorialActionButton(onTap: _showTutorial, height: _headerContentHeight),
       ],
     );
   }
 
   Widget _buildCompactIsland() {
     return Container(
-      width: 150,
-      height: 30,
+      width: kIslandCompactWidth,
+      height: kIslandCompactHeight,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.black,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _selectedPetImage(size: 20, circular: true),
+          _selectedPetImage(size: 26, circular: true),
           const Spacer(),
           if (_cloverImage != null && _cloverImage!.isNotEmpty)
             Image.network(
               _cloverImage!,
-              width: 20,
-              height: 20,
+              width: 26,
+              height: 26,
               fit: BoxFit.contain,
               errorBuilder: (_, _, _) => const SizedBox.shrink(),
             ),
@@ -312,25 +299,25 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
     return Container(
       width: kIslandPreviewCardWidth,
       height: kIslandPreviewCardHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.fromLTRB(30, 0, 18, 0),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFC5D6E2), Color(0xFFAFBDF1)],
         ),
         image: widgetDefaultBackgroundDecoration(context),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
-          _selectedPetImage(size: 48),
-          const SizedBox(width: 12),
+          _selectedPetImage(size: 66),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               _contentController.text,
-              maxLines: 2,
+              maxLines: 4,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 17,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
               ),
@@ -342,7 +329,7 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
   }
 
   Widget _buildPetPicker() {
-    if (_petImages.isEmpty) {
+    if (!_petsReady) {
       return const SizedBox(
         height: 66,
         child: Align(
@@ -354,13 +341,18 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
         ),
       );
     }
+    final showAdd = !_hasCustomPet;
+    final count = _petImages.length + (showAdd ? 1 : 0);
     return SizedBox(
       height: 66,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _petImages.length,
+        itemCount: count,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
+          if (showAdd && index == _petImages.length) {
+            return AddCustomPetChip(onTap: _openGenerateCustomPet);
+          }
           final selected = index == _selectedPet;
           return GestureDetector(
             onTap: () => setState(() => _selectedPet = index),
@@ -382,6 +374,10 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _openGenerateCustomPet() async {
+    await ReselectPetUtil.run(context, forAddCustomPet: true);
   }
 
   Widget _selectedPetImage({required double size, bool circular = false}) {
@@ -417,7 +413,8 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
 
     add(cache.liveActivityDogImageUrl);
     add(cache.liveActivityCatImageUrl);
-    if (PetDisplayImage.isCustomPet(cache.petProfile)) {
+    final hasCustom = PetDisplayImage.isCustomPet(cache.petProfile);
+    if (hasCustom) {
       final profile = await PetDisplayImage.resolveUrl();
       add(profile);
     }
@@ -426,6 +423,8 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
     final enabled = prefs.getBool(_enabledKey) ?? false;
     if (!mounted) return;
     setState(() {
+      _hasCustomPet = hasCustom;
+      _petsReady = true;
       _petImages
         ..clear()
         ..addAll(images.map(PetImageService.resolveUrl));

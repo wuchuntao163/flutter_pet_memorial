@@ -19,15 +19,23 @@ class ComponentPageScreen extends StatefulWidget {
 
 class _ComponentPageScreenState extends State<ComponentPageScreen> {
   int _selectedTab = 0;
+  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     final store = BannerStore.instance;
     if (!store.listLoaded && !store.isLoading) {
       store.fetchList();
     }
     WidgetStore.instance.fetchList(1);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -80,16 +88,53 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 22),
-                        child: _buildBanner(),
+                      Expanded(
+                        child: NestedScrollView(
+                          headerSliverBuilder: (context, _) => [
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                ),
+                                child: Column(
+                                  children: [
+                                    _buildBanner(),
+                                    const SizedBox(height: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SliverPersistentHeader(
+                              pinned: true,
+                              delegate: _PinnedTabsDelegate(
+                                height: 36,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 22,
+                                  ),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: _buildTabs(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          body: PageView(
+                            controller: _pageController,
+                            onPageChanged: (index) {
+                              if (_selectedTab != index) {
+                                setState(() => _selectedTab = index);
+                              }
+                              _ensureTabData(index);
+                            },
+                            children: [
+                              _buildWidgetContent(),
+                              _buildDynamicIslandContent(),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 14),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 22),
-                        child: _buildTabs(),
-                      ),
-                      Expanded(child: _buildCategoryContent()),
                     ],
                   ),
                 ),
@@ -106,10 +151,11 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
       children: [
         Row(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            _RemotePetIcon(url: catUrl),
-            const SizedBox(width: 0),
             _RemotePetIcon(url: dogUrl),
+            const SizedBox(width: 0),
+            _RemotePetIcon(url: catUrl),
           ],
         ),
         const Spacer(),
@@ -129,7 +175,7 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
               child: const Text(
                 '我的组件',
                 style: TextStyle(
-                  color: AppColors.textPlaceholder,
+                  color: AppColors.accent,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -168,9 +214,9 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
     );
   }
 
-  Widget _buildCategoryContent() {
-    if (_selectedTab == 1) return _buildDynamicIslandContent();
+  Widget _buildWidgetContent() {
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
         22,
         18,
@@ -192,15 +238,22 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
   Widget _buildDynamicIslandContent() {
     final store = WidgetStore.instance;
     if (store.isLoading(2) && store.items(2).isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: AppColors.accent,
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.only(top: 80, bottom: AppLayout.bottomNavBarInset),
+        children: const [
+          Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.accent,
+            ),
+          ),
+        ],
       );
     }
     if (store.items(2).isNotEmpty) {
       return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           22,
           18,
@@ -226,7 +279,10 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
         ],
       );
     }
-    return const SizedBox.shrink();
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.only(bottom: AppLayout.bottomNavBarInset),
+    );
   }
 
   Widget _buildApiWidgetGrid(int type) {
@@ -280,13 +336,50 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
     );
   }
 
-  void _selectTab(int index) {
-    if (_selectedTab != index) setState(() => _selectedTab = index);
+  void _ensureTabData(int index) {
     final type = index + 1;
     final store = WidgetStore.instance;
     if (store.items(type).isEmpty && !store.isLoading(type)) {
       store.fetchList(type, forceRefresh: true);
     }
+  }
+
+  void _selectTab(int index) {
+    if (_selectedTab == index) return;
+    setState(() => _selectedTab = index);
+    _ensureTabData(index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+  }
+}
+
+class _PinnedTabsDelegate extends SliverPersistentHeaderDelegate {
+  _PinnedTabsDelegate({required this.child, required this.height});
+
+  final Widget child;
+  final double height;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return ColoredBox(color: AppColors.bgPrimary, child: child);
+  }
+
+  @override
+  bool shouldRebuild(covariant _PinnedTabsDelegate oldDelegate) {
+    return height != oldDelegate.height || child != oldDelegate.child;
   }
 }
 

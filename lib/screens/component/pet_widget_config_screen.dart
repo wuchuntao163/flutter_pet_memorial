@@ -15,10 +15,12 @@ import '../../utils/app_permission_util.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/pet_display_image.dart';
 import '../../utils/pet_image_picker.dart';
+import '../../utils/reselect_pet_util.dart';
 import '../../utils/saving_overlay.dart';
+import '../../widgets/common/add_custom_pet_chip.dart';
+import '../../widgets/common/tutorial_action_button.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
-import 'transparent_wallpaper_setup_screen.dart';
 
 Future<Color?> showComponentColorPicker(
   BuildContext context, {
@@ -40,7 +42,7 @@ class PetWidgetConfigScreen extends StatefulWidget {
 }
 
 class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
-  static const _headerContentHeight = 52.0;
+  static const _headerContentHeight = 56.0;
   static const _petKey = 'component_pet_widget_pet';
   static const _backgroundImageKey = 'component_pet_widget_background_image';
   static const _backgroundModeKey = 'component_pet_widget_background_mode';
@@ -49,12 +51,15 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
   int _selectedPet = 1;
   Color _customColor = const Color(0xFF98CBF2);
   String? _selectedBackgroundImage;
+
   /// 相册上传后的网络地址（保存用）；预览优先本地路径避免闪色
   String? _selectedBackgroundRemoteUrl;
   bool _backgroundPrefsLoaded = false;
   bool _backgroundSelectionInitialized = false;
   bool _apiDetailMode = false;
   final List<String> _petImages = [];
+  /// 档案 type=3 表示已有自家生成虚拟形象
+  bool _hasCustomPet = false;
   final GlobalKey _previewBoundaryKey = GlobalKey();
 
   String? get _effectiveBackgroundImage {
@@ -170,23 +175,26 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
           child: SizedBox(
             height: _headerContentHeight,
             child: Stack(
+              clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
                 Text(
                   '我的宠物',
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
+                    height: 1.2,
                   ),
                 ),
                 Positioned(
-                  top: 39,
+                  top: 40,
                   child: Text(
                     '小号',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: AppColors.textTertiary,
+                      height: 1.2,
                     ),
                   ),
                 ),
@@ -195,116 +203,83 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
           ),
         ),
         actions: [
-          GestureDetector(
-            onTap: _showTutorial,
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                left: 10,
-                right: 10,
-                top: AppLayout.memorialDetailTopPadding,
-              ),
-              child: SizedBox(
-                height: _headerContentHeight,
-                child: Center(
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFFF0EC),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.question_mark,
-                          size: 13,
-                          color: AppColors.accent,
-                        ),
-                        Padding(
-                          padding: EdgeInsets.only(top: 1),
-                          child: Text(
-                            '教程',
-                            style: TextStyle(
-                              height: 1,
-                              fontSize: 8,
-                              color: AppColors.textTertiary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          TutorialActionButton(onTap: _showTutorial, height: _headerContentHeight),
         ],
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
+            child: Center(child: _buildPreview()),
+          ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(child: _buildPreview()),
-                  const SizedBox(height: 22),
-                  if (widgetOptionEnabled(context, 'pet_select')) ...[
-                    Text(
-                      widgetOptionLabel(context, 'pet_select', '选择显示宠物'),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widgetOptionEnabled(context, 'pet_select')) ...[
+                      Text(
+                        widgetOptionLabel(context, 'pet_select', '选择显示宠物'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildPetPicker(),
-                  ],
-                  if (widgetOptionEnabled(context, 'background')) ...[
-                    const SizedBox(height: 20),
-                    Text(
-                      widgetOptionLabel(context, 'background', '背景'),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                      const SizedBox(height: 16),
+                      _buildPetPicker(),
+                    ],
+                    if (widgetOptionEnabled(context, 'background')) ...[
+                      const SizedBox(height: 20),
+                      Text(
+                        widgetOptionLabel(context, 'background', '背景'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildBackgroundPicker(),
+                      const SizedBox(height: 12),
+                      _buildBackgroundPicker(),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
-          SafeArea(
-            top: false,
-            minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
-            child: SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: AppColors.avatarGenerateGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _save,
+          ColoredBox(
+            color: Colors.white,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
+              child: SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: AppColors.avatarGenerateGradient,
                     borderRadius: BorderRadius.circular(12),
-                    child: const Center(
-                      child: Text(
-                        '保存到我的组件',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.accentDarker,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _save,
+                      borderRadius: BorderRadius.circular(12),
+                      child: const Center(
+                        child: Text(
+                          '保存到我的组件',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accentDarker,
+                          ),
                         ),
                       ),
                     ),
@@ -353,13 +328,18 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
   }
 
   Widget _buildPetPicker() {
+    final showAdd = !_hasCustomPet;
+    final count = _petImages.length + (showAdd ? 1 : 0);
     return SizedBox(
       height: 66,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _petImages.length,
+        itemCount: count,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
+          if (showAdd && index == _petImages.length) {
+            return AddCustomPetChip(onTap: _openGenerateCustomPet);
+          }
           final selected = index == _selectedPet;
           return GestureDetector(
             onTap: () => setState(() => _selectedPet = index),
@@ -382,6 +362,10 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _openGenerateCustomPet() async {
+    await ReselectPetUtil.run(context, forAddCustomPet: true);
   }
 
   Widget _buildBackgroundPicker() {
@@ -579,10 +563,6 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
     final enabled = await LiveActivityService.instance.isEnabled();
     if (!mounted) return;
     await IosDesktopPetGuideDialog.show(context, liveActivityEnabled: enabled);
-    if (!mounted) return;
-    if (Platform.isIOS) {
-      await TransparentWallpaperSetupScreen.open(context);
-    }
   }
 
   Widget _petImage(String source) {
@@ -672,7 +652,8 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
 
     addImage(cache.defaultPetCatImageUrl);
     addImage(cache.defaultPetDogImageUrl);
-    if (PetDisplayImage.isCustomPet(cache.petProfile)) {
+    final hasCustom = PetDisplayImage.isCustomPet(cache.petProfile);
+    if (hasCustom) {
       final profileImage = PetDisplayImage.resolveRawSync();
       addImage(
         profileImage == null ? null : PetImageService.resolveUrl(profileImage),
@@ -680,6 +661,7 @@ class _PetWidgetConfigScreenState extends State<PetWidgetConfigScreen> {
     }
     if (!mounted) return;
     setState(() {
+      _hasCustomPet = hasCustom;
       _petImages
         ..clear()
         ..addAll(images);
@@ -728,10 +710,7 @@ class _ColorPickerDialog extends StatefulWidget {
   final Color initialColor;
   final String title;
 
-  const _ColorPickerDialog({
-    required this.initialColor,
-    this.title = '选择背景颜色',
-  });
+  const _ColorPickerDialog({required this.initialColor, this.title = '选择背景颜色'});
 
   @override
   State<_ColorPickerDialog> createState() => _ColorPickerDialogState();

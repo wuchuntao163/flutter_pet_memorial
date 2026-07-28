@@ -8,6 +8,7 @@ import '../../services/live_activity_service.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/island_image_util.dart';
 import '../../utils/island_success_dialog.dart';
+import '../../widgets/common/tutorial_action_button.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 import 'pet_widget_config_screen.dart' show showComponentColorPicker;
@@ -44,7 +45,7 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
   final _controller = TextEditingController(text: '笨猫真可爱 >.<');
   String? _imagePath;
   Color _textColor = Colors.white;
-  double _fontSize = 16;
+  double _fontSize = 17;
   bool _enabled = false;
   bool _busy = false;
 
@@ -67,117 +68,143 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
       appBar: _appBar(),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+            child: Column(
+              children: [
+                Center(child: _compactPreview()),
+                const SizedBox(height: 14),
+                Center(child: _expandedPreview()),
+              ],
+            ),
+          ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(child: _compactPreview()),
-                  const SizedBox(height: 14),
-                  Center(child: _expandedPreview()),
-                  const SizedBox(height: 28),
-                  if (widgetOptionEnabled(context, 'upload_image')) ...[
-                    _title(widgetOptionLabel(context, 'upload_image', '上传图片')),
-                    const SizedBox(height: 10),
-                    _albumButton(),
-                    const SizedBox(height: 18),
-                  ],
-                  if (widgetOptionEnabled(context, 'custom_text')) ...[
-                    _title(widgetOptionLabel(context, 'custom_text', '编辑内容')),
-                    const SizedBox(height: 9),
-                    TextField(
-                      controller: _controller,
-                      maxLength: 18,
-                      maxLines: 1,
-                      textInputAction: TextInputAction.done,
-                      style: const TextStyle(fontSize: 13),
-                      onTapOutside: (_) =>
-                          FocusManager.instance.primaryFocus?.unfocus(),
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 13,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.borderLight,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widgetOptionEnabled(context, 'upload_image')) ...[
+                      _title(widgetOptionLabel(context, 'upload_image', '上传图片')),
+                      const SizedBox(height: 10),
+                      _albumButton(),
+                      const SizedBox(height: 18),
+                    ],
+                    if (widgetOptionEnabled(context, 'custom_text')) ...[
+                      _title(widgetOptionLabel(context, 'custom_text', '编辑内容')),
+                      const SizedBox(height: 9),
+                      TextField(
+                        controller: _controller,
+                        maxLength: 48,
+                        maxLines: 4,
+                        minLines: 1,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        style: const TextStyle(fontSize: 13),
+                        onTapOutside: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          counterText: '',
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 13,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.borderLight,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.accent),
                           ),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.accent),
-                        ),
                       ),
-                    ),
-                    const SizedBox(height: 18),
+                      const SizedBox(height: 18),
+                    ],
+                    if (widgetOptionEnabled(context, 'text_color')) ...[
+                      _title(widgetOptionLabel(context, 'text_color', '选择文字颜色')),
+                      const SizedBox(height: 10),
+                      _colorPicker(),
+                      const SizedBox(height: 20),
+                    ],
+                    if (widgetOptionEnabled(context, 'text_size')) ...[
+                      _title(widgetOptionLabel(context, 'text_size', '文字大小')),
+                      const SizedBox(height: 4),
+                      _fontSizeSlider(),
+                    ],
                   ],
-                  if (widgetOptionEnabled(context, 'text_color')) ...[
-                    _title(widgetOptionLabel(context, 'text_color', '选择文字颜色')),
-                    const SizedBox(height: 10),
-                    _colorPicker(),
-                    const SizedBox(height: 20),
-                  ],
-                  if (widgetOptionEnabled(context, 'text_size')) ...[
-                    _title(widgetOptionLabel(context, 'text_size', '文字大小')),
-                    const SizedBox(height: 4),
-                    _fontSizeSlider(),
-                  ],
-                ],
+                ),
               ),
             ),
           ),
-          const Text(
-            '系统限制灵动岛后台最多保持8-12小时\n消失后请重新开启',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              height: 1.5,
-              fontSize: 11,
-              color: AppColors.textPlaceholder,
-            ),
-          ),
-          SafeArea(
-            top: false,
-            minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
-            child: SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: AppColors.avatarGenerateGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _busy ? null : _toggle,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Center(
-                      child: _busy
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.accent,
-                              ),
-                            )
-                          : Text(
-                              _enabled ? '关闭灵动岛' : '开启灵动岛',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.accentDarker,
-                              ),
-                            ),
+          ColoredBox(
+            color: Colors.white,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.avatarGenerateGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _busy ? null : _toggle,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Center(
+                            child: _busy
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.accent,
+                                    ),
+                                  )
+                                : Text(
+                                    _enabled ? '关闭灵动岛' : '开启灵动岛',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.accentDarker,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (MediaQuery.viewInsetsOf(context).bottom == 0) ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      '系统限制灵动岛后台最多保持8-12小时\n消失后请重新开启',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        height: 1.5,
+                        fontSize: 11,
+                        color: AppColors.textPlaceholder,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -243,90 +270,49 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
         ),
       ),
       actions: [
-        GestureDetector(
+        TutorialActionButton(
           onTap: () => IosDesktopPetGuideDialog.show(
             context,
             liveActivityEnabled: false,
           ),
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 10,
-              top: AppLayout.memorialDetailTopPadding,
-            ),
-            child: SizedBox(
-              height: _headerHeight,
-              child: Center(
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFF0EC),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.question_mark,
-                        size: 13,
-                        color: AppColors.accent,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(top: 1),
-                        child: Text(
-                          '教程',
-                          style: TextStyle(
-                            height: 1,
-                            fontSize: 8,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          height: _headerHeight,
         ),
       ],
     );
   }
 
   Widget _compactPreview() => Container(
-    width: 150,
-    height: 30,
-    padding: const EdgeInsets.symmetric(horizontal: 3),
+    width: kIslandCompactWidth,
+    height: kIslandCompactHeight,
+    padding: const EdgeInsets.symmetric(horizontal: 6),
     decoration: BoxDecoration(
       color: Colors.black,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
     ),
     alignment: Alignment.centerLeft,
     // 仅相册上传图在灵动岛预览里圆形
-    child: _image(26, circular: _imagePath != null),
+    child: _image(30, circular: _imagePath != null),
   );
 
   Widget _expandedPreview() => Container(
     width: kIslandPreviewCardWidth,
     height: kIslandPreviewCardHeight,
-    padding: const EdgeInsets.fromLTRB(18, 0, 12, 0),
+    padding: const EdgeInsets.fromLTRB(30, 0, 18, 0),
     decoration: BoxDecoration(
       gradient: const LinearGradient(
         colors: [Color(0xFFFFC7B9), Color(0xFFFFD29B)],
       ),
       image: widgetDefaultBackgroundDecoration(context),
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
     ),
     child: Row(
       children: [
-        _image(44, circular: false),
-        const SizedBox(width: 12),
+        _image(66, circular: false),
+        const SizedBox(width: 14),
         Expanded(
           child: Text(
             _controller.text.trim().isEmpty ? '请输入内容' : _controller.text,
-            maxLines: 1,
+            maxLines: 4,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: _fontSize,
@@ -340,7 +326,11 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
   );
 
   Widget _image(double size, {bool circular = false}) {
-    return islandCardSideImage(_imagePath, size: size, circular: circular);
+    return islandCardSideImage(
+      _effectivePhotoPath,
+      size: size,
+      circular: circular,
+    );
   }
 
   Widget _title(String text) => Text(
@@ -496,6 +486,7 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
     final color = await showComponentColorPicker(
       context,
       initialColor: _textColor,
+      title: '选择文字颜色',
     );
     if (color != null && mounted) {
       setState(() => _textColor = color);
@@ -526,10 +517,14 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
     );
   }
 
-  /// 与预览一致：有相册用相册，否则用默认图
+  /// 与预览一致：有相册用相册，否则用详情 default_icon 图，再否则本地兜底图
   String get _effectivePhotoPath {
     final path = _imagePath?.trim() ?? '';
-    return path.isNotEmpty ? path : kPhotoIslandDefaultImage;
+    if (path.isNotEmpty) return path;
+    final apiIcon =
+        WidgetDetailScope.maybeOf(context)?.defaultIcon.trim() ?? '';
+    if (islandDefaultIconIsImage(apiIcon)) return apiIcon;
+    return kPhotoIslandDefaultImage;
   }
 
   Future<void> _pickImage() async {
@@ -546,9 +541,10 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
     if (!mounted) return;
     setState(() {
       _controller.text = prefs.getString(_contentKey) ?? '笨猫真可爱 >.<';
-      _imagePath = prefs.getString(_imageKey);
+      // 每次进入用详情 default_icon，不恢复本地相册图
+      _imagePath = null;
       _textColor = Color(prefs.getInt(_colorKey) ?? Colors.white.toARGB32());
-      _fontSize = prefs.getDouble(_sizeKey) ?? 16;
+      _fontSize = prefs.getDouble(_sizeKey) ?? 17;
       _enabled = prefs.getBool(_enabledKey) ?? false;
     });
   }

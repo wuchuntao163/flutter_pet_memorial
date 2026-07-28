@@ -20,12 +20,13 @@ import '../../utils/app_permission_util.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../utils/saving_overlay.dart';
+import '../../widgets/common/add_memorial_chip.dart';
 import '../../widgets/common/day_number_display.dart';
 import '../../widgets/common/memorial_type_info.dart';
+import '../../widgets/common/tutorial_action_button.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 import 'pet_widget_config_screen.dart' show showComponentColorPicker;
-import 'transparent_wallpaper_setup_screen.dart';
 
 enum CountdownWidgetVariant {
   photo,
@@ -48,17 +49,19 @@ class CountdownWidgetConfigScreen extends StatefulWidget {
 
 class _CountdownWidgetConfigScreenState
     extends State<CountdownWidgetConfigScreen> {
-  static const _headerContentHeight = 52.0;
+  static const _headerContentHeight = 56.0;
 
   String? _selectedMemorialId;
-  final Set<String> _selectedMemorialIds = {};
+  final List<String> _selectedMemorialIds = [];
   String _selectedFontStyleId = FontStyleConfig.normalStyleId;
   Color _textColor = Colors.white;
   Color _multiTitleTextColor = Colors.black;
   Color _backgroundColor = const Color(0xFF98CBF2);
   String? _backgroundImage;
+
   /// 相册上传后的网络地址（与预览同源；保存优先用它）
   String? _backgroundRemoteUrl;
+
   /// 用户点了背景色盘后为 true，避免仍被接口 defaultBackground 盖住
   bool _useSolidBackground = false;
   bool _backgroundReady = false;
@@ -78,7 +81,7 @@ class _CountdownWidgetConfigScreenState
     _hasSelectedTextColor = true;
   }
 
-  /// 默认勾选纪念列表前 N 条（最多 3 条）
+  /// 默认勾选纪念列表前 N 条（最多 3 条）；已选顺序按框选顺序保留
   void _syncDefaultMultiSelection() {
     if (!_isMulti || !MemorialStore.instance.listLoaded) return;
     final days = MemorialStore.instance.items;
@@ -87,6 +90,20 @@ class _CountdownWidgetConfigScreenState
     if (_selectedMemorialIds.isEmpty && days.isNotEmpty) {
       _selectedMemorialIds.addAll(days.take(3).map((item) => item.id));
     }
+  }
+
+  /// 按框选顺序取已选纪念日（最多 3 条）
+  List<MemorialDay> _selectedMemorialsInOrder() {
+    final byId = {
+      for (final item in MemorialStore.instance.items) item.id: item,
+    };
+    final out = <MemorialDay>[];
+    for (final id in _selectedMemorialIds) {
+      final item = byId[id];
+      if (item != null) out.add(item);
+      if (out.length >= 3) break;
+    }
+    return out;
   }
 
   String? get _effectiveBackgroundImage {
@@ -126,7 +143,7 @@ class _CountdownWidgetConfigScreenState
     CountdownWidgetVariant.simple => '简约',
     CountdownWidgetVariant.medium => '中号',
     CountdownWidgetVariant.multiSmall => '多纪念日',
-    CountdownWidgetVariant.multiMedium => '生日倒计时',
+    CountdownWidgetVariant.multiMedium => '列表',
     CountdownWidgetVariant.calendar => '波点日历',
   };
 
@@ -262,169 +279,149 @@ class _CountdownWidgetConfigScreenState
       appBar: _buildAppBar(),
       body: Column(
         children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: RepaintBoundary(
-                      key: _previewBoundaryKey,
-                      child: _buildPreview(),
-                    ),
-                  ),
-                  if (!_isCalendar &&
-                      widgetOptionEnabled(context, 'anniversary_select')) ...[
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Text(
-                          widgetOptionLabel(
-                            context,
-                            'anniversary_select',
-                            '选择纪念日事项',
-                          ),
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const Spacer(),
-                        InkWell(
-                          onTap: () => context.push(AppRoutes.memorialAdd),
-                          borderRadius: BorderRadius.circular(7),
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: AppColors.bgInput,
-                              borderRadius: BorderRadius.circular(7),
-                            ),
-                            child: const Icon(
-                              Icons.add,
-                              size: 17,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    _buildMemorialPicker(),
-                  ],
-                  if (!_apiDetailMode && !_isMulti) ...[
-                    const SizedBox(height: 18),
-                    const Text(
-                      '文字样式',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildFontPicker(),
-                  ],
-                  if (_apiDetailMode &&
-                      (widgetOptionEnabled(
-                            context,
-                            'text_style',
-                            fallback: false,
-                          ) ||
-                          widgetOptionEnabled(
-                            context,
-                            'text_color',
-                            fallback: false,
-                          ))) ...[
-                    const SizedBox(height: 18),
-                    Text(
-                      widgetOptionLabel(
-                        context,
-                        widgetOptionEnabled(
-                              context,
-                              'text_style',
-                              fallback: false,
-                            )
-                            ? 'text_style'
-                            : 'text_color',
-                        widgetOptionEnabled(
-                              context,
-                              'text_style',
-                              fallback: false,
-                            )
-                            ? '文字样式'
-                            : '选择文字颜色',
-                      ),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildTextStylePicker(),
-                  ],
-                  if (_apiDetailMode &&
-                      widgetOptionEnabled(
-                        context,
-                        'number_style',
-                        fallback: false,
-                      )) ...[
-                    const SizedBox(height: 18),
-                    Text(
-                      widgetOptionLabel(context, 'number_style', '数字样式'),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildFontPicker(includeColorPalette: false),
-                  ],
-                  if (widgetOptionEnabled(context, 'background')) ...[
-                    const SizedBox(height: 18),
-                    Text(
-                      widgetOptionLabel(context, 'background', '背景'),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildBackgroundPicker(),
-                  ],
-                ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
+            child: Center(
+              child: RepaintBoundary(
+                key: _previewBoundaryKey,
+                child: _buildPreview(),
               ),
             ),
           ),
-          SafeArea(
-            top: false,
-            minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
-            child: SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: AppColors.avatarGenerateGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _save,
-                    borderRadius: BorderRadius.circular(12),
-                    child: const Center(
-                      child: Text(
-                        '保存到我的组件',
+          Expanded(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!_isCalendar &&
+                        widgetOptionEnabled(context, 'anniversary_select')) ...[
+                      _buildAnniversarySelectHeader(),
+                      if (MemorialStore.instance.items.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        _buildMemorialPicker(),
+                      ],
+                    ],
+                    if (!_apiDetailMode && !_isMulti) ...[
+                      const SizedBox(height: 18),
+                      const Text(
+                        '文字样式',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.accentDarker,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildFontPicker(),
+                    ],
+                    if (_apiDetailMode &&
+                        (widgetOptionEnabled(
+                              context,
+                              'text_style',
+                              fallback: false,
+                            ) ||
+                            widgetOptionEnabled(
+                              context,
+                              'text_color',
+                              fallback: false,
+                            ))) ...[
+                      const SizedBox(height: 18),
+                      Text(
+                        widgetOptionLabel(
+                          context,
+                          widgetOptionEnabled(
+                                context,
+                                'text_style',
+                                fallback: false,
+                              )
+                              ? 'text_style'
+                              : 'text_color',
+                          widgetOptionEnabled(
+                                context,
+                                'text_style',
+                                fallback: false,
+                              )
+                              ? '文字样式'
+                              : '选择文字颜色',
+                        ),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildTextStylePicker(),
+                    ],
+                    if (_apiDetailMode &&
+                        widgetOptionEnabled(
+                          context,
+                          'number_style',
+                          fallback: false,
+                        )) ...[
+                      const SizedBox(height: 18),
+                      Text(
+                        widgetOptionLabel(context, 'number_style', '数字样式'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildFontPicker(includeColorPalette: false),
+                    ],
+                    if (widgetOptionEnabled(context, 'background')) ...[
+                      const SizedBox(height: 18),
+                      Text(
+                        widgetOptionLabel(context, 'background', '背景'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildBackgroundPicker(),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          ColoredBox(
+            color: Colors.white,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
+              child: SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: AppColors.avatarGenerateGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _save,
+                      borderRadius: BorderRadius.circular(12),
+                      child: const Center(
+                        child: Text(
+                          '保存到我的组件',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accentDarker,
+                          ),
                         ),
                       ),
                     ),
@@ -483,23 +480,26 @@ class _CountdownWidgetConfigScreenState
         child: SizedBox(
           height: _headerContentHeight,
           child: Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
               Text(
                 _title,
                 style: const TextStyle(
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
+                  height: 1.2,
                 ),
               ),
               Positioned(
-                top: 39,
+                top: 40,
                 child: Text(
                   _isMedium ? '中号' : '小号',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: AppColors.textTertiary,
+                    height: 1.2,
                   ),
                 ),
               ),
@@ -508,51 +508,7 @@ class _CountdownWidgetConfigScreenState
         ),
       ),
       actions: [
-        GestureDetector(
-          onTap: _showTutorial,
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 10,
-              top: AppLayout.memorialDetailTopPadding,
-            ),
-            child: SizedBox(
-              height: _headerContentHeight,
-              child: Center(
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFF0EC),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.question_mark,
-                        size: 13,
-                        color: AppColors.accent,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(top: 1),
-                        child: Text(
-                          '教程',
-                          style: TextStyle(
-                            height: 1,
-                            fontSize: 8,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+        TutorialActionButton(onTap: _showTutorial, height: _headerContentHeight),
       ],
     );
   }
@@ -732,55 +688,69 @@ class _CountdownWidgetConfigScreenState
       child: SizedBox(
         width: 132,
         height: 132,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            _previewBackgroundLayer(
-              width: 132,
-              height: 132,
-              fallback: CustomPaint(
-                painter: _DotPatternPainter(
-                  color: _textColor.withValues(alpha: 0.12),
-                ),
-              ),
-            ),
-            Column(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            const dayBoxH = 70.0;
+            const gap = 6.0;
+            final dayTop = (constraints.maxHeight - dayBoxH) / 2;
+            return Stack(
+              fit: StackFit.expand,
               children: [
-                SizedBox(
-                  height: 29,
-                  child: Center(
-                    child: Text(
-                      months[now.month - 1],
-                      style: TextStyle(
-                        fontSize: 13,
-                        // 未选文字样式时白色；选中后与文字色同步
-                        color: _hasSelectedTextColor
-                            ? _textColor
-                            : Colors.white,
+                _previewBackgroundLayer(
+                  width: 132,
+                  height: 132,
+                  fallback: CustomPaint(
+                    painter: _DotPatternPainter(
+                      color: _textColor.withValues(alpha: 0.12),
+                    ),
+                  ),
+                ),
+                // 表头黑色条固定在顶部
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: ColoredBox(
+                    color: Colors.black,
+                    child: SizedBox(
+                      height: 31,
+                      width: double.infinity,
+                      child: Center(
+                        child: Text(
+                          months[now.month - 1],
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildCalendarDay(now.day),
-                      const SizedBox(height: 2),
-                      Text(
-                        weekdays[now.weekday - 1],
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: _textColor,
-                        ),
-                      ),
-                    ],
+                // 天数按整卡高度（含黑色表头）垂直居中
+                Positioned(
+                  top: dayTop,
+                  left: 0,
+                  right: 0,
+                  height: dayBoxH,
+                  child: Center(child: _buildCalendarDay(now.day)),
+                ),
+                Positioned(
+                  top: dayTop + dayBoxH + gap,
+                  left: 0,
+                  right: 0,
+                  child: Text(
+                    weekdays[now.weekday - 1],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: _textColor,
+                    ),
                   ),
                 ),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -788,16 +758,16 @@ class _CountdownWidgetConfigScreenState
 
   Widget _buildCalendarDay(int day) {
     return SizedBox(
-      width: 90,
-      height: 53,
+      width: 106,
+      height: 70,
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: DayNumberDisplay(
           value: day,
           fontStyleId: _selectedFontStyleId,
-          digitHeight: 50,
+          digitHeight: 67,
           textStyle: TextStyle(
-            fontSize: 48,
+            fontSize: 65,
             fontWeight: FontWeight.w700,
             color: _textColor,
           ),
@@ -807,12 +777,12 @@ class _CountdownWidgetConfigScreenState
   }
 
   Widget _buildMultiPreview() {
-    final items = MemorialStore.instance.items
-        .where((item) => _selectedMemorialIds.contains(item.id))
-        .take(3)
-        .toList();
+    final items = _selectedMemorialsInOrder();
     final width = _isMedium ? 280.0 : 132.0;
-    final height = _isMedium ? 124.0 : 132.0;
+    // 中号三行更高，预览台同步加高避免溢出
+    final height = _isMedium ? 148.0 : 132.0;
+    final padding = _isMedium ? 12.0 : 8.0;
+    final rowGap = _isMedium ? 4.0 : 4.0;
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: SizedBox(
@@ -823,14 +793,13 @@ class _CountdownWidgetConfigScreenState
           children: [
             _previewBackgroundLayer(width: width, height: height),
             Padding(
-              padding: EdgeInsets.all(_isMedium ? 16 : 8),
+              padding: EdgeInsets.all(padding),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   for (var index = 0; index < items.length; index++) ...[
                     _buildMultiPreviewRow(items[index]),
-                    if (index != items.length - 1)
-                      SizedBox(height: _isMedium ? 5 : 6),
+                    if (index != items.length - 1) SizedBox(height: rowGap),
                   ],
                 ],
               ),
@@ -849,63 +818,85 @@ class _CountdownWidgetConfigScreenState
     final badgeColor = MemorialTypeInfo.daysBackground(item);
     final badgeText = MemorialTypeInfo.daysText(item);
     final typeLabel = MemorialTypeInfo.label(item);
-    return Container(
-      height: _isMedium ? 29 : 32,
-      padding: const EdgeInsets.only(right: 7),
-      decoration: BoxDecoration(
-        // 名称区域：不透明白底
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: _isMedium ? 54 : 47,
-            height: double.infinity,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: badgeColor,
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(8),
-              ),
-            ),
-            child: Text(
-              '$days天',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: badgeText,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: _isMedium ? 12 : 11,
-                fontWeight: FontWeight.w600,
-                color: _multiTitleTextColor,
-              ),
-            ),
-          ),
-          if (_isMedium) ...[
-            const SizedBox(width: 4),
+    final rowHeight = _isMedium ? 36.0 : 32.0;
+    final titleSize = _isMedium ? 14.0 : 11.0;
+    final daysSize = _isMedium ? 14.0 : 12.0;
+    // 不用 height:1，否则中文顶部笔画（如「家」「方」的点）会被裁切
+    final textStyle = TextStyle(
+      fontSize: titleSize,
+      fontWeight: FontWeight.w600,
+      color: _multiTitleTextColor,
+      height: 1.2,
+    );
+    final daysStyle = TextStyle(
+      fontSize: daysSize,
+      fontWeight: FontWeight.w700,
+      color: badgeText,
+      height: 1.2,
+    );
+    return SizedBox(
+      height: rowHeight,
+      child: Container(
+        padding: const EdgeInsets.only(right: 7),
+        clipBehavior: Clip.hardEdge,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              width: _isMedium ? 58 : 47,
+              height: double.infinity,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: badgeColor,
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(8),
+                ),
               ),
               child: Text(
-                typeLabel,
-                style: TextStyle(fontSize: 8, color: badgeText),
+                '$days天',
+                textAlign: TextAlign.center,
+                style: daysStyle,
               ),
             ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  item.title,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: textStyle,
+                ),
+              ),
+            ),
+            if (_isMedium && typeLabel.isNotEmpty) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                alignment: Alignment.center,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  typeLabel,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: badgeText,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -1015,26 +1006,16 @@ class _CountdownWidgetConfigScreenState
 
   Widget _buildPhotoHeader() {
     final memorial = _selectedMemorial;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Flexible(
-          child: Text(
-            memorial?.title ?? '纪念日',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: _textColor,
-            ),
-          ),
-        ),
-        if (memorial != null) ...[
-          const SizedBox(width: 3),
-          MemorialTypeInfo.icon(memorial, size: 14, color: _textColor),
-        ],
-      ],
+    return Text(
+      memorial?.title ?? '纪念日',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: _textColor,
+      ),
     );
   }
 
@@ -1059,6 +1040,38 @@ class _CountdownWidgetConfigScreenState
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '${date.year}-$month-$day';
+  }
+
+  Widget _buildAnniversarySelectHeader() {
+    final hasItems = MemorialStore.instance.items.isNotEmpty;
+    final title = Text(
+      widgetOptionLabel(context, 'anniversary_select', '选择纪念日事项'),
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textSecondary,
+      ),
+    );
+    final addButton = AddMemorialChip(
+      size: hasItems ? 27 : 40,
+      onTap: () => context.push(AppRoutes.memorialAdd),
+    );
+    if (hasItems) {
+      return Row(
+        children: [
+          Expanded(child: title),
+          addButton,
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        title,
+        const SizedBox(height: 10),
+        addButton,
+      ],
+    );
   }
 
   Widget _buildMemorialPicker() {
@@ -1425,20 +1438,14 @@ class _CountdownWidgetConfigScreenState
   }
 
   Future<void> _pickTextColor() async {
-    final color = await _pickColor(
-      _textColor,
-      title: '选择文字颜色',
-    );
+    final color = await _pickColor(_textColor, title: '选择文字颜色');
     if (color != null && mounted) {
       setState(() => _applyOverallTextColor(color));
     }
   }
 
   Future<void> _pickBackgroundColor() async {
-    final color = await _pickColor(
-      _backgroundColor,
-      title: '选择背景颜色',
-    );
+    final color = await _pickColor(_backgroundColor, title: '选择背景颜色');
     if (color != null && mounted) {
       setState(() {
         _backgroundColor = color;
@@ -1534,11 +1541,6 @@ class _CountdownWidgetConfigScreenState
     final enabled = await LiveActivityService.instance.isEnabled();
     if (!mounted) return;
     await IosDesktopPetGuideDialog.show(context, liveActivityEnabled: enabled);
-    if (!mounted) return;
-    // 全版本均用壁纸裁切实现桌面假透明
-    if (Platform.isIOS) {
-      await TransparentWallpaperSetupScreen.open(context);
-    }
   }
 
   Future<void> _save() async {
@@ -1560,7 +1562,7 @@ class _CountdownWidgetConfigScreenState
           if (_isMulti)
             prefs.setStringList(
               '${_prefsPrefix}_memorials',
-              _selectedMemorialIds.toList(),
+              List<String>.from(_selectedMemorialIds),
             )
           else if (_selectedMemorialId == null)
             prefs.remove('${_prefsPrefix}_memorial')
@@ -1588,29 +1590,25 @@ class _CountdownWidgetConfigScreenState
           definition,
           settings: {
             'memorial_id': _selectedMemorialId ?? '',
-            'memorial_ids': _selectedMemorialIds.toList(),
+            'memorial_ids': List<String>.from(_selectedMemorialIds),
             'memorial_items': jsonEncode(
-              _selectedMemorialIds.isEmpty
-                  ? <Map<String, dynamic>>[]
-                  : MemorialStore.instance.items
-                        .where((item) => _selectedMemorialIds.contains(item.id))
-                        .take(3)
-                        .map(
-                          (item) => {
-                            'id': item.id,
-                            'title': item.title,
-                            'date': item.date.toIso8601String(),
-                            'days': '${item.displayDayCount}',
-                            'badge_bg': MemorialTypeInfo.daysBackground(
-                              item,
-                            ).toARGB32(),
-                            'badge_text': MemorialTypeInfo.daysText(
-                              item,
-                            ).toARGB32(),
-                            'type_label': MemorialTypeInfo.label(item),
-                          },
-                        )
-                        .toList(),
+              _selectedMemorialsInOrder()
+                  .map(
+                    (item) => {
+                      'id': item.id,
+                      'title': item.title,
+                      'date': item.date.toIso8601String(),
+                      'days': '${item.displayDayCount}',
+                      'badge_bg': MemorialTypeInfo.daysBackground(
+                        item,
+                      ).toARGB32(),
+                      'badge_text': MemorialTypeInfo.daysText(
+                        item,
+                      ).toARGB32(),
+                      'type_label': MemorialTypeInfo.label(item),
+                    },
+                  )
+                  .toList(),
             ),
             'memorial_title': memorial?.title ?? '',
             'memorial_days': memorial?.displayDayCount ?? 0,

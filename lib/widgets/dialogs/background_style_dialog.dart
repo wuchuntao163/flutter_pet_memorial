@@ -88,6 +88,7 @@ class _BackgroundStyleDialogState extends State<BackgroundStyleDialog> {
       final created = await BackgroundStore.instance.uploadCustomBackground(
         localPath: path,
         name: tr('style.custom_background'),
+        addToLibrary: true,
       );
       if (!mounted) return;
       if (created != null) {

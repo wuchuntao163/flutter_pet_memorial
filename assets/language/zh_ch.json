@@ -68,7 +68,7 @@
     "widget_step2_title": "2、搜索小组件",
     "widget_step2_body": "搜索【哈基米纪念日】，选择小组件大小，添加小组件到桌面即可",
     "island_step1_title": "1、开启灵动岛",
-    "island_step1_body": "打开下方开关，即可在灵动岛和锁屏显示萌宠",
+    "island_step1_body": "进入对应灵动岛详情页，点击底部【开启灵动岛】即可在灵动岛和锁屏显示",
     "island_step2_title": "2、检查系统设置",
     "island_step2_body": "若无法显示，请前往 iOS 设置 → 本应用，开启「实时活动」"
   },
@@ -93,16 +93,16 @@
   },
   "feedback": {
     "name_label": "姓名",
-    "name_hint": "请输入姓名",
-    "name_required": "请输入姓名",
-    "phone_label": "手机号",
-    "phone_hint": "请输入手机号",
-    "phone_required": "请输入手机号",
+    "name_hint": "请输入您的姓名",
+    "name_required": "请输入您的姓名",
+    "phone_label": "联系方式",
+    "phone_hint": "请输入您的联系方式",
+    "phone_required": "请输入您的联系方式",
     "phone_invalid": "请输入正确的手机号",
     "content_label": "反馈内容",
-    "content_hint": "请描述你的问题或建议",
-    "content_required": "请输入反馈内容",
-    "images_label": "图片（选填）",
+    "content_hint": "请描述您的问题或建议",
+    "content_required": "请描述您的问题或建议",
+    "images_label": "上传图片 ({count}/3)",
     "images_hint": "最多上传 3 张",
     "images_limit": "最多只能上传 3 张图片",
     "submit": "提交反馈",
@@ -120,7 +120,9 @@
   },
   "reselect": {
     "title": "重新选择宠物",
-    "message": "确定要重新选择宠物吗？这将清除当前宠物的所有数据。"
+    "message": "确定要重新选择宠物吗？这将清除当前宠物的所有数据。",
+    "add_custom_title": "添加自家宠物",
+    "add_custom_message": "添加自家宠物将清除当前宠物的所有数据，是否继续？"
   },
   "pet_type": {
     "title": "哈基米纪念日",

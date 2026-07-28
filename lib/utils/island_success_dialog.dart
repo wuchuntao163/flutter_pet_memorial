@@ -22,9 +22,9 @@ Future<void> showIslandSuccessDialog(BuildContext context) async {
       elevation: 0,
       child: UnconstrainedBox(
         child: Container(
-          width: 130,
-          height: 130,
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 13),
+          width: 152,
+          height: 152,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(32),
@@ -32,13 +32,14 @@ Future<void> showIslandSuccessDialog(BuildContext context) async {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // 原图 320×183，按比例显示；上下留白使弹窗呈正方形
               Image.asset(
                 'assets/images/shimajima.png',
-                width: 74,
-                height: 74,
+                width: 120,
+                height: 69,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 8),
               const Text(
                 '已上岛',
                 style: TextStyle(

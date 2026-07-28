@@ -1527,6 +1527,7 @@
             "is_show": 1,
             "template":1,
             "default_bg":"https://example.com/image.png",
+            "default_icon":"",
         },
         "options": {
             "pet_select": "宠物选择",

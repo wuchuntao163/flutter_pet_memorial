@@ -15,11 +15,16 @@ import '../../data/widget_store.dart';
 import '../../models/font_style_config.dart';
 import '../../models/memorial_day.dart';
 import '../../models/widget_definition.dart';
+import '../../router/app_routes.dart';
 import '../../services/pet_image_service.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/island_image_util.dart';
 import '../../utils/pet_display_image.dart';
 import '../../utils/pet_image_picker.dart';
+import '../../utils/reselect_pet_util.dart';
 import '../../utils/saving_overlay.dart';
+import '../../widgets/common/add_memorial_chip.dart';
+import '../../widgets/common/add_custom_pet_chip.dart';
 import '../../widgets/common/day_number_display.dart';
 import '../../widgets/common/widget_detail_scope.dart';
 import 'pet_widget_config_screen.dart';
@@ -50,6 +55,8 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
   WidgetDefinition? _detail;
   final _petImages = <String>[];
   int _selectedPet = 0;
+  /// 档案 type=3 表示已有自家生成虚拟形象
+  bool _hasCustomPet = false;
   String? _selectedMemorialId;
   String _fontStyleId = FontStyleConfig.normalStyleId;
   Color _textColor = Colors.white;
@@ -168,50 +175,62 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
       appBar: _appBar(item.title),
       body: Column(
         children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: RepaintBoundary(
-                      key: _previewBoundaryKey,
-                      child: _buildTemplatePreview(item),
-                    ),
-                  ),
-                  const SizedBox(height: 26),
-                  for (final key in item.config) ...[
-                    _buildOption(item, key),
-                    const SizedBox(height: 18),
-                  ],
-                ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
+            child: Center(
+              child: RepaintBoundary(
+                key: _previewBoundaryKey,
+                child: _buildTemplatePreview(item),
               ),
             ),
           ),
-          SafeArea(
-            top: false,
-            minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
-            child: SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: AppColors.avatarGenerateGradient,
-                  borderRadius: BorderRadius.circular(12),
+          Expanded(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final key in item.config) ...[
+                      _buildOption(item, key),
+                      const SizedBox(height: 18),
+                    ],
+                  ],
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _save,
+              ),
+            ),
+          ),
+          ColoredBox(
+            color: Colors.white,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(46, 12, 46, 18),
+              child: SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: AppColors.avatarGenerateGradient,
                     borderRadius: BorderRadius.circular(12),
-                    child: Center(
-                      child: Text(
-                        item.isIsland ? '开启灵动岛' : '保存到我的组件',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.accentDarker,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _save,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Center(
+                        child: Text(
+                          item.isIsland ? '开启灵动岛' : '保存到我的组件',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accentDarker,
+                          ),
                         ),
                       ),
                     ),
@@ -287,6 +306,9 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
   }
 
   Widget _buildOption(WidgetDefinition item, String key) {
+    if (key == 'anniversary_select') {
+      return _anniversarySelectOption(item);
+    }
     final label = item.optionLabel(key);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,7 +324,6 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
         const SizedBox(height: 10),
         switch (key) {
           'pet_select' => _petPicker(),
-          'anniversary_select' => _memorialPicker(),
           'text_style' || 'text_color' => _colorPicker(),
           'number_style' => _fontPicker(),
           'background' => _backgroundPicker(item.type),
@@ -317,6 +338,43 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
     );
   }
 
+  Widget _anniversarySelectOption(WidgetDefinition item) {
+    final hasItems = MemorialStore.instance.items.isNotEmpty;
+    final title = Text(
+      item.optionLabel('anniversary_select'),
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textSecondary,
+      ),
+    );
+    final addButton = AddMemorialChip(
+      size: hasItems ? 27 : 40,
+      onTap: () => context.push(AppRoutes.memorialAdd),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasItems)
+          Row(
+            children: [
+              Expanded(child: title),
+              addButton,
+            ],
+          )
+        else ...[
+          title,
+          const SizedBox(height: 10),
+          addButton,
+        ],
+        if (hasItems) ...[
+          const SizedBox(height: 10),
+          _memorialPicker(),
+        ],
+      ],
+    );
+  }
+
   Widget _buildTemplatePreview(WidgetDefinition item) {
     final wide =
         item.columnSpan > 1 || item.rowSpan == 1 && item.columnSpan == 3;
@@ -326,23 +384,27 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
       return Column(
         children: [
           Container(
-            width: 150,
-            height: 30,
+            width: kIslandCompactWidth,
+            height: kIslandCompactHeight,
             padding: const EdgeInsets.symmetric(horizontal: 6),
             decoration: BoxDecoration(
               color: Colors.black,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
               children: [
-                _selectedIcon(22),
+                _selectedIcon(26),
                 const Spacer(),
-                if (_iconOnRight) _selectedIcon(22),
+                if (_iconOnRight) _selectedIcon(26),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          _previewSurface(item, 245, 88),
+          _previewSurface(
+            item,
+            kIslandPreviewCardWidth,
+            kIslandPreviewCardHeight,
+          ),
         ],
       );
     }
@@ -622,35 +684,48 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
     return item.listDisplayDate.difference(today).inDays.abs();
   }
 
-  Widget _petPicker() => SizedBox(
-    height: 66,
-    child: ListView.separated(
-      scrollDirection: Axis.horizontal,
-      itemCount: _petImages.length,
-      separatorBuilder: (_, _) => const SizedBox(width: 12),
-      itemBuilder: (context, index) => GestureDetector(
-        onTap: () => setState(() => _selectedPet = index),
-        child: Container(
-          width: 66,
-          height: 66,
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0F1F4),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: index == _selectedPet
-                  ? AppColors.accent
-                  : Colors.transparent,
-              width: 2,
+  Widget _petPicker() {
+    final showAdd = !_hasCustomPet;
+    final count = _petImages.length + (showAdd ? 1 : 0);
+    return SizedBox(
+      height: 66,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: count,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          if (showAdd && index == _petImages.length) {
+            return AddCustomPetChip(onTap: _openGenerateCustomPet);
+          }
+          return GestureDetector(
+            onTap: () => setState(() => _selectedPet = index),
+            child: Container(
+              width: 66,
+              height: 66,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0F1F4),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: index == _selectedPet
+                      ? AppColors.accent
+                      : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: ClipOval(
+                child: _sourceImage(_petImages[index], fit: BoxFit.contain),
+              ),
             ),
-          ),
-          child: ClipOval(
-            child: _sourceImage(_petImages[index], fit: BoxFit.contain),
-          ),
-        ),
+          );
+        },
       ),
-    ),
-  );
+    );
+  }
+
+  Future<void> _openGenerateCustomPet() async {
+    await ReselectPetUtil.run(context, forAddCustomPet: true);
+  }
 
   Widget _memorialPicker() {
     final items = MemorialStore.instance.items;
@@ -986,13 +1061,17 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
 
     add(cache.defaultPetCatImageUrl);
     add(cache.defaultPetDogImageUrl);
-    if (PetDisplayImage.isCustomPet(cache.petProfile)) {
+    final hasCustom = PetDisplayImage.isCustomPet(cache.petProfile);
+    if (hasCustom) {
       final raw = PetDisplayImage.resolveRawSync();
       add(raw == null ? null : PetImageService.resolveUrl(raw));
     }
     if (!mounted) return;
     setState(() {
-      _petImages.addAll(images);
+      _hasCustomPet = hasCustom;
+      _petImages
+        ..clear()
+        ..addAll(images);
       if (_selectedPet >= _petImages.length) _selectedPet = 0;
     });
   }
@@ -1076,8 +1155,19 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
       );
       _selectedBackground = prefs.getString('${_prefsPrefix}_background');
       _uploadedImage = prefs.getString('${_prefsPrefix}_upload');
-      _iconImage = prefs.getString('${_prefsPrefix}_icon_image');
-      _icon = prefs.getString('${_prefsPrefix}_icon') ?? '🔔';
+      _iconImage = null;
+      final defaultIcon =
+          WidgetDetailScope.maybeOf(context)?.defaultIcon.trim() ??
+          _detail?.defaultIcon.trim() ??
+          '';
+      if (islandDefaultIconIsImage(defaultIcon)) {
+        _iconImage = defaultIcon;
+        _icon = '🔔';
+      } else if (defaultIcon.isNotEmpty) {
+        _icon = defaultIcon;
+      } else {
+        _icon = '🔔';
+      }
       _textSize = prefs.getDouble('${_prefsPrefix}_text_size') ?? 16;
       _textController.text =
           prefs.getString('${_prefsPrefix}_text') ?? '每天都要开心';

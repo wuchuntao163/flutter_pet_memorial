@@ -68,7 +68,7 @@
     "widget_step2_title": "2. Search for the widget",
     "widget_step2_body": "Search for Hakimi Memorial Day, pick a size, and add it to your Home Screen",
     "island_step1_title": "1. Enable Dynamic Island",
-    "island_step1_body": "Turn on the switch below to display your pet on Dynamic Island and Lock Screen",
+    "island_step1_body": "Open the island detail page and tap Enable Dynamic Island at the bottom to show it on Dynamic Island and Lock Screen",
     "island_step2_title": "2. Check system settings",
     "island_step2_body": "If nothing appears, enable Live Activities for this app in iOS Settings"
   },
@@ -93,16 +93,16 @@
   },
   "feedback": {
     "name_label": "Name",
-    "name_hint": "Enter your name",
+    "name_hint": "Please enter your name",
     "name_required": "Please enter your name",
-    "phone_label": "Phone",
-    "phone_hint": "Enter your phone number",
-    "phone_required": "Please enter your phone number",
+    "phone_label": "Contact",
+    "phone_hint": "Please enter your contact info",
+    "phone_required": "Please enter your contact info",
     "phone_invalid": "Please enter a valid phone number",
     "content_label": "Feedback",
-    "content_hint": "Describe your issue or suggestion",
-    "content_required": "Please enter your feedback",
-    "images_label": "Images (optional)",
+    "content_hint": "Please describe your issue or suggestion",
+    "content_required": "Please describe your issue or suggestion",
+    "images_label": "Upload images ({count}/3)",
     "images_hint": "Up to 3 images",
     "images_limit": "You can upload up to 3 images",
     "submit": "Submit",
@@ -120,7 +120,9 @@
   },
   "reselect": {
     "title": "Reselect Pet",
-    "message": "Reselect pet? All current pet data will be cleared."
+    "message": "Reselect pet? All current pet data will be cleared.",
+    "add_custom_title": "Add Your Own Pet",
+    "add_custom_message": "Adding your own pet will clear all current pet data. Continue?"
   },
   "pet_type": {
     "title": "Hakimi Memorial Day",

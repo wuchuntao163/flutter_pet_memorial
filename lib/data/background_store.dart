@@ -329,48 +329,34 @@ class BackgroundStore extends ChangeNotifier {
     }
   }
 
+  /// 相册选图：只走 `/api/base/upload`。
+  /// [addToLibrary] 为 true 时才插入背景库列表（纪念日「背景样式」）；
+  /// 组件配置页上传应传 false，避免污染纪念日背景列表。
   Future<Map<String, dynamic>?> uploadCustomBackground({
     required String localPath,
     String? name,
+    bool addToLibrary = false,
   }) async {
     final imageUrl = await PetImageService.upload(localPath);
-    final data = <String, dynamic>{
+    final created = <String, dynamic>{
+      'id': 'upload_${DateTime.now().millisecondsSinceEpoch}',
       'image': imageUrl,
       if (name != null && name.isNotEmpty) 'name': name,
     };
-    final userId = AuthSessionStore.instance.userId;
-    if (userId != null) data['user_id'] = userId;
 
-    ApiResponse<dynamic> res;
-    try {
-      res = await Api.post(ApiPaths.uploadBackground, data: data);
-      if (kDebugMode) {
-        debugPrint('[BackgroundStore] uploadBackground res=$res');
-      }
-    } on ApiException catch (e) {
-      if (kDebugMode) {
-        debugPrint('[BackgroundStore] uploadBackground failed: $e');
-      }
-      rethrow;
-    }
-
-    final created = _normalizeCreatedItem(res.data, fallbackImage: imageUrl);
-    if (created == null) return null;
-
-    _mergeItems([created]);
-    final cacheKey = _isCustomTab
-        ? customTabKey
-        : _selectedCategoryId?.toString() ?? 'all';
-    final bucket = List<Map<String, dynamic>>.from(
-      _itemsByCategory[cacheKey] ?? _currentItems,
-    );
-    if (!bucket.any((item) => '${item['id']}' == '${created['id']}')) {
+    if (addToLibrary) {
+      final cacheKey = customTabKey;
+      final bucket = List<Map<String, dynamic>>.from(
+        _itemsByCategory[cacheKey] ?? const [],
+      );
       bucket.insert(0, created);
+      _itemsByCategory[cacheKey] = bucket;
+      if (_isCustomTab) {
+        _currentItems = bucket;
+      }
+      notifyListeners();
     }
-    _itemsByCategory[cacheKey] = bucket;
-    _currentItems = bucket;
-    notifyListeners();
-    return findById('${created['id']}') ?? created;
+    return created;
   }
 
   Future<bool> updateBackground({

@@ -2,15 +2,29 @@ import 'package:flutter/material.dart';
 import '../../config/colors.dart';
 import '../../l10n/tr.dart';
 
-/// 重新选择宠物确认弹窗
+/// 重新选择 / 添加自家宠物确认弹窗
 class ReselectPetConfirmDialog extends StatelessWidget {
-  const ReselectPetConfirmDialog({super.key});
+  final String titleKey;
+  final String messageKey;
 
-  static Future<bool?> show(BuildContext context) {
+  const ReselectPetConfirmDialog({
+    super.key,
+    this.titleKey = 'reselect.title',
+    this.messageKey = 'reselect.message',
+  });
+
+  static Future<bool?> show(
+    BuildContext context, {
+    String titleKey = 'reselect.title',
+    String messageKey = 'reselect.message',
+  }) {
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const ReselectPetConfirmDialog(),
+      builder: (_) => ReselectPetConfirmDialog(
+        titleKey: titleKey,
+        messageKey: messageKey,
+      ),
     );
   }
 
@@ -29,7 +43,7 @@ class ReselectPetConfirmDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              tr('reselect.title'),
+              tr(titleKey),
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -38,7 +52,7 @@ class ReselectPetConfirmDialog extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              tr('reselect.message'),
+              tr(messageKey),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 14,

@@ -93,18 +93,33 @@ class BottomNavBar extends StatelessWidget {
               ),
               child: Container(
                 height: _barHeight,
-                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: AppColors.bgWhite,
                   borderRadius: BorderRadius.circular(_barRadius),
-                ),
-                child: Row(
-                  children: [
-                    for (var i = 0; i < items.length; i++)
-                      Expanded(
-                        child: _item(context, items[i], i, currentIndex),
-                      ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 14,
+                      offset: const Offset(0, 2),
+                      spreadRadius: 0,
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 6,
+                      offset: const Offset(0, -1),
+                    ),
                   ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(_barRadius),
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < items.length; i++)
+                        Expanded(
+                          child: _item(context, items[i], i, currentIndex),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

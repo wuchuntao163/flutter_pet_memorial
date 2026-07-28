@@ -19,10 +19,20 @@ class MyWidgetsScreen extends StatefulWidget {
 class _MyWidgetsScreenState extends State<MyWidgetsScreen> {
   static const _headerContentHeight = 52.0;
 
+  late final PageController _pageController;
+  int _selectedTab = 0;
+
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     SavedWidgetStore.instance.load(force: true);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -80,10 +90,14 @@ class _MyWidgetsScreenState extends State<MyWidgetsScreen> {
                 height: _headerContentHeight,
                 child: Center(
                   child: TextButton(
-                    onPressed: () => TransparentWallpaperSetupScreen.open(context),
+                    onPressed: () =>
+                        TransparentWallpaperSetupScreen.open(context),
                     child: const Text(
                       '透明壁纸',
-                      style: TextStyle(fontSize: 13, color: AppColors.accentDark),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.accentDark,
+                      ),
                     ),
                   ),
                 ),
@@ -112,33 +126,130 @@ class _MyWidgetsScreenState extends State<MyWidgetsScreen> {
       ),
       body: SafeArea(
         top: false,
-        child: ListenableBuilder(
-          listenable: SavedWidgetStore.instance,
-          builder: (context, _) {
-            final items = SavedWidgetStore.instance.items;
-            if (items.isEmpty) {
-              return const Center(
-                child: Text(
-                  '还没有保存小组件',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textPlaceholder,
-                  ),
-                ),
-              );
-            }
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 14),
-              itemBuilder: (context, index) => _SavedWidgetTile(
-                item: items[index],
-                onDelete: () => _delete(items[index]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 4, 22, 8),
+              child: Row(
+                children: [
+                  _tab('小号', 0),
+                  const SizedBox(width: 28),
+                  _tab('中号', 1),
+                ],
               ),
-            );
-          },
+            ),
+            Expanded(
+              child: ListenableBuilder(
+                listenable: SavedWidgetStore.instance,
+                builder: (context, _) {
+                  final all = SavedWidgetStore.instance.items;
+                  final small = all.where((e) => !e.isMediumSize).toList();
+                  final medium = all.where((e) => e.isMediumSize).toList();
+                  return PageView(
+                    controller: _pageController,
+                    onPageChanged: (index) {
+                      if (_selectedTab != index) {
+                        setState(() => _selectedTab = index);
+                      }
+                    },
+                    children: [
+                      _buildList(small, isMedium: false),
+                      _buildList(medium, isMedium: true),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _tab(String label, int index) {
+    final selected = _selectedTab == index;
+    return GestureDetector(
+      onTap: () => _selectTab(index),
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? AppColors.accentDark : AppColors.textTertiary,
+            ),
+          ),
+          const SizedBox(height: 5),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: selected ? 24 : 0,
+            height: 3,
+            decoration: BoxDecoration(
+              color: AppColors.accent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _selectTab(int index) {
+    if (_selectedTab == index) return;
+    setState(() => _selectedTab = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Widget _buildList(List<SavedWidget> items, {required bool isMedium}) {
+    if (items.isEmpty) {
+      return Center(
+        child: Text(
+          isMedium ? '还没有保存中号组件' : '还没有保存小号组件',
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textPlaceholder,
+          ),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0)
+                  const Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Color(0xFFF0F1F4),
+                    indent: 12,
+                    endIndent: 12,
+                  ),
+                _SavedWidgetTile(
+                  item: items[i],
+                  isMedium: isMedium,
+                  onDelete: () => _delete(items[i]),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -167,34 +278,35 @@ class _MyWidgetsScreenState extends State<MyWidgetsScreen> {
 }
 
 class _SavedWidgetTile extends StatelessWidget {
-  const _SavedWidgetTile({required this.item, required this.onDelete});
+  const _SavedWidgetTile({
+    required this.item,
+    required this.isMedium,
+    required this.onDelete,
+  });
 
   final SavedWidget item;
+  final bool isMedium;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 104,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderLight),
-      ),
+    // 小号正方形；中号同高度，宽度按约 2.1:1 比例随高度变化
+    const side = 80.0;
+    final thumbH = side;
+    final thumbW = isMedium ? side * 2.1 : side;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       child: Row(
         children: [
-          Container(
-            width: 80,
-            height: 80,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F1F4),
-              borderRadius: BorderRadius.circular(8),
-            ),
+          SizedBox(
+            width: thumbW,
+            height: thumbH,
             child: item.image.isEmpty
                 ? const Icon(Icons.widgets_outlined, color: AppColors.accent)
-                : _SavedWidgetThumb(image: item.image),
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _SavedWidgetThumb(image: item.image),
+                  ),
           ),
           const SizedBox(width: 14),
           Expanded(

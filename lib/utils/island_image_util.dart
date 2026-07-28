@@ -81,8 +81,12 @@ Widget islandImage(
 }
 
 /// 各岛通知版预览统一尺寸（与正计时 / 纪念日一致）
-const double kIslandPreviewCardWidth = 245;
-const double kIslandPreviewCardHeight = 82;
+const double kIslandPreviewCardWidth = 330;
+const double kIslandPreviewCardHeight = 117;
+
+/// 灵动岛胶囊预览（窄条）
+const double kIslandCompactWidth = 136;
+const double kIslandCompactHeight = 36;
 
 /// 图文岛未选相册时的默认左侧图（与预览 placeholder 一致）
 const String kPhotoIslandDefaultImage = 'assets/images/addvalentine.png';
@@ -90,18 +94,36 @@ const String kPhotoIslandDefaultImage = 'assets/images/addvalentine.png';
 /// 自定义岛未选面板时的本地兜底图
 const String kCustomIslandDefaultPanel = 'assets/images/image_87.png';
 
+/// 详情 `default_icon` 是否为图片地址（网络 / asset），否则按 emoji 文本处理
+bool islandDefaultIconIsImage(String value) {
+  final v = value.trim();
+  if (v.isEmpty) return false;
+  final lower = v.toLowerCase();
+  if (lower.startsWith('http://') ||
+      lower.startsWith('https://') ||
+      lower.startsWith('assets/')) {
+    return true;
+  }
+  return lower.contains('.png') ||
+      lower.contains('.jpg') ||
+      lower.contains('.jpeg') ||
+      lower.contains('.webp') ||
+      lower.contains('.gif');
+}
+
 /// 图文岛通知版左侧图形状：圆角矩形（非正圆）
 Widget islandCardSideImage(
   String? source, {
   required double size,
   bool circular = false,
+  BoxFit fit = BoxFit.cover,
   Widget? placeholder,
 }) {
   final image = islandImage(
     source,
     width: size,
     height: size,
-    fit: BoxFit.cover,
+    fit: fit,
     placeholder: placeholder,
   );
   final clipped = circular

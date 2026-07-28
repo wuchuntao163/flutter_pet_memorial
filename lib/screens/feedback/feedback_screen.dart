@@ -23,6 +23,10 @@ class FeedbackScreen extends StatefulWidget {
 
 class _FeedbackScreenState extends State<FeedbackScreen> {
   static const _maxImages = 3;
+  static const _fieldRadius = 16.0;
+  static const _imageSize = 88.0;
+  /// 输入框浅灰描边（参考设计稿，避免过重）
+  static const _borderGray = Color(0xFFE8E2DC);
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -66,6 +70,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     final phone = _phoneController.text.trim();
     final content = _contentController.text.trim();
 
+    if (content.isEmpty) {
+      showCenterTip(context, tr('feedback.content_required'));
+      return;
+    }
     if (name.isEmpty) {
       showCenterTip(context, tr('feedback.name_required'));
       return;
@@ -76,10 +84,6 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     }
     if (!RegExp(r'^1\d{10}$').hasMatch(phone)) {
       showCenterTip(context, tr('feedback.phone_invalid'));
-      return;
-    }
-    if (content.isEmpty) {
-      showCenterTip(context, tr('feedback.content_required'));
       return;
     }
 
@@ -123,6 +127,37 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
   }
 
+  InputDecoration _inputDecoration({required String hint}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(
+        fontSize: 14,
+        color: AppColors.textPlaceholder,
+        fontWeight: FontWeight.w400,
+      ),
+      filled: true,
+      fillColor: AppColors.bgWhite,
+      counterText: '',
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_fieldRadius),
+        borderSide: const BorderSide(color: _borderGray),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_fieldRadius),
+        borderSide: const BorderSide(color: _borderGray),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_fieldRadius),
+        borderSide: const BorderSide(color: AppColors.accent, width: 1),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_fieldRadius),
+        borderSide: const BorderSide(color: _borderGray),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -155,49 +190,72 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         child: SafeArea(
           child: ListView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
-              _field(
-                label: tr('feedback.name_label'),
-                controller: _nameController,
-                hint: tr('feedback.name_hint'),
-              ),
-              const SizedBox(height: 12),
-              _field(
-                label: tr('feedback.phone_label'),
-                controller: _phoneController,
-                hint: tr('feedback.phone_hint'),
-                keyboardType: TextInputType.phone,
-                maxLength: 11,
-              ),
-              const SizedBox(height: 12),
-              _field(
-                label: tr('feedback.content_label'),
+              // 1. 问题描述
+              TextField(
                 controller: _contentController,
-                hint: tr('feedback.content_hint'),
-                maxLines: 6,
+                maxLines: 7,
+                minLines: 6,
                 maxLength: 500,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                tr('feedback.images_label'),
+                enabled: !_submitting,
+                onTapOutside: (_) => _dismissKeyboard(),
                 style: const TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.accentDark,
+                  color: AppColors.textPrimary,
+                  height: 1.4,
+                ),
+                decoration: _inputDecoration(
+                  hint: tr('feedback.content_hint'),
+                ).copyWith(
+                  contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  alignLabelWithHint: true,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                tr('feedback.images_hint'),
+              const SizedBox(height: 14),
+              // 2. 姓名
+              TextField(
+                controller: _nameController,
+                maxLines: 1,
+                enabled: !_submitting,
+                onTapOutside: (_) => _dismissKeyboard(),
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+                decoration: _inputDecoration(hint: tr('feedback.name_hint')),
+              ),
+              const SizedBox(height: 14),
+              // 3. 联系方式
+              TextField(
+                controller: _phoneController,
+                maxLines: 1,
+                maxLength: 11,
+                keyboardType: TextInputType.phone,
+                enabled: !_submitting,
+                onTapOutside: (_) => _dismissKeyboard(),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+                decoration: _inputDecoration(hint: tr('feedback.phone_hint')),
+              ),
+              const SizedBox(height: 18),
+              // 4. 上传图片
+              Text(
+                tr(
+                  'feedback.images_label',
+                  fb: '上传图片 ({count}/3)',
+                ).replaceAll('{count}', '${_localImages.length}'),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
                   color: AppColors.textTertiary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               _buildImageGrid(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               GradientTapButton(
                 onTap: _submitting
                     ? null
@@ -239,8 +297,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     final count = _localImages.length + (canAdd ? 1 : 0);
 
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: 12,
+      runSpacing: 12,
       children: List.generate(count, (index) {
         if (index < _localImages.length) {
           final path = _localImages[index];
@@ -248,11 +306,11 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             clipBehavior: Clip.none,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(_fieldRadius),
                 child: Image.file(
                   File(path),
-                  width: 84,
-                  height: 84,
+                  width: _imageSize,
+                  height: _imageSize,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -285,76 +343,21 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         return GestureDetector(
           onTap: _submitting ? null : _pickImages,
           child: Container(
-            width: 84,
-            height: 84,
+            width: _imageSize,
+            height: _imageSize,
             decoration: BoxDecoration(
               color: AppColors.bgWhite,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.borderLight),
+              borderRadius: BorderRadius.circular(_fieldRadius),
+              border: Border.all(color: _borderGray, width: 1),
             ),
             child: const Icon(
-              Icons.add_photo_alternate_outlined,
-              size: 28,
-              color: AppColors.textTertiary,
+              Icons.add,
+              size: 32,
+              color: _borderGray,
             ),
           ),
         );
       }),
-    );
-  }
-
-  Widget _field({
-    required String label,
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    int maxLines = 1,
-    int? maxLength,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.accentDark,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          maxLength: maxLength,
-          enabled: !_submitting,
-          onTapOutside: (_) => _dismissKeyboard(),
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textTertiary,
-            ),
-            filled: true,
-            fillColor: AppColors.bgWhite,
-            contentPadding: const EdgeInsets.all(12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.borderLight),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.borderLight),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.accent),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

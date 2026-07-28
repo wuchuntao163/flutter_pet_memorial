@@ -3,14 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../api/api.dart';
 import '../../config/app_info.dart';
 import '../../config/colors.dart';
 import '../../config/layout.dart';
 import '../../data/banner_store.dart';
 import '../../data/app_cache_store.dart';
+import '../../data/auth_session_store.dart';
 import '../../data/memorial_store.dart';
-import '../../data/pet_avatar_store.dart';
 import '../../router/app_routes.dart';
 import '../../services/app_launch.dart';
 import '../../services/desktop_pet_overlay_service.dart';
@@ -18,12 +17,12 @@ import '../../services/live_activity_service.dart';
 import '../../utils/app_promotion_util.dart';
 import '../../utils/app_update_util.dart';
 import '../../utils/center_tip_util.dart';
+import '../../utils/reselect_pet_util.dart';
 import '../../widgets/common/action_button.dart';
 import '../../widgets/common/profile_banner.dart';
 import '../../widgets/common/settings_item.dart';
 import '../../widgets/common/pet_avatar_image.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
-import '../../widgets/dialogs/reselect_pet_confirm_dialog.dart';
 import '../../widgets/dialogs/logout_confirm_dialog.dart';
 import '../../widgets/dialogs/language_picker_dialog.dart';
 import '../../l10n/tr.dart';
@@ -361,44 +360,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _onReselectPetTap(BuildContext context) async {
-    final confirmed = await ReselectPetConfirmDialog.show(context);
-    if (confirmed != true || !context.mounted) return;
-
-    final petId = AppCacheStore.instance.petId;
-    if (petId != null) {
-      try {
-        final res = await Api.post(
-          ApiPaths.reselectPet,
-          data: {'pet_id': petId},
-        );
-        await AppCacheStore.instance.setPetId(null);
-        if (!context.mounted) return;
-        showCenterTip(
-          context,
-          res.msg.isNotEmpty ? res.msg : tr('language.switch_success'),
-        );
-      } on ApiException catch (e) {
-        if (!context.mounted) return;
-        showCenterTip(context, e.message);
-        return;
-      }
-    }
-
-    MemorialStore.instance.clearAll();
-    await PetAvatarStore.clear();
-    await PlatformPetSync.afterProfileUpdate();
-    await DesktopPetOverlayService.setEnabled(false);
-    await LiveActivityService.instance.setEnabled(false);
-    if (mounted) {
-      setState(() {
-        _showFloatingPet = false;
-        _showLiveActivity = false;
-      });
-    }
-    await AppLaunch.instance.clearOnboarding();
-
-    if (!context.mounted) return;
-    context.go(AppRoutes.petType);
+    await ReselectPetUtil.run(context);
   }
 
   Future<void> _syncCloudMemorialData() async {
