@@ -262,9 +262,11 @@ struct PetLiveActivityWidget: Widget {
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
-      // 普通岛：高度 125，左边距 37；侧图 68；文案最多 4 行且不缩小字号
+      // 普通岛：高度 125；侧图 68；文案最多 4 行且不缩小字号
+      // 纪念日/正倒计时锁屏再偏右一点（相对宠物/图文岛 37）
+      let leadingInset: CGFloat = (state.template >= 3 && state.template <= 5) ? 44 : 37
       bodyContent(context: context, expanded: false)
-        .padding(.leading, 37)
+        .padding(.leading, leadingInset)
         .padding(.trailing, 16)
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
@@ -334,7 +336,10 @@ struct PetLiveActivityWidget: Widget {
       }
     case 3, 4:
       // 倒计时浅底用黑字；正计时黑底用白字
+      // 锁屏：标题/时间更大，标题与时间间距更大
       let labelColor: Color = state.template == 4 ? .black : .white
+      let titleSize: CGFloat = expanded ? 13 : 17
+      let stackSpacing: CGFloat = expanded ? 4 : 10
       HStack(spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
@@ -353,16 +358,25 @@ struct PetLiveActivityWidget: Widget {
           }
         }
         .id(state.imageRevision)
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: stackSpacing) {
           Text(state.subtitle.isEmpty ? state.memorialTitle : state.subtitle)
-            .font(.system(size: expanded ? 13 : 15, weight: .medium))
+            .font(.system(size: titleSize, weight: .medium))
             .foregroundColor(labelColor.opacity(0.72))
             .lineLimit(1)
-          timerText(state: state, compact: false, color: labelColor)
+          timerText(
+            state: state,
+            compact: false,
+            color: labelColor,
+            lockScreenSize: expanded ? nil : 26
+          )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 5:
+      // 锁屏：标题/天数更大，标题与天数间距更大
+      let titleSize: CGFloat = expanded ? 13 : 17
+      let daysSize: CGFloat = expanded ? 22 : 28
+      let stackSpacing: CGFloat = expanded ? 4 : 10
       HStack(spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
@@ -381,13 +395,13 @@ struct PetLiveActivityWidget: Widget {
           }
         }
         .id(state.imageRevision)
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: stackSpacing) {
           Text(state.memorialTitle.isEmpty ? state.subtitle : state.memorialTitle)
-            .font(.system(size: expanded ? 13 : 15, weight: .medium))
+            .font(.system(size: titleSize, weight: .medium))
             .foregroundColor(.black.opacity(0.72))
             .lineLimit(1)
           Text(state.daysText.isEmpty ? "—" : state.daysText)
-            .font(.system(size: expanded ? 22 : 24, weight: .bold))
+            .font(.system(size: daysSize, weight: .bold))
             .foregroundColor(.black)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
@@ -476,9 +490,11 @@ struct PetLiveActivityWidget: Widget {
   private func timerText(
     state: PetLiveActivityAttributes.ContentState,
     compact: Bool,
-    color: Color
+    color: Color,
+    lockScreenSize: CGFloat? = nil
   ) -> some View {
-    let font = Font.system(size: compact ? 12 : 22, weight: .bold).monospacedDigit()
+    let size: CGFloat = lockScreenSize ?? (compact ? 12 : 22)
+    let font = Font.system(size: size, weight: .bold).monospacedDigit()
     let target = Date(timeIntervalSince1970: state.timerTargetEpoch)
     if state.timerTargetEpoch <= 0 {
       Text("--:--")
