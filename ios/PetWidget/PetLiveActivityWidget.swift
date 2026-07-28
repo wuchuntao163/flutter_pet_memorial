@@ -263,14 +263,14 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity)
     } else {
       // 普通岛：高度 125；侧图 68；文案最多 4 行且不缩小字号
-      // 纪念日/正倒计时锁屏再偏右，避免左侧圆角裁切图标
+      // 纪念日/正倒计时：偏右 + 底部多留一点，避免圆角裁切侧图底边
       let isTimerOrMemorial = state.template >= 3 && state.template <= 5
       let leadingInset: CGFloat = isTimerOrMemorial ? 50 : 37
-      let verticalPad: CGFloat = isTimerOrMemorial ? 14 : 18
       bodyContent(context: context, expanded: false)
         .padding(.leading, leadingInset)
         .padding(.trailing, 16)
-        .padding(.vertical, verticalPad)
+        .padding(.top, isTimerOrMemorial ? 12 : 18)
+        .padding(.bottom, isTimerOrMemorial ? 20 : 18)
         .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
         .background {
           // 含宠物岛 template=1：与 App 预览背景一致
@@ -297,8 +297,12 @@ struct PetLiveActivityWidget: Widget {
     expanded: Bool
   ) -> some View {
     let state = context.state
-    // 锁屏侧图 68
-    let imageSize: CGFloat = expanded ? 56 : 68
+    // 锁屏：宠物/图文侧图 68；纪念日/正倒计时略小，避免底边被卡片圆角裁切
+    let imageSize: CGFloat = {
+      if expanded { return 56 }
+      if state.template >= 3 && state.template <= 5 { return 60 }
+      return 68
+    }()
     switch state.template {
     case 2:
       HStack(alignment: .center, spacing: 14) {
@@ -338,16 +342,16 @@ struct PetLiveActivityWidget: Widget {
       }
     case 3, 4:
       // 倒计时浅底用黑字；正计时黑底用白字
-      // 锁屏：标题加粗加大；正计时名称纯白
+      // 锁屏：标题加粗；正计时名称纯白；名称与时间间距与原先一致
       let labelColor: Color = state.template == 4 ? .black : .white
-      let titleSize: CGFloat = expanded ? 13 : 18
+      let titleSize: CGFloat = expanded ? 13 : 19
       let titleWeight: Font.Weight = expanded ? .medium : .semibold
       let titleColor: Color = {
         if expanded { return labelColor.opacity(0.72) }
         // 正计时锁屏名称统一纯白
         return state.template == 3 ? .white : labelColor.opacity(0.85)
       }()
-      let stackSpacing: CGFloat = expanded ? 4 : 10
+      let stackSpacing: CGFloat = 4
       HStack(alignment: .center, spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
@@ -382,11 +386,11 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 5:
-      // 锁屏：标题加粗加大，标题与天数间距更大
-      let titleSize: CGFloat = expanded ? 13 : 18
+      // 锁屏：标题与天数间距与正/倒计时一致
+      let titleSize: CGFloat = expanded ? 13 : 19
       let titleWeight: Font.Weight = expanded ? .medium : .semibold
       let daysSize: CGFloat = expanded ? 22 : 28
-      let stackSpacing: CGFloat = expanded ? 4 : 10
+      let stackSpacing: CGFloat = 4
       HStack(alignment: .center, spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
