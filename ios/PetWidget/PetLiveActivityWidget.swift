@@ -256,16 +256,18 @@ struct PetLiveActivityWidget: Widget {
   ) -> some View {
     let state = context.state
     // 自定义面板全幅铺满，去掉外层 padding（否则上下左右会留缝）
+    // 高度对齐 App 展示台自定义预览（147）
     if state.template == 6 {
-      customPanel(state: state, height: 118)
+      customPanel(state: state, height: 147)
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
+      // 高度 / 左边距对齐展示台（117 高、左侧约 30）
       bodyContent(context: context, expanded: false)
-        .padding(.leading, state.template == 2 ? 16 : 18)
+        .padding(.leading, 30)
         .padding(.trailing, 16)
-        .padding(.vertical, 18)
-        .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
         .background {
           // 含宠物岛 template=1：与 App 预览背景一致
           if state.template >= 1 && state.template <= 5 {
@@ -291,10 +293,11 @@ struct PetLiveActivityWidget: Widget {
     expanded: Bool
   ) -> some View {
     let state = context.state
-    let imageSize: CGFloat = expanded ? 56 : 64
+    // 锁屏侧图尺寸对齐展示台（约 66）
+    let imageSize: CGFloat = expanded ? 56 : 66
     switch state.template {
     case 2:
-      HStack(spacing: 12) {
+      HStack(spacing: 14) {
         // 锁屏/展开：与 App 预览卡片一致的圆角矩形（正圆仅用于灵动岛 compact）
         Group {
           if let image = LiveActivityShared.loadPhoto() {
@@ -328,7 +331,7 @@ struct PetLiveActivityWidget: Widget {
     case 3, 4:
       // 倒计时浅底用黑字；正计时黑底用白字
       let labelColor: Color = state.template == 4 ? .black : .white
-      HStack(spacing: 12) {
+      HStack(spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
             islandCompactImage(
@@ -356,7 +359,7 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 5:
-      HStack(spacing: 12) {
+      HStack(spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
             islandCompactImage(
@@ -388,10 +391,10 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 6:
-      customPanel(state: state, height: expanded ? 72 : 118)
+      customPanel(state: state, height: expanded ? 72 : 147)
         .id(state.imageRevision)
     default:
-      HStack(alignment: .center, spacing: 12) {
+      HStack(alignment: .center, spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadCachedPetImage() {
             islandCompactImage(

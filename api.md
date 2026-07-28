@@ -1307,7 +1307,7 @@
         ]
     }
 }
-
+```
 #### 20. 图片加文本生成 GIF 动图
 
 **接口地址**: `/api/pet/generateImageWithTextGif`
