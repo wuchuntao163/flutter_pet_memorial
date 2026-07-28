@@ -263,12 +263,14 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity)
     } else {
       // 普通岛：高度 125；侧图 68；文案最多 4 行且不缩小字号
-      // 纪念日/正倒计时锁屏再偏右一点（相对宠物/图文岛 37）
-      let leadingInset: CGFloat = (state.template >= 3 && state.template <= 5) ? 44 : 37
+      // 纪念日/正倒计时锁屏再偏右，避免左侧圆角裁切图标
+      let isTimerOrMemorial = state.template >= 3 && state.template <= 5
+      let leadingInset: CGFloat = isTimerOrMemorial ? 50 : 37
+      let verticalPad: CGFloat = isTimerOrMemorial ? 14 : 18
       bodyContent(context: context, expanded: false)
         .padding(.leading, leadingInset)
         .padding(.trailing, 16)
-        .padding(.vertical, 18)
+        .padding(.vertical, verticalPad)
         .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
         .background {
           // 含宠物岛 template=1：与 App 预览背景一致
@@ -336,11 +338,17 @@ struct PetLiveActivityWidget: Widget {
       }
     case 3, 4:
       // 倒计时浅底用黑字；正计时黑底用白字
-      // 锁屏：标题/时间更大，标题与时间间距更大
+      // 锁屏：标题加粗加大；正计时名称纯白
       let labelColor: Color = state.template == 4 ? .black : .white
-      let titleSize: CGFloat = expanded ? 13 : 17
+      let titleSize: CGFloat = expanded ? 13 : 18
+      let titleWeight: Font.Weight = expanded ? .medium : .semibold
+      let titleColor: Color = {
+        if expanded { return labelColor.opacity(0.72) }
+        // 正计时锁屏名称统一纯白
+        return state.template == 3 ? .white : labelColor.opacity(0.85)
+      }()
       let stackSpacing: CGFloat = expanded ? 4 : 10
-      HStack(spacing: 14) {
+      HStack(alignment: .center, spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
             islandCompactImage(
@@ -358,10 +366,11 @@ struct PetLiveActivityWidget: Widget {
           }
         }
         .id(state.imageRevision)
+        .layoutPriority(1)
         VStack(alignment: .leading, spacing: stackSpacing) {
           Text(state.subtitle.isEmpty ? state.memorialTitle : state.subtitle)
-            .font(.system(size: titleSize, weight: .medium))
-            .foregroundColor(labelColor.opacity(0.72))
+            .font(.system(size: titleSize, weight: titleWeight))
+            .foregroundColor(titleColor)
             .lineLimit(1)
           timerText(
             state: state,
@@ -373,11 +382,12 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 5:
-      // 锁屏：标题/天数更大，标题与天数间距更大
-      let titleSize: CGFloat = expanded ? 13 : 17
+      // 锁屏：标题加粗加大，标题与天数间距更大
+      let titleSize: CGFloat = expanded ? 13 : 18
+      let titleWeight: Font.Weight = expanded ? .medium : .semibold
       let daysSize: CGFloat = expanded ? 22 : 28
       let stackSpacing: CGFloat = expanded ? 4 : 10
-      HStack(spacing: 14) {
+      HStack(alignment: .center, spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
             islandCompactImage(
@@ -395,10 +405,11 @@ struct PetLiveActivityWidget: Widget {
           }
         }
         .id(state.imageRevision)
+        .layoutPriority(1)
         VStack(alignment: .leading, spacing: stackSpacing) {
           Text(state.memorialTitle.isEmpty ? state.subtitle : state.memorialTitle)
-            .font(.system(size: titleSize, weight: .medium))
-            .foregroundColor(.black.opacity(0.72))
+            .font(.system(size: titleSize, weight: titleWeight))
+            .foregroundColor(expanded ? .black.opacity(0.72) : .black.opacity(0.85))
             .lineLimit(1)
           Text(state.daysText.isEmpty ? "—" : state.daysText)
             .font(.system(size: daysSize, weight: .bold))
@@ -576,13 +587,17 @@ struct PetLiveActivityWidget: Widget {
     size: CGFloat,
     cornerRadius: CGFloat
   ) -> some View {
+    // fixedSize：避免 Live Activity 槽位压缩导致侧图被裁切一角
     Image(uiImage: uiImage)
       .resizable()
       .interpolation(.high)
       .antialiased(true)
       .scaledToFill()
       .frame(width: size, height: size)
+      .clipped()
       .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+      .frame(width: size, height: size)
+      .fixedSize()
   }
 
   @ViewBuilder
