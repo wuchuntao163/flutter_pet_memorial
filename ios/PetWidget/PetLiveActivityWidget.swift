@@ -157,11 +157,12 @@ struct PetLiveActivityWidget: Widget {
         )
       }
     case 3, 4, 5:
-      // 相册图正圆略缩小，避免灵动岛胶囊裁掉顶角；emoji 同理缩小
+      // 相册图正圆略缩小，避免灵动岛胶囊裁掉顶角；emoji 不缩小
       if let image = LiveActivityShared.loadCompactIcon() {
         islandCircleImage(uiImage: image, size: 24)
       } else {
-        compactEmojiOrSymbol(
+        imageOrEmoji(
+          image: nil,
           emoji: state.compactLeadingEmoji.isEmpty ? "❤️" : state.compactLeadingEmoji,
           systemName: "heart.fill",
           size: 28
@@ -261,7 +262,7 @@ struct PetLiveActivityWidget: Widget {
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
-      // 普通岛：高度 125；侧图 68；文案最多 4 行且不缩小字号
+      // 普通岛：高度 125；宠物/图文侧图 68、纪念日/正倒计时 60
       // 纪念日/正倒计时：再偏右；圆角只裁背景，避免侧图底边被二次裁切
       let isTimerOrMemorial = state.template >= 3 && state.template <= 5
       let leadingInset: CGFloat = isTimerOrMemorial ? 56 : 37
@@ -300,8 +301,12 @@ struct PetLiveActivityWidget: Widget {
     expanded: Bool
   ) -> some View {
     let state = context.state
-    // 锁屏侧图统一 68（不缩小）
-    let imageSize: CGFloat = expanded ? 56 : 68
+    // 锁屏：纪念日/正倒计时侧图 60；其余 68
+    let imageSize: CGFloat = {
+      if expanded { return 56 }
+      if state.template >= 3 && state.template <= 5 { return 60 }
+      return 68
+    }()
     switch state.template {
     case 2:
       HStack(alignment: .center, spacing: 14) {
@@ -540,25 +545,6 @@ struct PetLiveActivityWidget: Widget {
       .monospacedDigit()
       .lineLimit(1)
       .minimumScaleFactor(0.7)
-    }
-  }
-
-  /// 灵动岛 compact 用 emoji：略缩小，避免爱心等字形顶角被胶囊裁切
-  @ViewBuilder
-  private func compactEmojiOrSymbol(
-    emoji: String,
-    systemName: String,
-    size: CGFloat
-  ) -> some View {
-    if !emoji.isEmpty {
-      Text(emoji)
-        .font(.system(size: size * 0.72))
-        .frame(width: size, height: size)
-    } else {
-      Image(systemName: systemName)
-        .font(.system(size: size * 0.45))
-        .foregroundColor(.orange.opacity(0.85))
-        .frame(width: size, height: size)
     }
   }
 
