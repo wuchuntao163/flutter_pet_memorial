@@ -157,12 +157,11 @@ struct PetLiveActivityWidget: Widget {
         )
       }
     case 3, 4, 5:
-      // 相册图正圆；纯 emoji 图标不裁圆
+      // 相册图正圆略缩小，避免灵动岛胶囊裁掉顶角；emoji 同理缩小
       if let image = LiveActivityShared.loadCompactIcon() {
-        islandCircleImage(uiImage: image, size: 28)
+        islandCircleImage(uiImage: image, size: 24)
       } else {
-        imageOrEmoji(
-          image: nil,
+        compactEmojiOrSymbol(
           emoji: state.compactLeadingEmoji.isEmpty ? "❤️" : state.compactLeadingEmoji,
           systemName: "heart.fill",
           size: 28
@@ -263,17 +262,16 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity)
     } else {
       // 普通岛：高度 125；侧图 68；文案最多 4 行且不缩小字号
-      // 纪念日/正倒计时：偏右 + 底部多留一点，避免圆角裁切侧图底边
+      // 纪念日/正倒计时：再偏右；圆角只裁背景，避免侧图底边被二次裁切
       let isTimerOrMemorial = state.template >= 3 && state.template <= 5
-      let leadingInset: CGFloat = isTimerOrMemorial ? 50 : 37
-      bodyContent(context: context, expanded: false)
+      let leadingInset: CGFloat = isTimerOrMemorial ? 56 : 37
+      let card = bodyContent(context: context, expanded: false)
         .padding(.leading, leadingInset)
         .padding(.trailing, 16)
-        .padding(.top, isTimerOrMemorial ? 12 : 18)
-        .padding(.bottom, isTimerOrMemorial ? 20 : 18)
+        .padding(.top, isTimerOrMemorial ? 10 : 18)
+        .padding(.bottom, isTimerOrMemorial ? 22 : 18)
         .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
         .background {
-          // 含宠物岛 template=1：与 App 预览背景一致
           if state.template >= 1 && state.template <= 5 {
             Group {
               if let bg = LiveActivityShared.loadBannerBg() {
@@ -285,9 +283,14 @@ struct PetLiveActivityWidget: Widget {
               }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
           }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+      if isTimerOrMemorial {
+        card
+      } else {
+        card.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+      }
     }
   }
 
@@ -297,12 +300,8 @@ struct PetLiveActivityWidget: Widget {
     expanded: Bool
   ) -> some View {
     let state = context.state
-    // 锁屏：宠物/图文侧图 68；纪念日/正倒计时略小，避免底边被卡片圆角裁切
-    let imageSize: CGFloat = {
-      if expanded { return 56 }
-      if state.template >= 3 && state.template <= 5 { return 60 }
-      return 68
-    }()
+    // 锁屏侧图统一 68（不缩小）
+    let imageSize: CGFloat = expanded ? 56 : 68
     switch state.template {
     case 2:
       HStack(alignment: .center, spacing: 14) {
@@ -541,6 +540,25 @@ struct PetLiveActivityWidget: Widget {
       .monospacedDigit()
       .lineLimit(1)
       .minimumScaleFactor(0.7)
+    }
+  }
+
+  /// 灵动岛 compact 用 emoji：略缩小，避免爱心等字形顶角被胶囊裁切
+  @ViewBuilder
+  private func compactEmojiOrSymbol(
+    emoji: String,
+    systemName: String,
+    size: CGFloat
+  ) -> some View {
+    if !emoji.isEmpty {
+      Text(emoji)
+        .font(.system(size: size * 0.72))
+        .frame(width: size, height: size)
+    } else {
+      Image(systemName: systemName)
+        .font(.system(size: size * 0.45))
+        .foregroundColor(.orange.opacity(0.85))
+        .frame(width: size, height: size)
     }
   }
 
