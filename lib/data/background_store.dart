@@ -445,21 +445,6 @@ class BackgroundStore extends ChangeNotifier {
         .toList();
   }
 
-  static Map<String, dynamic>? _normalizeCreatedItem(
-    dynamic data, {
-    required String fallbackImage,
-  }) {
-    if (data is! Map) return null;
-    final map = Map<String, dynamic>.from(data);
-    if (map['id'] == null) return null;
-    if (map['image'] == null || '${map['image']}'.isEmpty) {
-      map['image'] = fallbackImage;
-    }
-    map['user_id'] ??= AuthSessionStore.instance.userId ?? 0;
-    map['is_show'] ??= 1;
-    return map;
-  }
-
   static int? _categoryId(Map<String, dynamic> category) {
     final id = category['id'] ?? category['category_id'];
     return id is int ? id : int.tryParse('$id');
