@@ -157,9 +157,9 @@ struct PetLiveActivityWidget: Widget {
         )
       }
     case 3, 4, 5:
-      // 相册图正圆略缩小，避免灵动岛胶囊裁掉顶角；emoji 不缩小
+      // 异形图标（爱心等）用 fit、不裁正圆，避免顶角被圆/胶囊切掉
       if let image = LiveActivityShared.loadCompactIcon() {
-        islandCircleImage(uiImage: image, size: 24)
+        islandDynamicIslandIcon(uiImage: image, size: 28)
       } else {
         imageOrEmoji(
           image: nil,
@@ -263,14 +263,14 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity)
     } else {
       // 普通岛：高度 125；宠物/图文侧图 68、纪念日/正倒计时 60
-      // 纪念日/正倒计时：再偏右；圆角只裁背景，避免侧图底边被二次裁切
+      // 纪念日/正倒计时：偏右；上下对称内边距保证垂直居中
       let isTimerOrMemorial = state.template >= 3 && state.template <= 5
       let leadingInset: CGFloat = isTimerOrMemorial ? 56 : 37
-      let card = bodyContent(context: context, expanded: false)
+      let verticalPad: CGFloat = isTimerOrMemorial ? 16 : 18
+      bodyContent(context: context, expanded: false)
         .padding(.leading, leadingInset)
         .padding(.trailing, 16)
-        .padding(.top, isTimerOrMemorial ? 10 : 18)
-        .padding(.bottom, isTimerOrMemorial ? 22 : 18)
+        .padding(.vertical, verticalPad)
         .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
         .background {
           if state.template >= 1 && state.template <= 5 {
@@ -284,14 +284,9 @@ struct PetLiveActivityWidget: Widget {
               }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
           }
         }
-      if isTimerOrMemorial {
-        card
-      } else {
-        card.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-      }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
   }
 
@@ -359,11 +354,7 @@ struct PetLiveActivityWidget: Widget {
       HStack(alignment: .center, spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
-            islandCompactImage(
-              uiImage: image,
-              size: imageSize,
-              cornerRadius: imageSize * 0.22
-            )
+            islandLockIconImage(uiImage: image, size: imageSize)
           } else {
             imageOrEmoji(
               image: nil,
@@ -398,11 +389,7 @@ struct PetLiveActivityWidget: Widget {
       HStack(alignment: .center, spacing: 14) {
         Group {
           if let image = LiveActivityShared.loadIcon() {
-            islandCompactImage(
-              uiImage: image,
-              size: imageSize,
-              cornerRadius: imageSize * 0.22
-            )
+            islandLockIconImage(uiImage: image, size: imageSize)
           } else {
             imageOrEmoji(
               image: nil,
@@ -574,6 +561,29 @@ struct PetLiveActivityWidget: Widget {
     }
   }
 
+  /// 锁屏纪念日/正倒计时侧图：fit 完整显示，避免 fill/圆角裁掉底边与顶角
+  @ViewBuilder
+  private func islandLockIconImage(uiImage: UIImage, size: CGFloat) -> some View {
+    Image(uiImage: uiImage)
+      .resizable()
+      .interpolation(.high)
+      .antialiased(true)
+      .scaledToFit()
+      .frame(width: size, height: size)
+  }
+
+  /// 灵动岛 compact 异形图标：fit + 不裁圆，避免爱心顶角被切
+  @ViewBuilder
+  private func islandDynamicIslandIcon(uiImage: UIImage, size: CGFloat) -> some View {
+    Image(uiImage: uiImage)
+      .resizable()
+      .interpolation(.high)
+      .antialiased(true)
+      .scaledToFit()
+      .frame(width: size, height: size)
+      .fixedSize()
+  }
+
   @ViewBuilder
   private func islandCircleImage(uiImage: UIImage, size: CGFloat) -> some View {
     // 正圆：固定正方形 + Circle，并用 fixedSize 避免灵动岛 compact 槽位横向拉伸成椭圆
@@ -595,17 +605,16 @@ struct PetLiveActivityWidget: Widget {
     size: CGFloat,
     cornerRadius: CGFloat
   ) -> some View {
-    // fixedSize：避免 Live Activity 槽位压缩导致侧图被裁切一角
+    // 锁屏侧图：不用 fixedSize，避免系统槽位高度不够时底边被硬裁
     Image(uiImage: uiImage)
       .resizable()
       .interpolation(.high)
       .antialiased(true)
       .scaledToFill()
       .frame(width: size, height: size)
-      .clipped()
       .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
       .frame(width: size, height: size)
-      .fixedSize()
+      .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
   }
 
   @ViewBuilder
