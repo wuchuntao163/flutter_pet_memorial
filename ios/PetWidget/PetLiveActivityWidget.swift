@@ -316,13 +316,16 @@ struct PetLiveActivityWidget: Widget {
           }
         }
         .id(state.imageRevision)
+        // 默认与宠物岛锁屏一致 17；用户调过字号则用配置值
+        let photoFont: CGFloat = {
+          let raw = state.textFontSize
+          if raw <= 0 { return expanded ? 16 : 17 }
+          // 旧默认 16 视为未调过，锁屏对齐宠物岛 17
+          if !expanded && abs(raw - 16) < 0.01 { return 17 }
+          return CGFloat(max(12, min(26, raw)))
+        }()
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
-          .font(
-            .system(
-              size: CGFloat(max(16, min(26, state.textFontSize))),
-              weight: .semibold
-            )
-          )
+          .font(.system(size: photoFont, weight: .semibold))
           .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
           .lineLimit(expanded ? 2 : 4)
           .multilineTextAlignment(.leading)

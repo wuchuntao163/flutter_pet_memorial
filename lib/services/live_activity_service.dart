@@ -403,7 +403,7 @@ class LiveActivityService {
     final subtitle =
         prefs.getString('photo_island_content')?.trim() ?? '笨猫真可爱 >.<';
     final color = prefs.getInt('photo_island_color') ?? 0xFFFFFFFF;
-    final fontSize = prefs.getDouble('photo_island_font_size') ?? 16;
+    final fontSize = prefs.getDouble('photo_island_font_size') ?? 17;
     final bgColor = prefs.getInt('photo_island_bg_color') ?? 0xFFFFC7B9;
     return {
       'petId': '${cache.petId ?? ''}',

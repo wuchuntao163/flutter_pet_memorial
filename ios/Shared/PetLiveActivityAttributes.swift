@@ -52,7 +52,7 @@ struct PetLiveActivityAttributes: ActivityAttributes {
       daysText: String = "",
       textColorARGB: UInt32 = 0xFFFFFFFF,
       backgroundColorARGB: UInt32 = 0xFFFFC7B9,
-      textFontSize: Double = 16,
+      textFontSize: Double = 17,
       textNormX: Double = 0.58,
       textNormY: Double = 0.72,
       compactLeadingEmoji: String = "",
@@ -85,7 +85,7 @@ struct PetLiveActivityAttributes: ActivityAttributes {
       daysText = try c.decodeIfPresent(String.self, forKey: .daysText) ?? ""
       textColorARGB = try c.decodeIfPresent(UInt32.self, forKey: .textColorARGB) ?? 0xFFFFFFFF
       backgroundColorARGB = try c.decodeIfPresent(UInt32.self, forKey: .backgroundColorARGB) ?? 0xFFFFC7B9
-      textFontSize = try c.decodeIfPresent(Double.self, forKey: .textFontSize) ?? 16
+      textFontSize = try c.decodeIfPresent(Double.self, forKey: .textFontSize) ?? 17
       textNormX = try c.decodeIfPresent(Double.self, forKey: .textNormX) ?? 0.58
       textNormY = try c.decodeIfPresent(Double.self, forKey: .textNormY) ?? 0.72
       compactLeadingEmoji = try c.decodeIfPresent(String.self, forKey: .compactLeadingEmoji) ?? ""
