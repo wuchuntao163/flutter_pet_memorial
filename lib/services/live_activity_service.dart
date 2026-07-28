@@ -526,13 +526,28 @@ class LiveActivityService {
 
   Future<void> _syncLiveActivityImage({bool force = false}) async {
     final cache = AppCacheStore.instance;
-    final type = cache.petTypeCode;
-    final String? petUrl;
-    if (type == 1 || type == 2) {
-      petUrl = cache.liveActivityImageUrl;
-    } else {
-      final raw = await PetDisplayImage.resolveUrl();
-      petUrl = raw.isEmpty ? null : raw;
+    final prefs = await SharedPreferences.getInstance();
+    // 优先用户在宠物岛选中的图，避免锁屏/回前台 sync 用档案 type 覆盖成另一只
+    final selectedUrl = prefs.getString('pet_island_pet_url')?.trim() ?? '';
+    String? petUrl = selectedUrl.isNotEmpty ? selectedUrl : null;
+    if (petUrl == null || petUrl.isEmpty) {
+      final choices = await _petIslandImageChoices();
+      if (choices.isNotEmpty) {
+        final index = (prefs.getInt('pet_island_selected_pet') ?? 0).clamp(
+          0,
+          choices.length - 1,
+        );
+        petUrl = choices[index];
+      }
+    }
+    if (petUrl == null || petUrl.isEmpty) {
+      final type = cache.petTypeCode;
+      if (type == 1 || type == 2) {
+        petUrl = cache.liveActivityImageUrl;
+      } else {
+        final raw = await PetDisplayImage.resolveUrl();
+        petUrl = raw.isEmpty ? null : raw;
+      }
     }
     final fourCloverUrl = cache.fourCloverImageUrl;
     await _syncRemoteImages(
@@ -540,6 +555,28 @@ class LiveActivityService {
       fourCloverUrl: fourCloverUrl ?? '',
       force: force,
     );
+  }
+
+  /// 与宠物岛配置页同一顺序：狗 → 猫 → 自定义形象
+  Future<List<String>> _petIslandImageChoices() async {
+    final cache = AppCacheStore.instance;
+    final images = <String>[];
+    void add(String? value) {
+      final image = value?.trim() ?? '';
+      if (image.isEmpty) return;
+      final resolved = PetImageService.resolveUrl(image);
+      if (resolved.isNotEmpty && !images.contains(resolved)) {
+        images.add(resolved);
+      }
+    }
+
+    add(cache.liveActivityDogImageUrl);
+    add(cache.liveActivityCatImageUrl);
+    if (PetDisplayImage.isCustomPet(cache.petProfile)) {
+      final profile = await PetDisplayImage.resolveUrl();
+      add(profile);
+    }
+    return images;
   }
 
   Future<void> _syncRemoteImages({

@@ -355,7 +355,7 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
           }
           final selected = index == _selectedPet;
           return GestureDetector(
-            onTap: () => setState(() => _selectedPet = index),
+            onTap: () => _onSelectPet(index),
             child: Container(
               width: 66,
               height: 66,
@@ -401,6 +401,42 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
     );
   }
 
+  Future<void> _onSelectPet(int index) async {
+    if (index == _selectedPet || index < 0 || index >= _petImages.length) {
+      return;
+    }
+    setState(() => _selectedPet = index);
+    final prefs = await SharedPreferences.getInstance();
+    final petUrl = _petImages[index];
+    await Future.wait([
+      prefs.setInt(_petKey, index),
+      prefs.setString('pet_island_pet_url', petUrl),
+    ]);
+    // 已上岛时立刻同步选中形象，避免回前台/关屏后被档案 type 覆盖
+    if (_enabled) {
+      final content = _contentController.text.trim();
+      final bannerBg =
+          WidgetDetailScope.maybeOf(context)?.defaultBackground.trim() ?? '';
+      await LiveActivityService.instance.startOrUpdateIsland(
+        template: 1,
+        payload: {
+          'petName':
+              AppCacheStore.instance.petProfile?['nickname']?.toString().trim() ??
+              AppCacheStore.instance.petProfile?['name']?.toString().trim() ??
+              '宠物',
+          'subtitle': content.isEmpty ? '记录每个值得纪念的日子' : content,
+          'memorialTitle': '',
+          'backgroundColorARGB': const Color(0xFFC5D6E2).toARGB32(),
+        },
+        assetPaths: {
+          'petUrl': petUrl,
+          'cloverUrl': _cloverImage,
+          if (bannerBg.isNotEmpty) 'bannerBg': bannerBg,
+        },
+      );
+    }
+  }
+
   Future<void> _prepare() async {
     final cache = AppCacheStore.instance;
     await cache.fetchConfig();
@@ -418,7 +454,14 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
       final profile = await PetDisplayImage.resolveUrl();
       add(profile);
     }
-    final selected = prefs.getInt(_petKey) ?? 0;
+    final resolved = images.map(PetImageService.resolveUrl).toList();
+    // 未存过选择时默认第一项（狗），不要用档案 type 悄悄跳到猫
+    var selected = prefs.getInt(_petKey) ?? 0;
+    if (resolved.isNotEmpty) {
+      selected = selected.clamp(0, resolved.length - 1);
+    } else {
+      selected = 0;
+    }
     final content = prefs.getString(_contentKey);
     final enabled = prefs.getBool(_enabledKey) ?? false;
     if (!mounted) return;
@@ -427,17 +470,19 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
       _petsReady = true;
       _petImages
         ..clear()
-        ..addAll(images.map(PetImageService.resolveUrl));
+        ..addAll(resolved);
       _cloverImage = cache.fourCloverImageUrl;
-      _selectedPet = selected.clamp(
-        0,
-        _petImages.isEmpty ? 0 : _petImages.length - 1,
-      );
+      _selectedPet = selected;
       if (content != null && content.isNotEmpty) {
         _contentController.text = content;
       }
       _enabled = enabled;
     });
+    // 纠正/补齐已选 URL，供 syncIfEnabled 使用
+    if (resolved.isNotEmpty) {
+      await prefs.setInt(_petKey, selected);
+      await prefs.setString('pet_island_pet_url', resolved[selected]);
+    }
   }
 
   Future<void> _toggleIsland() async {
@@ -446,13 +491,14 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
     final prefs = await SharedPreferences.getInstance();
     final nextEnabled = !_enabled;
     final content = _contentController.text.trim();
+    final petUrl = _petImages.isEmpty ? '' : _petImages[_selectedPet];
     await Future.wait([
       prefs.setInt(_petKey, _selectedPet),
       prefs.setString(_contentKey, content),
+      if (petUrl.isNotEmpty) prefs.setString('pet_island_pet_url', petUrl),
     ]);
 
     if (nextEnabled) {
-      final petUrl = _petImages.isEmpty ? '' : _petImages[_selectedPet];
       final bannerBg =
           WidgetDetailScope.maybeOf(context)?.defaultBackground.trim() ?? '';
       const bgColor = Color(0xFFC5D6E2);
