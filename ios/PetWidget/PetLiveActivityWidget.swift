@@ -262,9 +262,9 @@ struct PetLiveActivityWidget: Widget {
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
-      // 普通岛：高度 125，左边距 35（再右移 5）
+      // 普通岛：高度 125，左边距 37；侧图 68；文案最多 4 行且不缩小字号
       bodyContent(context: context, expanded: false)
-        .padding(.leading, 35)
+        .padding(.leading, 37)
         .padding(.trailing, 16)
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
@@ -293,11 +293,11 @@ struct PetLiveActivityWidget: Widget {
     expanded: Bool
   ) -> some View {
     let state = context.state
-    // 锁屏侧图尺寸对齐展示台（约 66）
-    let imageSize: CGFloat = expanded ? 56 : 66
+    // 锁屏侧图 68
+    let imageSize: CGFloat = expanded ? 56 : 68
     switch state.template {
     case 2:
-      HStack(spacing: 14) {
+      HStack(alignment: .center, spacing: 14) {
         // 锁屏/展开：与 App 预览卡片一致的圆角矩形（正圆仅用于灵动岛 compact）
         Group {
           if let image = LiveActivityShared.loadPhoto() {
@@ -319,13 +319,14 @@ struct PetLiveActivityWidget: Widget {
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
           .font(
             .system(
-              size: CGFloat(max(16, min(26, state.textFontSize + (expanded ? 0 : 2)))),
+              size: CGFloat(max(16, min(26, state.textFontSize))),
               weight: .semibold
             )
           )
           .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
-          .lineLimit(2)
-          .minimumScaleFactor(0.75)
+          .lineLimit(expanded ? 2 : 4)
+          .multilineTextAlignment(.leading)
+          .fixedSize(horizontal: false, vertical: true)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 3, 4:
@@ -408,10 +409,11 @@ struct PetLiveActivityWidget: Widget {
         }
         .id(state.imageRevision)
         Text(state.subtitle.isEmpty ? state.petName : state.subtitle)
-          .font(.system(size: expanded ? 16 : 18, weight: .semibold))
+          .font(.system(size: expanded ? 16 : 17, weight: .semibold))
           .foregroundColor(.primary)
-          .lineLimit(1)
-          .minimumScaleFactor(0.8)
+          .lineLimit(expanded ? 2 : 4)
+          .multilineTextAlignment(.leading)
+          .fixedSize(horizontal: false, vertical: true)
           .frame(maxWidth: .infinity, alignment: .leading)
         Spacer(minLength: 0)
       }
