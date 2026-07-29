@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../config/colors.dart';
 import '../../config/layout.dart';
-import '../../data/app_cache_store.dart';
 import '../../data/banner_store.dart';
 import '../../data/widget_store.dart';
 import '../../models/widget_definition.dart';
@@ -46,12 +45,10 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
         bottom: false,
         child: ListenableBuilder(
           listenable: Listenable.merge([
-            AppCacheStore.instance,
             BannerStore.instance,
             WidgetStore.instance,
           ]),
           builder: (context, _) {
-            final cache = AppCacheStore.instance;
             return Stack(
               children: [
                 Positioned(
@@ -82,10 +79,7 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 22),
-                        child: _buildHeader(
-                          cache.liveActivityCatImageUrl,
-                          cache.liveActivityDogImageUrl,
-                        ),
+                        child: _buildHeader(),
                       ),
                       const SizedBox(height: 10),
                       Expanded(
@@ -146,17 +140,19 @@ class _ComponentPageScreenState extends State<ComponentPageScreen> {
     );
   }
 
-  Widget _buildHeader(String? catUrl, String? dogUrl) {
+  Widget _buildHeader() {
+    // zsjimage：狗+猫整图，底部已对齐；勿再拆成两张网络图拼
+    const logoHeight = 30.0;
+    const logoAspect = 800 / 420;
     return Row(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            _RemotePetIcon(url: dogUrl),
-            const SizedBox(width: 0),
-            _RemotePetIcon(url: catUrl),
-          ],
+        Image.asset(
+          'assets/images/zsjimage.png',
+          height: logoHeight,
+          width: logoHeight * logoAspect,
+          fit: BoxFit.contain,
+          alignment: Alignment.bottomCenter,
+          filterQuality: FilterQuality.high,
         ),
         const Spacer(),
         Material(
@@ -380,29 +376,6 @@ class _PinnedTabsDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _PinnedTabsDelegate oldDelegate) {
     return height != oldDelegate.height || child != oldDelegate.child;
-  }
-}
-
-class _RemotePetIcon extends StatelessWidget {
-  const _RemotePetIcon({required this.url});
-
-  final String? url;
-
-  @override
-  Widget build(BuildContext context) {
-    final value = url?.trim() ?? '';
-    return SizedBox(
-      width: 30,
-      height: 30,
-      child: value.isEmpty
-          ? const Icon(Icons.pets, size: 16, color: AppColors.accentDark)
-          : Image.network(
-              value,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) =>
-                  const Icon(Icons.pets, size: 16, color: AppColors.accentDark),
-            ),
-    );
   }
 }
 

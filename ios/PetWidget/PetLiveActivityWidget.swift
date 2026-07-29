@@ -110,27 +110,32 @@ struct PetLiveActivityWidget: Widget {
         .activitySystemActionForegroundColor(Color.primary)
     } dynamicIsland: { context in
       DynamicIsland {
-        if context.state.template == 6 {
-          // 自定义：整图铺满展开区（含摄像头左右翼），与参考图一致
-          DynamicIslandExpandedRegion(.leading) {
+        // DynamicIslandExpandedContentBuilder 不支持顶层 if/else，条件写在 Region 内部
+        DynamicIslandExpandedRegion(.leading) {
+          if context.state.template == 6 {
             customPanelWing(alignment: .leading)
               .id(context.state.imageRevision)
           }
-          DynamicIslandExpandedRegion(.trailing) {
+        }
+        DynamicIslandExpandedRegion(.trailing) {
+          if context.state.template == 6 {
             customPanelWing(alignment: .trailing)
               .id(context.state.imageRevision)
           }
-          DynamicIslandExpandedRegion(.center) {
+        }
+        DynamicIslandExpandedRegion(.center) {
+          if context.state.template == 6 {
             // 占位，避免系统在中部留黑条；实际画面由 bottom 大图承接
             Color.clear.frame(height: 1)
           }
-          DynamicIslandExpandedRegion(.bottom) {
+        }
+        DynamicIslandExpandedRegion(.bottom) {
+          if context.state.template == 6 {
+            // 自定义：整图铺满展开区（含摄像头左右翼）
             customPanel(state: context.state, height: 160, cornerRadius: 0)
               .id(context.state.imageRevision)
               .frame(maxWidth: .infinity)
-          }
-        } else {
-          DynamicIslandExpandedRegion(.bottom) {
+          } else {
             expandedContent(context: context)
           }
         }
