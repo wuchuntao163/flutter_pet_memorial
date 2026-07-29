@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../config/app_info.dart';
 import '../../config/colors.dart';
 import '../../config/layout.dart';
-import '../../data/banner_store.dart';
 import '../../data/app_cache_store.dart';
 import '../../data/auth_session_store.dart';
 import '../../data/memorial_store.dart';
@@ -19,7 +18,6 @@ import '../../utils/app_update_util.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/reselect_pet_util.dart';
 import '../../widgets/common/action_button.dart';
-import '../../widgets/common/profile_banner.dart';
 import '../../widgets/common/settings_item.dart';
 import '../../widgets/common/pet_avatar_image.dart';
 import '../../widgets/dialogs/ios_desktop_pet_guide_dialog.dart';
@@ -61,11 +59,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     AuthSessionStore.instance.addListener(_onSessionChanged);
-    BannerStore.instance.addListener(_onBannerChanged);
-    final store = BannerStore.instance;
-    if (!store.listLoaded && !store.isLoading) {
-      store.fetchList();
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _watchRoute();
       unawaited(_precachePetAvatar());
@@ -175,15 +168,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _router?.routerDelegate.removeListener(_routeListener!);
     }
     AuthSessionStore.instance.removeListener(_onSessionChanged);
-    BannerStore.instance.removeListener(_onBannerChanged);
     super.dispose();
   }
 
   void _onSessionChanged() {
-    if (mounted) setState(() {});
-  }
-
-  void _onBannerChanged() {
     if (mounted) setState(() {});
   }
 
@@ -223,8 +211,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: 12,
                 onTap: () => _onReselectPetTap(context),
               ),
-              const SizedBox(height: 10),
-              _buildBannerSection(),
               const SizedBox(height: 10),
               if (Platform.isIOS)
                 SettingsItem(
@@ -410,27 +396,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final session = AuthSessionStore.instance;
     if (session.cloudSync && session.hasPhone) return;
     await _openBindPhone();
-  }
-
-  Widget _buildBannerSection() {
-    final store = BannerStore.instance;
-    if (store.isLoading && store.items.isEmpty) {
-      return const SizedBox(
-        height: 72,
-        child: Center(
-          child: SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.accent,
-            ),
-          ),
-        ),
-      );
-    }
-    if (store.items.isEmpty) return const SizedBox.shrink();
-    return ProfileBanner(items: store.items);
   }
 
   Widget _buildProfileAvatar() {
