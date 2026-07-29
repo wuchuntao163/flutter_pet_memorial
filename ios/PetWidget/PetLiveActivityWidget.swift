@@ -429,7 +429,7 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 6:
-      customPanel(state: state, height: expanded ? 120 : 168)
+      customPanel(state: state, height: 168)
         .id(state.imageRevision)
     default:
       HStack(alignment: .center, spacing: 14) {
