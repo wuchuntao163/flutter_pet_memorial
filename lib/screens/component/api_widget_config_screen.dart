@@ -23,6 +23,7 @@ import '../../utils/pet_display_image.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../utils/reselect_pet_util.dart';
 import '../../utils/saving_overlay.dart';
+import '../../utils/widget_preview_sample.dart';
 import '../../widgets/common/add_memorial_chip.dart';
 import '../../widgets/common/add_custom_pet_chip.dart';
 import '../../widgets/common/day_number_display.dart';
@@ -402,7 +403,7 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
           const SizedBox(height: 12),
           _previewSurface(
             item,
-            kIslandPreviewCardWidth,
+            islandPreviewCardWidth(context),
             kIslandPreviewCardHeight,
           ),
         ],
@@ -449,10 +450,7 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
                   fit: BoxFit.contain,
                 ),
               ),
-      2 =>
-        _uploadedImage == null && item.image.isNotEmpty
-            ? _sourceImage(item.image)
-            : _textOverlay(),
+      2 => _countdownContent(),
       3 => _countdownContent(),
       4 || 5 => _multiMemorialContent(),
       6 => _calendarContent(),
@@ -562,7 +560,7 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _selectedMemorial?.title ?? '纪念日',
+            _selectedMemorial?.title ?? '最重要的一天',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -596,12 +594,14 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
 
   Widget _multiMemorialContent() {
     final items = MemorialStore.instance.items.take(3).toList();
+    final display =
+        items.isEmpty ? WidgetPreviewSample.forMulti() : items;
     return Padding(
       padding: const EdgeInsets.all(9),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          for (final item in items)
+          for (final item in display)
             Container(
               height: 28,
               margin: const EdgeInsets.symmetric(vertical: 2),
@@ -621,7 +621,7 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
                     ),
                   ),
                   Text(
-                    '${item.listDisplayDate.difference(DateTime.now()).inDays.abs()}天',
+                    '${WidgetPreviewSample.fixedDays(item) ?? item.listDisplayDate.difference(DateTime.now()).inDays.abs()}天',
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -673,12 +673,17 @@ class _ApiWidgetConfigScreenState extends State<ApiWidgetConfigScreen> {
     for (final item in items) {
       if (item.id == _selectedMemorialId) return item;
     }
-    return items.isEmpty ? null : items.first;
+    if (items.isNotEmpty) return items.first;
+    return WidgetPreviewSample.shouldUse
+        ? WidgetPreviewSample.forSimple()
+        : null;
   }
 
   int get _selectedDays {
     final item = _selectedMemorial;
     if (item == null) return 0;
+    final fixed = WidgetPreviewSample.fixedDays(item);
+    if (fixed != null) return fixed;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     return item.listDisplayDate.difference(today).inDays.abs();

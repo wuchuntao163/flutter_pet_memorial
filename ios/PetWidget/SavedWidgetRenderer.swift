@@ -136,8 +136,17 @@ struct SavedWidgetConfiguration {
     }
   }
 
-  /// 按 memorial_date 实时计算天数（与 Flutter displayDayCount 一致：日历日绝对差）
+  /// 静态样例保存的组件：天数/展示日期冻结，不随今天变化
+  var daysAreFixed: Bool {
+    let raw = string("days_fixed")
+    return raw == "1" || raw.lowercased() == "true"
+  }
+
+  /// 按 memorial_date 实时计算天数；days_fixed 时用保存的 memorial_days
   var liveMemorialDays: Int {
+    if daysAreFixed {
+      return int("memorial_days")
+    }
     if let date = Self.parseMemorialDate(string("memorial_date")) {
       return Self.calendarDayDistance(to: date)
     }
@@ -155,8 +164,17 @@ struct SavedWidgetConfiguration {
       return list.prefix(3).map { item in
         let title = (item["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let dateRaw = (item["date"] as? String) ?? ""
+        let itemFixed = Self.isTruthy(item["days_fixed"]) || daysAreFixed
         let days: Int
-        if let date = Self.parseMemorialDate(dateRaw) {
+        if itemFixed {
+          if let d = item["days"] as? Int {
+            days = d
+          } else if let d = Int(item["days"] as? String ?? "") {
+            days = d
+          } else {
+            days = 0
+          }
+        } else if let date = Self.parseMemorialDate(dateRaw) {
           days = Self.calendarDayDistance(to: date)
         } else if let d = item["days"] as? Int {
           days = d
@@ -179,6 +197,17 @@ struct SavedWidgetConfiguration {
     }
     let title = string("memorial_title", fallback: self.title)
     return [(title.isEmpty ? "纪念日" : title, liveMemorialDays, defaultBg, defaultText, "")]
+  }
+
+  private static func isTruthy(_ raw: Any?) -> Bool {
+    if let b = raw as? Bool { return b }
+    if let n = raw as? Int { return n != 0 }
+    if let n = raw as? Int64 { return n != 0 }
+    if let s = raw as? String {
+      let v = s.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+      return v == "1" || v == "true" || v == "yes"
+    }
+    return false
   }
 
   func digitUIImage(_ digit: Int) -> UIImage? {
@@ -715,13 +744,17 @@ struct SavedWidgetTemplateView: View {
   private var mediumTemplate: some View {
     let memorialDate = SavedWidgetConfiguration.parseMemorialDate(config.string("memorial_date"))
     let weekdayLabels = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+    let fixedWeekday = config.string("memorial_weekday")
+    let fixedDateLabel = config.string("memorial_date_label")
     let weekday: String = {
+      if !fixedWeekday.isEmpty { return fixedWeekday }
       let date = memorialDate ?? Date()
       let wd = Calendar.current.component(.weekday, from: date)
       let idx = (wd + 5) % 7
       return weekdayLabels[idx]
     }()
     let dateLabel: String = {
+      if !fixedDateLabel.isEmpty { return fixedDateLabel }
       guard let date = memorialDate else { return "" }
       let y = Calendar.current.component(.year, from: date)
       let m = Calendar.current.component(.month, from: date)
@@ -763,6 +796,8 @@ struct SavedWidgetTemplateView: View {
   }
 
   private var dateText: String {
+    let fixed = config.string("memorial_date_label")
+    if !fixed.isEmpty { return fixed }
     let raw = config.string("memorial_date")
     guard let date = SavedWidgetConfiguration.parseMemorialDate(raw) else { return "" }
     let weekdays = ["一", "二", "三", "四", "五", "六", "日"]
@@ -776,6 +811,7 @@ struct SavedWidgetTemplateView: View {
   }
 
   private var shortDateText: String {
+    // 静态样例：天数冻结；日期文案用保存时的 memorial_date（不再随跨天改天数）
     let raw = config.string("memorial_date")
     guard let date = SavedWidgetConfiguration.parseMemorialDate(raw) else { return "" }
     return Self.format(date, pattern: "yyyy-MM-dd")

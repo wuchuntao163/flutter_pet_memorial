@@ -323,7 +323,7 @@ class _MemorialIslandConfigScreenState
   Widget _buildExpandedIsland() {
     final item = _selected;
     return Container(
-      width: kIslandPreviewCardWidth,
+      width: islandPreviewCardWidth(context),
       height: kIslandPreviewCardHeight,
       padding: const EdgeInsets.fromLTRB(44, 0, 8, 0),
       decoration: BoxDecoration(

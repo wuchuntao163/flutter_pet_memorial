@@ -98,14 +98,14 @@ class BottomNavBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(_barRadius),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 14,
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 12,
                       offset: const Offset(0, 2),
                       spreadRadius: 0,
                     ),
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 6,
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 5,
                       offset: const Offset(0, -1),
                     ),
                   ],

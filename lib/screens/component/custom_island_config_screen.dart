@@ -341,7 +341,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
 
   Widget _panelPreview() {
     return SizedBox(
-      width: kIslandPreviewCardWidth,
+      width: islandPreviewCardWidth(context),
       height: _panelPreviewHeight,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
@@ -405,7 +405,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
   Widget _panelImage() {
     return islandImage(
       _effectivePanelPath,
-      width: kIslandPreviewCardWidth,
+      width: islandPreviewCardWidth(context),
       height: _panelPreviewHeight,
       fit: BoxFit.cover,
       placeholder: Image.asset(

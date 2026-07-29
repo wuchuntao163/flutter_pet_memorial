@@ -297,7 +297,7 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
 
   Widget _buildExpandedIsland() {
     return Container(
-      width: kIslandPreviewCardWidth,
+      width: islandPreviewCardWidth(context),
       height: kIslandPreviewCardHeight,
       padding: const EdgeInsets.fromLTRB(30, 0, 18, 0),
       decoration: BoxDecoration(

@@ -110,8 +110,29 @@ struct PetLiveActivityWidget: Widget {
         .activitySystemActionForegroundColor(Color.primary)
     } dynamicIsland: { context in
       DynamicIsland {
-        DynamicIslandExpandedRegion(.bottom) {
-          expandedContent(context: context)
+        if context.state.template == 6 {
+          // 自定义：整图铺满展开区（含摄像头左右翼），与参考图一致
+          DynamicIslandExpandedRegion(.leading) {
+            customPanelWing(alignment: .leading)
+              .id(context.state.imageRevision)
+          }
+          DynamicIslandExpandedRegion(.trailing) {
+            customPanelWing(alignment: .trailing)
+              .id(context.state.imageRevision)
+          }
+          DynamicIslandExpandedRegion(.center) {
+            // 占位，避免系统在中部留黑条；实际画面由 bottom 大图承接
+            Color.clear.frame(height: 1)
+          }
+          DynamicIslandExpandedRegion(.bottom) {
+            customPanel(state: context.state, height: 160, cornerRadius: 0)
+              .id(context.state.imageRevision)
+              .frame(maxWidth: .infinity)
+          }
+        } else {
+          DynamicIslandExpandedRegion(.bottom) {
+            expandedContent(context: context)
+          }
         }
       } compactLeading: {
         compactLeading(context: context)
@@ -239,22 +260,35 @@ struct PetLiveActivityWidget: Widget {
     context: ActivityViewContext<PetLiveActivityAttributes>
   ) -> some View {
     let state = context.state
-    // 灵动岛展开态系统底为深色/黑色，无法改成锁屏浅色底
-    if state.template == 6 {
-      // 自定义展开：高度与锁屏一致 168；无额外圆角；顶部摄像头区域系统占用
-      customPanel(state: state, height: 160, cornerRadius: 0)
-        .id(state.imageRevision)
-        .frame(maxWidth: .infinity)
-    } else {
-      // 边距与高度完全对齐锁屏卡片
-      let isTimerOrMemorial = state.template >= 3 && state.template <= 5
-      let verticalPad: CGFloat = isTimerOrMemorial ? 16 : 18
-      bodyContent(context: context, expanded: true)
-        .padding(.leading, isTimerOrMemorial ? 56 : 37)
-        .padding(.trailing, 16)
-        .padding(.vertical, verticalPad)
-        .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
+    // template == 6 已在 dynamicIsland 分支单独铺满，此处仅处理其它岛
+    let isTimerOrMemorial = state.template >= 3 && state.template <= 5
+    let verticalPad: CGFloat = isTimerOrMemorial ? 16 : 18
+    bodyContent(context: context, expanded: true)
+      .padding(.leading, isTimerOrMemorial ? 56 : 37)
+      .padding(.trailing, 16)
+      .padding(.vertical, verticalPad)
+      .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
+  }
+
+  /// 自定义岛展开：摄像头左右翼用同一张面板图 cover 裁切，避免两侧黑底
+  @ViewBuilder
+  private func customPanelWing(alignment: Alignment) -> some View {
+    GeometryReader { geo in
+      if let panel = LiveActivityShared.loadPanel() {
+        Image(uiImage: panel)
+          .resizable()
+          .interpolation(.high)
+          .antialiased(true)
+          .scaledToFill()
+          .frame(width: geo.size.width, height: geo.size.height)
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+          .clipped()
+      } else {
+        Color.clear
+      }
     }
+    // 给左右翼足够占位，让面板图能延伸上去
+    .frame(minWidth: 40, maxWidth: .infinity, minHeight: 28, maxHeight: .infinity)
   }
 
   @ViewBuilder
@@ -262,10 +296,9 @@ struct PetLiveActivityWidget: Widget {
     context: ActivityViewContext<PetLiveActivityAttributes>
   ) -> some View {
     let state = context.state
-    // 自定义面板全幅铺满，去掉外层 padding（否则上下左右会留缝）
-    // 高度加高以减轻放大发糊（168）
+    // 自定义面板：整图全幅覆盖 Live Activity 卡片（图即内容）
     if state.template == 6 {
-      customPanel(state: state, height: 168)
+      customPanel(state: state, height: 168, cornerRadius: 18)
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
@@ -475,19 +508,23 @@ struct PetLiveActivityWidget: Widget {
       let top = margin + (geo.size.height - margin * 2 - textBlockH) * normY
       let textMaxW = max(60, geo.size.width - left - margin)
       ZStack(alignment: .topLeading) {
-        if let panel = LiveActivityShared.loadPanel() {
-          Image(uiImage: panel)
-            .resizable()
-            .interpolation(.high)
-            .antialiased(true)
-            .scaledToFill()
-            .frame(width: geo.size.width, height: geo.size.height)
-            .clipped()
-        } else {
-          Rectangle()
-            .fill(LiveActivityShared.color(from: state.backgroundColorARGB))
+        // 整图 cover 铺满（图中文案/装饰已在图内，无需再拼元素）
+        Group {
+          if let panel = LiveActivityShared.loadPanel() {
+            Image(uiImage: panel)
+              .resizable()
+              .interpolation(.high)
+              .antialiased(true)
+              .scaledToFill()
+          } else {
+            Rectangle()
+              .fill(LiveActivityShared.color(from: state.backgroundColorARGB))
+          }
         }
-        // 未输入文字时不显示文案（允许纯图面板）
+        .frame(width: geo.size.width, height: geo.size.height)
+        .clipped()
+
+        // 未输入文字时不显示文案（允许纯图面板，与参考图一致）
         if !state.subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
           Text(state.subtitle)
             .font(.system(size: fontSize, weight: .semibold))
@@ -501,6 +538,7 @@ struct PetLiveActivityWidget: Widget {
             )
         }
       }
+      .frame(width: geo.size.width, height: geo.size.height)
     }
     .frame(maxWidth: .infinity)
     .frame(height: height)

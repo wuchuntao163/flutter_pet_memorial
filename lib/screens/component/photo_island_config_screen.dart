@@ -295,7 +295,7 @@ class _PhotoIslandConfigScreenState extends State<PhotoIslandConfigScreen> {
   );
 
   Widget _expandedPreview() => Container(
-    width: kIslandPreviewCardWidth,
+    width: islandPreviewCardWidth(context),
     height: kIslandPreviewCardHeight,
     padding: const EdgeInsets.fromLTRB(30, 0, 18, 0),
     decoration: BoxDecoration(

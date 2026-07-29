@@ -80,9 +80,17 @@ Widget islandImage(
   );
 }
 
-/// 各岛通知版预览统一尺寸（与正计时 / 纪念日一致）
-const double kIslandPreviewCardWidth = 330;
+/// 各岛通知版预览统一高度
 const double kIslandPreviewCardHeight = 117;
+
+/// 兜底宽度（无 BuildContext 时）；优先用 [islandPreviewCardWidth]
+const double kIslandPreviewCardWidth = 330;
+
+/// 展开预览卡宽度：与下方配置区内容左右边距 20 对齐（比固定 330 更宽）
+double islandPreviewCardWidth(BuildContext context) {
+  final width = MediaQuery.sizeOf(context).width;
+  return (width - 40).clamp(330.0, 420.0);
+}
 
 /// 灵动岛胶囊预览（窄条）
 const double kIslandCompactWidth = 136;

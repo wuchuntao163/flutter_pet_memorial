@@ -20,6 +20,7 @@ import '../../utils/app_permission_util.dart';
 import '../../utils/center_tip_util.dart';
 import '../../utils/pet_image_picker.dart';
 import '../../utils/saving_overlay.dart';
+import '../../utils/widget_preview_sample.dart';
 import '../../widgets/common/add_memorial_chip.dart';
 import '../../widgets/common/day_number_display.dart';
 import '../../widgets/common/memorial_type_info.dart';
@@ -93,6 +94,7 @@ class _CountdownWidgetConfigScreenState
   }
 
   /// 按框选顺序取已选纪念日（最多 3 条）
+  /// 无真实纪念日时用一级页同款静态样例，避免二级预览只剩背景
   List<MemorialDay> _selectedMemorialsInOrder() {
     final byId = {
       for (final item in MemorialStore.instance.items) item.id: item,
@@ -102,6 +104,9 @@ class _CountdownWidgetConfigScreenState
       final item = byId[id];
       if (item != null) out.add(item);
       if (out.length >= 3) break;
+    }
+    if (out.isEmpty && WidgetPreviewSample.shouldUse) {
+      return WidgetPreviewSample.forMulti();
     }
     return out;
   }
@@ -256,12 +261,24 @@ class _CountdownWidgetConfigScreenState
     for (final item in items) {
       if (item.id == _selectedMemorialId) return item;
     }
-    return items.isEmpty ? null : items.first;
+    if (items.isNotEmpty) return items.first;
+    // 无纪念日：用与一级页展示图一致的静态样例填充二级预览
+    return switch (widget.variant) {
+      CountdownWidgetVariant.photo => WidgetPreviewSample.forPhoto(),
+      CountdownWidgetVariant.simple => WidgetPreviewSample.forSimple(),
+      CountdownWidgetVariant.medium => WidgetPreviewSample.forMedium(),
+      CountdownWidgetVariant.multiSmall ||
+      CountdownWidgetVariant.multiMedium =>
+        WidgetPreviewSample.forMulti().first,
+      CountdownWidgetVariant.calendar => null,
+    };
   }
 
   int get _days {
     final memorial = _selectedMemorial;
     if (memorial == null) return 0;
+    final fixed = WidgetPreviewSample.fixedDays(memorial);
+    if (fixed != null) return fixed;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final date = DateTime(
@@ -563,6 +580,13 @@ class _CountdownWidgetConfigScreenState
     final memorial = _selectedMemorial;
     final date = memorial?.listDisplayDate ?? DateTime.now();
     const weekdays = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
+    final isSample = WidgetPreviewSample.isSampleId(memorial?.id);
+    final weekdayLabel = isSample
+        ? WidgetPreviewSample.mediumWeekday
+        : weekdays[date.weekday - 1];
+    final dateLabel = isSample
+        ? WidgetPreviewSample.mediumDateLabel
+        : '${date.year}.${date.month}.${date.day}';
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
@@ -578,7 +602,7 @@ class _CountdownWidgetConfigScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    weekdays[date.weekday - 1],
+                    weekdayLabel,
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -589,7 +613,7 @@ class _CountdownWidgetConfigScreenState
                   Transform.translate(
                     offset: const Offset(0, 6),
                     child: Text(
-                      memorial?.title ?? '考研倒计时',
+                      memorial?.title ?? '考试倒计时',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -619,7 +643,7 @@ class _CountdownWidgetConfigScreenState
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
-                          '${date.year}.${date.month}.${date.day}',
+                          dateLabel,
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
@@ -814,7 +838,8 @@ class _CountdownWidgetConfigScreenState
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final target = DateTime(item.date.year, item.date.month, item.date.day);
-    final days = target.difference(today).inDays.abs();
+    final days = WidgetPreviewSample.fixedDays(item) ??
+        target.difference(today).inDays.abs();
     final badgeColor = MemorialTypeInfo.daysBackground(item);
     final badgeText = MemorialTypeInfo.daysText(item);
     final typeLabel = MemorialTypeInfo.label(item);
@@ -956,7 +981,7 @@ class _CountdownWidgetConfigScreenState
           ),
           const Spacer(),
           Text(
-            _selectedMemorial?.title ?? '纪念日还有',
+            _selectedMemorial?.title ?? '最重要的一天',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -1007,7 +1032,7 @@ class _CountdownWidgetConfigScreenState
   Widget _buildPhotoHeader() {
     final memorial = _selectedMemorial;
     return Text(
-      memorial?.title ?? '纪念日',
+      memorial?.title ?? '生日',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
@@ -1020,7 +1045,11 @@ class _CountdownWidgetConfigScreenState
   }
 
   String _photoDateLabel() {
-    final date = _selectedMemorial?.date;
+    final memorial = _selectedMemorial;
+    if (WidgetPreviewSample.isSampleId(memorial?.id)) {
+      return WidgetPreviewSample.photoDateLabel;
+    }
+    final date = memorial?.date;
     if (date == null) return '';
     const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
     final month = date.month.toString().padLeft(2, '0');
@@ -1562,9 +1591,12 @@ class _CountdownWidgetConfigScreenState
           if (_isMulti)
             prefs.setStringList(
               '${_prefsPrefix}_memorials',
-              List<String>.from(_selectedMemorialIds),
+              _selectedMemorialIds
+                  .where((id) => !WidgetPreviewSample.isSampleId(id))
+                  .toList(),
             )
-          else if (_selectedMemorialId == null)
+          else if (_selectedMemorialId == null ||
+              WidgetPreviewSample.isSampleId(_selectedMemorialId))
             prefs.remove('${_prefsPrefix}_memorial')
           else
             prefs.setString('${_prefsPrefix}_memorial', _selectedMemorialId!),
@@ -1586,34 +1618,64 @@ class _CountdownWidgetConfigScreenState
               _backgroundImageForPersist!,
             ),
         ]);
+        final realMemorial = WidgetPreviewSample.isSampleId(memorial?.id)
+            ? null
+            : memorial;
+        final previewItems = _selectedMemorialsInOrder();
+        final usingSample = previewItems.isNotEmpty
+            ? previewItems.every((item) => WidgetPreviewSample.isSampleId(item.id))
+            : WidgetPreviewSample.isSampleId(memorial?.id);
+        final fixedDays =
+            WidgetPreviewSample.fixedDays(memorial) ??
+            memorial?.displayDayCount ??
+            0;
         await saveWidgetToLibrary(
           definition,
           settings: {
-            'memorial_id': _selectedMemorialId ?? '',
-            'memorial_ids': List<String>.from(_selectedMemorialIds),
+            'memorial_id': realMemorial?.id ?? '',
+            'memorial_ids': _selectedMemorialIds
+                .where((id) => !WidgetPreviewSample.isSampleId(id))
+                .toList(),
+            // 静态样例：桌面天数/日期冻结；真实纪念日才实时刷新
+            'days_fixed': usingSample ? '1' : '0',
             'memorial_items': jsonEncode(
-              _selectedMemorialsInOrder()
+              previewItems
                   .map(
-                    (item) => {
-                      'id': item.id,
-                      'title': item.title,
-                      'date': item.date.toIso8601String(),
-                      'days': '${item.displayDayCount}',
-                      'badge_bg': MemorialTypeInfo.daysBackground(
-                        item,
-                      ).toARGB32(),
-                      'badge_text': MemorialTypeInfo.daysText(
-                        item,
-                      ).toARGB32(),
-                      'type_label': MemorialTypeInfo.label(item),
+                    (item) {
+                      final sample = WidgetPreviewSample.isSampleId(item.id);
+                      return {
+                        'id': sample ? '' : item.id,
+                        'title': item.title,
+                        'date': item.date.toIso8601String(),
+                        'days':
+                            '${WidgetPreviewSample.fixedDays(item) ?? item.displayDayCount}',
+                        'days_fixed': sample ? 1 : 0,
+                        'badge_bg': MemorialTypeInfo.daysBackground(
+                          item,
+                        ).toARGB32(),
+                        'badge_text': MemorialTypeInfo.daysText(
+                          item,
+                        ).toARGB32(),
+                        'type_label': MemorialTypeInfo.label(item),
+                      };
                     },
                   )
                   .toList(),
             ),
             'memorial_title': memorial?.title ?? '',
-            'memorial_days': memorial?.displayDayCount ?? 0,
+            'memorial_days': fixedDays,
             'memorial_date': memorial?.date.toIso8601String() ?? '',
-            'icon_url': _memorialIconUrl(memorial),
+            // 中号静态样例：星期固定为「星期六」（与真实日历日无关）
+            'memorial_weekday': usingSample && _isSingleMedium
+                ? WidgetPreviewSample.mediumWeekday
+                : '',
+            'memorial_date_label': usingSample &&
+                    widget.variant == CountdownWidgetVariant.photo
+                ? WidgetPreviewSample.photoDateLabel
+                : (usingSample && _isSingleMedium
+                      ? WidgetPreviewSample.mediumDateLabel
+                      : ''),
+            'icon_url': _memorialIconUrl(realMemorial),
             'font_style': _selectedFontStyleId,
             'text_color': _textColor.toARGB32(),
             'text_color_selected': _hasSelectedTextColor ? '1' : '0',
