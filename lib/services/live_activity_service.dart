@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/app_cache_store.dart';
@@ -37,7 +39,8 @@ class LiveActivityService {
 
   bool? _supportedCache;
   String? _lastSyncedImageKey;
-  static const _syncKeyVersion = 5;
+  static const _syncKeyVersion = 6;
+  static const _petImageMaxSide = 512;
 
   bool get isPlatformSupported => Platform.isIOS;
 
@@ -682,71 +685,148 @@ class LiveActivityService {
     }
   }
 
-  /// 写入宠物侧图：优先本地缓存（与桌面小组件同源），再带 Token 下载网络图
+  /// 写入宠物侧图：与狗/猫同一条链路，但先转 PNG（自家 AI 图常为 WebP，原生 UIImage 解不了）
   Future<bool> _syncPetImageToAppGroup(String petUrl) async {
     final pet = petUrl.trim();
     if (pet.isEmpty) return false;
+    final resolved = _resolveAssetRef(pet);
 
-    if (_isLocalFileRef(pet) || pet.startsWith('assets/')) {
-      final ok = await syncAsset(role: 'pet', imagePath: pet);
-      debugPrint('[LiveActivityService] sync pet local/asset ok=$ok path=$pet');
-      return ok;
+    Uint8List? bytes;
+
+    // 1) 本地 / asset
+    if (_isLocalFileRef(resolved) || resolved.startsWith('assets/')) {
+      bytes = await _resolveImageBytes(resolved);
     }
 
-    // 选中的是当前自定义网络形象时，复用小组件已落盘的 Documents 缓存
-    final customUrl = await PetDisplayImage.resolveUrl();
-    final resolved = PetImageService.resolveUrl(pet);
-    if (customUrl.isNotEmpty &&
-        (resolved == customUrl || pet == customUrl)) {
-      final petId = AppCacheStore.instance.petId;
-      var local = PetAvatarStore.localPathForPetSync(petId);
-      local ??= await PetAvatarStore.ensureLocalCacheForWidget(petId: petId);
-      if (local != null && local.isNotEmpty) {
-        final ok = await syncAsset(role: 'pet', imagePath: local);
-        debugPrint(
-          '[LiveActivityService] sync pet via widget cache ok=$ok path=$local',
-        );
-        if (ok) return true;
+    // 2) 自定义形象：复用小组件 Documents 缓存（同源网络图）
+    if (bytes == null || bytes.isEmpty) {
+      final customUrl = await PetDisplayImage.resolveUrl();
+      if (customUrl.isNotEmpty &&
+          (resolved == customUrl || pet == customUrl)) {
+        final petId = AppCacheStore.instance.petId;
+        var local = PetAvatarStore.localPathForPetSync(petId);
+        local ??= await PetAvatarStore.ensureLocalCacheForWidget(petId: petId);
+        if (local != null && local.isNotEmpty) {
+          try {
+            final file = File(local);
+            if (await file.exists()) {
+              bytes = await file.readAsBytes();
+              debugPrint(
+                '[LiveActivityService] pet bytes from widget cache '
+                '${bytes.length} path=$local',
+              );
+            }
+          } catch (e) {
+            debugPrint('[LiveActivityService] read widget cache failed: $e');
+          }
+        }
       }
     }
 
-    // 带鉴权下载后写入（首页能显示、原先裸 Dio 下载会 401）
-    final bytes = await _resolveImageBytes(resolved);
-    if (bytes != null && bytes.isNotEmpty) {
-      final ok = await syncAsset(
-        role: 'pet',
-        imageBase64: base64Encode(bytes),
-      );
+    // 3) 网络下载（带 Token，与首页小组件一致）
+    if (bytes == null || bytes.isEmpty) {
+      bytes = await _resolveImageBytes(resolved);
       debugPrint(
-        '[LiveActivityService] sync pet via auth download ok=$ok url=$resolved',
+        '[LiveActivityService] pet bytes from network '
+        '${bytes?.length ?? 0} url=$resolved',
       );
-      if (ok) return true;
     }
 
-    // 再落盘一份再同步（与 PetImageService / 小组件一致）
+    // 4) 再试 downloadToDocuments
+    if (bytes == null || bytes.isEmpty) {
+      try {
+        final path = await PetImageService.downloadToDocuments(
+          resolved,
+          filename: 'pet_live_activity_avatar.bin',
+        );
+        bytes = await File(path).readAsBytes();
+      } catch (e) {
+        debugPrint('[LiveActivityService] downloadToDocuments failed: $e');
+      }
+    }
+
+    if (bytes == null || bytes.isEmpty) {
+      // 最后：原生直下（狗/猫公开 CDN 可走这里）
+      final ok =
+          await _channel.invokeMethod<bool>('syncImage', {
+            'petImageUrl': resolved,
+            'fourCloverUrl': '',
+            'authToken': AuthSessionStore.instance.token ?? '',
+          }) ??
+          false;
+      debugPrint('[LiveActivityService] sync pet native fallback ok=$ok');
+      return ok;
+    }
+
+    // 关键 PNG：解决 WebP 等格式原生无法 decode 导致侧图空白
+    final png = await _normalizeToPng(bytes) ?? bytes;
     try {
-      final path = await PetImageService.downloadToDocuments(
-        resolved,
-        filename: 'pet_live_activity_avatar.png',
+      final dir = await getTemporaryDirectory();
+      final file = File(
+        '${dir.path}/la_pet_${DateTime.now().millisecondsSinceEpoch}.png',
       );
-      final ok = await syncAsset(role: 'pet', imagePath: path);
+      await file.writeAsBytes(png, flush: true);
+      final ok = await syncAsset(role: 'pet', imagePath: file.path);
       debugPrint(
-        '[LiveActivityService] sync pet via documents ok=$ok path=$path',
+        '[LiveActivityService] sync pet png ok=$ok bytes=${png.length} '
+        'src=$resolved',
       );
-      if (ok) return true;
-    } catch (e) {
-      debugPrint('[LiveActivityService] downloadToDocuments failed: $e');
+      // 清理临时文件（写入 App Group 后不再需要）
+      try {
+        if (await file.exists()) await file.delete();
+      } catch (_) {}
+      return ok;
+    } catch (e, st) {
+      debugPrint('[LiveActivityService] sync pet png failed: $e\n$st');
+      return false;
     }
+  }
 
-    final ok =
-        await _channel.invokeMethod<bool>('syncImage', {
-          'petImageUrl': resolved,
-          'fourCloverUrl': '',
-          'authToken': AuthSessionStore.instance.token ?? '',
-        }) ??
-        false;
-    debugPrint('[LiveActivityService] sync pet native fallback ok=$ok');
-    return ok;
+  /// 与桌面小组件一致：用 Flutter 编解码转成 PNG，供原生 UIImage 可靠读取
+  Future<Uint8List?> _normalizeToPng(Uint8List bytes) async {
+    try {
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final image = frame.image;
+      final width = image.width;
+      final height = image.height;
+      final maxSide = width > height ? width : height;
+
+      ui.Image output = image;
+      if (maxSide > _petImageMaxSide) {
+        final scale = _petImageMaxSide / maxSide;
+        final targetWidth =
+            (width * scale).round().clamp(1, _petImageMaxSide);
+        final targetHeight =
+            (height * scale).round().clamp(1, _petImageMaxSide);
+        final recorder = ui.PictureRecorder();
+        final canvas = ui.Canvas(recorder);
+        canvas.drawImageRect(
+          image,
+          ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+          ui.Rect.fromLTWH(
+            0,
+            0,
+            targetWidth.toDouble(),
+            targetHeight.toDouble(),
+          ),
+          ui.Paint(),
+        );
+        output = await recorder.endRecording().toImage(
+          targetWidth,
+          targetHeight,
+        );
+        image.dispose();
+      }
+
+      final data = await output.toByteData(format: ui.ImageByteFormat.png);
+      output.dispose();
+      final png = data?.buffer.asUint8List();
+      if (png != null && png.isNotEmpty) return png;
+    } catch (e) {
+      debugPrint('[LiveActivityService] normalize png failed: $e');
+    }
+    return null;
   }
 
   String _enabledKeyForTemplate(int template) {
