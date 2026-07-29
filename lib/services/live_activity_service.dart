@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/app_cache_store.dart';
 import '../data/auth_session_store.dart';
 import '../data/memorial_store.dart';
+import '../data/pet_avatar_store.dart';
 import '../l10n/tr.dart';
 import '../utils/island_image_util.dart';
 import '../utils/pet_display_image.dart';
@@ -549,12 +550,49 @@ class LiveActivityService {
         petUrl = raw.isEmpty ? null : raw;
       }
     }
+    // 自定义宠物：优先本地缓存文件，避免仅有网络 URL 时锁屏同步失败
+    petUrl = await _preferLocalPetImageIfNeeded(petUrl);
     final fourCloverUrl = cache.fourCloverImageUrl;
     await _syncRemoteImages(
       petImageUrl: petUrl ?? '',
       fourCloverUrl: fourCloverUrl ?? '',
       force: force,
     );
+  }
+
+  /// 若当前选中的是自定义形象，尽量改用本地 Documents 副本写入 App Group
+  Future<String?> _preferLocalPetImageIfNeeded(String? petUrl) async {
+    final raw = petUrl?.trim() ?? '';
+    if (raw.isEmpty) return petUrl;
+    if (_isLocalFileRef(raw)) return raw;
+
+    final cache = AppCacheStore.instance;
+    if (!PetDisplayImage.isCustomPet(cache.petProfile)) return petUrl;
+
+    final customUrl = await PetDisplayImage.resolveUrl();
+    final resolved = PetImageService.resolveUrl(raw);
+    final choices = await _petIslandImageChoices();
+    final isCustomSelection =
+        (customUrl.isNotEmpty &&
+            (resolved == customUrl || raw == customUrl)) ||
+        (choices.isNotEmpty && resolved == choices.last);
+
+    if (!isCustomSelection) return petUrl;
+
+    final local = PetAvatarStore.localPathForPetSync(cache.petId);
+    if (local != null && local.isNotEmpty) return local;
+    final ensured = await PetAvatarStore.ensureLocalCacheForWidget(
+      petId: cache.petId,
+    );
+    if (ensured != null && ensured.isNotEmpty) return ensured;
+    return petUrl;
+  }
+
+  bool _isLocalFileRef(String value) {
+    final v = value.trim();
+    if (v.startsWith('file://')) return true;
+    if (v.startsWith('/')) return true;
+    return false;
   }
 
   /// 与宠物岛配置页同一顺序：狗 → 猫 → 自定义形象
@@ -596,6 +634,25 @@ class LiveActivityService {
     }
 
     try {
+      // 本地路径 / asset：走 syncAsset，原生 URL 下载无法处理
+      final pet = petImageUrl.trim();
+      if (pet.isNotEmpty &&
+          (_isLocalFileRef(pet) || pet.startsWith('assets/'))) {
+        final ok = await syncAsset(role: 'pet', imagePath: pet);
+        debugPrint(
+          '[LiveActivityService] sync local/asset pet ok=$ok path=$pet',
+        );
+        if (fourCloverUrl.trim().isNotEmpty) {
+          await _channel.invokeMethod<bool>('syncImage', {
+            'petImageUrl': '',
+            'fourCloverUrl': fourCloverUrl,
+            'authToken': AuthSessionStore.instance.token ?? '',
+          });
+        }
+        if (ok) _lastSyncedImageKey = syncKey;
+        return;
+      }
+
       final ok =
           await _channel.invokeMethod<bool>('syncImage', {
             'petImageUrl': petImageUrl,

@@ -926,9 +926,43 @@ enum WidgetSync {
     completion: @escaping (Bool) -> Void
   ) {
     let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty,
-          let url = URL(string: trimmed),
-          appGroupContainer() != nil else {
+    guard !trimmed.isEmpty, appGroupContainer() != nil else {
+      completion(false)
+      return
+    }
+
+    // 自定义宠物 AI 图常为本地绝对路径 / file://，不能走 URLSession
+    if isLocalImagePath(trimmed) {
+      DispatchQueue.global(qos: .userInitiated).async {
+        let cleaned: String = {
+          if trimmed.hasPrefix("file://") {
+            return URL(string: trimmed)?.path ?? trimmed.replacingOccurrences(of: "file://", with: "")
+          }
+          return trimmed
+        }()
+        var data: Data?
+        if let fileData = try? Data(contentsOf: URL(fileURLWithPath: cleaned)),
+           !fileData.isEmpty {
+          data = fileData
+        } else if let image = UIImage(contentsOfFile: cleaned),
+                  let png = image.pngData() {
+          data = png
+        }
+        let ok = data.map { replace($0) } ?? false
+        if !ok {
+          NSLog("[\(logTag)] local image load failed: \(cleaned)")
+        } else {
+          NSLog("[\(logTag)] wrote local image: \(cleaned)")
+        }
+        DispatchQueue.main.async { completion(ok) }
+      }
+      return
+    }
+
+    guard let url = URL(string: trimmed),
+          let scheme = url.scheme?.lowercased(),
+          scheme == "http" || scheme == "https" else {
+      NSLog("[\(logTag)] unsupported image ref: \(trimmed)")
       completion(false)
       return
     }
@@ -963,6 +997,12 @@ enum WidgetSync {
       }
       completion(replace(data))
     }.resume()
+  }
+
+  private static func isLocalImagePath(_ value: String) -> Bool {
+    if value.hasPrefix("file://") { return true }
+    if value.hasPrefix("/") { return true }
+    return false
   }
 
   static func liveActivityImageRevision() -> Int64 {
