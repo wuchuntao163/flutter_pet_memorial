@@ -241,8 +241,9 @@ struct PetLiveActivityWidget: Widget {
     let state = context.state
     // 灵动岛展开态系统底为深色/黑色，无法改成锁屏浅色底
     if state.template == 6 {
-      // 自定义：高度与锁屏一致 168，铺满无间距
-      customPanel(state: state, height: 168)
+      // 自定义展开：略高于锁屏；大圆角贴合灵动岛外形（避免顶角直角）
+      // 内容在 .bottom，顶部摄像头区域由系统保留，无法占用
+      customPanel(state: state, height: 196, cornerRadius: 44)
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
@@ -461,7 +462,8 @@ struct PetLiveActivityWidget: Widget {
   @ViewBuilder
   private func customPanel(
     state: PetLiveActivityAttributes.ContentState,
-    height: CGFloat
+    height: CGFloat,
+    cornerRadius: CGFloat = 18
   ) -> some View {
     GeometryReader { geo in
       let margin: CGFloat = 14
@@ -483,7 +485,7 @@ struct PetLiveActivityWidget: Widget {
             .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
         } else {
-          RoundedRectangle(cornerRadius: 16, style: .continuous)
+          RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(LiveActivityShared.color(from: state.backgroundColorARGB))
         }
         // 未输入文字时不显示文案（允许纯图面板）
@@ -503,7 +505,7 @@ struct PetLiveActivityWidget: Widget {
     }
     .frame(maxWidth: .infinity)
     .frame(height: height)
-    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
   }
 
   @ViewBuilder
