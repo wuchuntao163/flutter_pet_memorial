@@ -26,7 +26,7 @@ class _CustomIslandConfigScreenState extends State<CustomIslandConfigScreen> {
   static const _headerHeight = 52.0;
   static const _prefix = 'custom_island';
   /// 自定义岛展示面板高度（高于通用灵动岛卡片）
-  static const _panelPreviewHeight = 168.0;
+  static const _panelPreviewHeight = 147.0;
   static const _colors = [
     Colors.white,
     Color(0xFF111111),
