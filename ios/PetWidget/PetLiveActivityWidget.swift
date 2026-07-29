@@ -241,18 +241,19 @@ struct PetLiveActivityWidget: Widget {
     let state = context.state
     // 灵动岛展开态系统底为深色/黑色，无法改成锁屏浅色底
     if state.template == 6 {
-      // 自定义图铺满展开面板，上下左右无间距
-      customPanel(state: state, height: 120)
+      // 自定义：高度与锁屏一致 168，铺满无间距
+      customPanel(state: state, height: 168)
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
-      // 与锁屏一致：纪念日/正倒计时左 56，其它 37
+      // 边距与高度完全对齐锁屏卡片
       let isTimerOrMemorial = state.template >= 3 && state.template <= 5
+      let verticalPad: CGFloat = isTimerOrMemorial ? 16 : 18
       bodyContent(context: context, expanded: true)
         .padding(.leading, isTimerOrMemorial ? 56 : 37)
         .padding(.trailing, 16)
-        .padding(.vertical, isTimerOrMemorial ? 16 : 12)
-        .frame(maxWidth: .infinity, minHeight: 100, alignment: .leading)
+        .padding(.vertical, verticalPad)
+        .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
     }
   }
 
@@ -302,11 +303,8 @@ struct PetLiveActivityWidget: Widget {
     expanded: Bool
   ) -> some View {
     let state = context.state
-    // 锁屏：纪念日/正倒计时侧图 60；其余 68；展开态略小
+    // 侧图尺寸：锁屏与展开一致（纪念日/正倒计时 60，其余 68）
     let imageSize: CGFloat = {
-      if expanded {
-        return (state.template >= 3 && state.template <= 5) ? 56 : 60
-      }
       if state.template >= 3 && state.template <= 5 { return 60 }
       return 68
     }()
