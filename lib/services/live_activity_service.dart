@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/app_cache_store.dart';
 import '../data/auth_session_store.dart';
 import '../data/memorial_store.dart';
+import '../data/pet_avatar_store.dart';
 import '../l10n/tr.dart';
 import '../utils/island_image_util.dart';
 import '../utils/pet_display_image.dart';
@@ -36,7 +37,7 @@ class LiveActivityService {
 
   bool? _supportedCache;
   String? _lastSyncedImageKey;
-  static const _syncKeyVersion = 4;
+  static const _syncKeyVersion = 5;
 
   bool get isPlatformSupported => Platform.isIOS;
 
@@ -245,9 +246,22 @@ class LiveActivityService {
     try {
       final remote = _resolveAssetRef(value);
       if (remote.startsWith('http://') || remote.startsWith('https://')) {
+        // 与首页小组件一致：自定义宠物网络图需要带 Token
+        final token = AuthSessionStore.instance.token;
+        final headers = <String, dynamic>{};
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = token.startsWith('Bearer ')
+              ? token
+              : 'Bearer $token';
+        }
         final response = await Dio().get<List<int>>(
           remote,
-          options: Options(responseType: ResponseType.bytes),
+          options: Options(
+            responseType: ResponseType.bytes,
+            headers: headers,
+            followRedirects: true,
+            receiveTimeout: const Duration(seconds: 30),
+          ),
         );
         final data = response.data;
         if (data != null && data.isNotEmpty) {
@@ -643,67 +657,96 @@ class LiveActivityService {
     }
 
     try {
+      var petOk = true;
       final pet = petImageUrl.trim();
-      // 本地路径 / asset：走 syncAsset
-      if (pet.isNotEmpty &&
-          (_isLocalFileRef(pet) || pet.startsWith('assets/'))) {
-        final ok = await syncAsset(role: 'pet', imagePath: pet);
-        debugPrint(
-          '[LiveActivityService] sync local/asset pet ok=$ok path=$pet',
-        );
-        if (fourCloverUrl.trim().isNotEmpty) {
-          await _channel.invokeMethod<bool>('syncImage', {
-            'petImageUrl': '',
-            'fourCloverUrl': fourCloverUrl,
-            'authToken': AuthSessionStore.instance.token ?? '',
-          });
-        }
-        if (ok) _lastSyncedImageKey = syncKey;
-        return;
+      if (pet.isNotEmpty) {
+        petOk = await _syncPetImageToAppGroup(pet);
       }
 
-      // 网络图：先用 Flutter 下载（与首页同源），再写入 App Group，避免原生下载差异
-      if (pet.isNotEmpty &&
-          (pet.startsWith('http://') || pet.startsWith('https://'))) {
-        final bytes = await _resolveImageBytes(pet);
-        if (bytes != null && bytes.isNotEmpty) {
-          final ok = await syncAsset(
-            role: 'pet',
-            imageBase64: base64Encode(bytes),
-          );
-          debugPrint(
-            '[LiveActivityService] sync network pet via flutter ok=$ok url=$pet',
-          );
-          if (fourCloverUrl.trim().isNotEmpty) {
-            await _channel.invokeMethod<bool>('syncImage', {
-              'petImageUrl': '',
-              'fourCloverUrl': fourCloverUrl,
-              'authToken': AuthSessionStore.instance.token ?? '',
-            });
-          }
-          if (ok) {
-            _lastSyncedImageKey = syncKey;
-            return;
-          }
-        }
+      if (fourCloverUrl.trim().isNotEmpty) {
+        await _channel.invokeMethod<bool>('syncImage', {
+          'petImageUrl': '',
+          'fourCloverUrl': fourCloverUrl,
+          'authToken': AuthSessionStore.instance.token ?? '',
+        });
       }
 
-      final ok =
-          await _channel.invokeMethod<bool>('syncImage', {
-            'petImageUrl': petImageUrl,
-            'fourCloverUrl': fourCloverUrl,
-            'authToken': AuthSessionStore.instance.token ?? '',
-          }) ??
-          false;
-      if (ok) {
+      if (petOk) {
         _lastSyncedImageKey = syncKey;
       }
       debugPrint(
-        '[LiveActivityService] syncImage ok=$ok pet=$petImageUrl clover=$fourCloverUrl',
+        '[LiveActivityService] sync images petOk=$petOk pet=$petImageUrl clover=$fourCloverUrl',
       );
     } catch (e, st) {
       debugPrint('[LiveActivityService] syncImage failed: $e\n$st');
     }
+  }
+
+  /// 写入宠物侧图：优先本地缓存（与桌面小组件同源），再带 Token 下载网络图
+  Future<bool> _syncPetImageToAppGroup(String petUrl) async {
+    final pet = petUrl.trim();
+    if (pet.isEmpty) return false;
+
+    if (_isLocalFileRef(pet) || pet.startsWith('assets/')) {
+      final ok = await syncAsset(role: 'pet', imagePath: pet);
+      debugPrint('[LiveActivityService] sync pet local/asset ok=$ok path=$pet');
+      return ok;
+    }
+
+    // 选中的是当前自定义网络形象时，复用小组件已落盘的 Documents 缓存
+    final customUrl = await PetDisplayImage.resolveUrl();
+    final resolved = PetImageService.resolveUrl(pet);
+    if (customUrl.isNotEmpty &&
+        (resolved == customUrl || pet == customUrl)) {
+      final petId = AppCacheStore.instance.petId;
+      var local = PetAvatarStore.localPathForPetSync(petId);
+      local ??= await PetAvatarStore.ensureLocalCacheForWidget(petId: petId);
+      if (local != null && local.isNotEmpty) {
+        final ok = await syncAsset(role: 'pet', imagePath: local);
+        debugPrint(
+          '[LiveActivityService] sync pet via widget cache ok=$ok path=$local',
+        );
+        if (ok) return true;
+      }
+    }
+
+    // 带鉴权下载后写入（首页能显示、原先裸 Dio 下载会 401）
+    final bytes = await _resolveImageBytes(resolved);
+    if (bytes != null && bytes.isNotEmpty) {
+      final ok = await syncAsset(
+        role: 'pet',
+        imageBase64: base64Encode(bytes),
+      );
+      debugPrint(
+        '[LiveActivityService] sync pet via auth download ok=$ok url=$resolved',
+      );
+      if (ok) return true;
+    }
+
+    // 再落盘一份再同步（与 PetImageService / 小组件一致）
+    try {
+      final path = await PetImageService.downloadToDocuments(
+        resolved,
+        filename: 'pet_live_activity_avatar.png',
+      );
+      final ok = await syncAsset(role: 'pet', imagePath: path);
+      debugPrint(
+        '[LiveActivityService] sync pet via documents ok=$ok path=$path',
+      );
+      if (ok) return true;
+    } catch (e) {
+      debugPrint('[LiveActivityService] downloadToDocuments failed: $e');
+    }
+
+    final ok =
+        await _channel.invokeMethod<bool>('syncImage', {
+          'petImageUrl': resolved,
+          'fourCloverUrl': '',
+          'authToken': AuthSessionStore.instance.token ?? '',
+        }) ??
+        false;
+    debugPrint('[LiveActivityService] sync pet native fallback ok=$ok');
+    return ok;
   }
 
   String _enabledKeyForTemplate(int template) {
