@@ -9,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/app_cache_store.dart';
 import '../data/auth_session_store.dart';
 import '../data/memorial_store.dart';
-import '../data/pet_avatar_store.dart';
 import '../l10n/tr.dart';
 import '../utils/island_image_util.dart';
 import '../utils/pet_display_image.dart';
