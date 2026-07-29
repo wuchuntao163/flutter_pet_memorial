@@ -242,7 +242,7 @@ struct PetLiveActivityWidget: Widget {
     // 灵动岛展开态系统底为深色/黑色，无法改成锁屏浅色底
     if state.template == 6 {
       // 自定义图铺满展开面板，上下左右无间距
-      customPanel(state: state, height: 84)
+      customPanel(state: state, height: 120)
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
@@ -251,7 +251,8 @@ struct PetLiveActivityWidget: Widget {
       bodyContent(context: context, expanded: true)
         .padding(.leading, isTimerOrMemorial ? 56 : 37)
         .padding(.trailing, 16)
-        .padding(.vertical, isTimerOrMemorial ? 12 : 6)
+        .padding(.vertical, isTimerOrMemorial ? 16 : 12)
+        .frame(maxWidth: .infinity, minHeight: 100, alignment: .leading)
     }
   }
 
@@ -304,7 +305,7 @@ struct PetLiveActivityWidget: Widget {
     // 锁屏：纪念日/正倒计时侧图 60；其余 68；展开态略小
     let imageSize: CGFloat = {
       if expanded {
-        return (state.template >= 3 && state.template <= 5) ? 48 : 56
+        return (state.template >= 3 && state.template <= 5) ? 56 : 60
       }
       if state.template >= 3 && state.template <= 5 { return 60 }
       return 68
@@ -430,7 +431,7 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 6:
-      customPanel(state: state, height: expanded ? 84 : 168)
+      customPanel(state: state, height: expanded ? 120 : 168)
         .id(state.imageRevision)
     default:
       HStack(alignment: .center, spacing: 14) {
