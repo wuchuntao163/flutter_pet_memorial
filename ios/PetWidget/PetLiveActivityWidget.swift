@@ -241,8 +241,8 @@ struct PetLiveActivityWidget: Widget {
     let state = context.state
     // 灵动岛展开态系统底为深色/黑色，无法改成锁屏浅色底
     if state.template == 6 {
-      // 自定义展开：明显加高；无圆角；顶部摄像头区域系统占用不可盖
-      customPanel(state: state, height: 280, cornerRadius: 0)
+      // 自定义展开：高度与锁屏一致 168；无额外圆角；顶部摄像头区域系统占用
+      customPanel(state: state, height: 168, cornerRadius: 0)
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
