@@ -123,9 +123,8 @@ struct PetLiveActivityWidget: Widget {
         compactLeading(context: context)
           .id(context.state.imageRevision)
       }
-      // 展开态外边距略收紧，让内边距更接近锁屏卡片
-      .contentMargins(.horizontal, 10, for: .expanded)
-      .contentMargins(.vertical, 8, for: .expanded)
+      // 展开态外边距清零：自定义岛才能铺满；其它岛用自身 padding 控边距
+      .contentMargins(.all, 0, for: .expanded)
       .keylineTint(Color.orange.opacity(0.8))
     }
   }
@@ -242,16 +241,16 @@ struct PetLiveActivityWidget: Widget {
     let state = context.state
     // 灵动岛展开态系统底为深色/黑色，无法改成锁屏浅色底
     if state.template == 6 {
-      customPanel(state: state, height: 72)
+      // 自定义图铺满展开面板，上下左右无间距
+      customPanel(state: state, height: 84)
         .id(state.imageRevision)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity)
     } else {
-      // 与锁屏卡片对齐：纪念日/正倒计时加大左边距与垂直边距
+      // 与锁屏一致：纪念日/正倒计时左 56，其它 37
       let isTimerOrMemorial = state.template >= 3 && state.template <= 5
       bodyContent(context: context, expanded: true)
-        .padding(.leading, isTimerOrMemorial ? 28 : 14)
-        .padding(.trailing, isTimerOrMemorial ? 16 : 12)
+        .padding(.leading, isTimerOrMemorial ? 56 : 37)
+        .padding(.trailing, 16)
         .padding(.vertical, isTimerOrMemorial ? 12 : 6)
     }
   }
@@ -262,9 +261,9 @@ struct PetLiveActivityWidget: Widget {
   ) -> some View {
     let state = context.state
     // 自定义面板全幅铺满，去掉外层 padding（否则上下左右会留缝）
-    // 高度对齐 App 展示台自定义预览（147）
+    // 高度加高以减轻放大发糊（168）
     if state.template == 6 {
-      customPanel(state: state, height: 147)
+      customPanel(state: state, height: 168)
         .id(state.imageRevision)
         .frame(maxWidth: .infinity)
     } else {
@@ -431,7 +430,7 @@ struct PetLiveActivityWidget: Widget {
         .frame(maxWidth: .infinity, alignment: .leading)
       }
     case 6:
-      customPanel(state: state, height: expanded ? 72 : 147)
+      customPanel(state: state, height: expanded ? 84 : 168)
         .id(state.imageRevision)
     default:
       HStack(alignment: .center, spacing: 14) {

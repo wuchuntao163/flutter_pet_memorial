@@ -741,7 +741,7 @@ enum WidgetSync {
     )
   }
 
-  /// 自定义岛面板：边长约 420 + JPEG，兼顾清晰与 Live Activity 体积上限
+  /// 自定义岛面板：边长约 560 + JPEG，配合更高锁屏卡片减轻发糊
   private static func replaceLiveActivityPanelImage(
     with data: Data,
     fileName: String,
@@ -750,7 +750,7 @@ enum WidgetSync {
   ) -> Bool {
     guard let image = UIImage(data: data),
           let resized = resizeForLiveActivityPanel(image),
-          let jpeg = resized.jpegData(compressionQuality: 0.82) else {
+          let jpeg = resized.jpegData(compressionQuality: 0.88) else {
       NSLog("[\(logTag)] replace panel image decode/encode failed")
       return false
     }
@@ -1050,8 +1050,8 @@ enum WidgetSync {
   private static let liveActivityCompactSide: CGFloat = 84
   /// 锁屏 Live Activity 内容图过大时系统会丢弃不显示
   private static let liveActivityContentMaxSide: CGFloat = 300
-  /// 自定义面板：略高于 300，配合 JPEG 控制体积，避免被系统丢弃
-  private static let liveActivityPanelMaxSide: CGFloat = 420
+  /// 自定义面板：配合更高锁屏卡片，提高边长减轻发糊
+  private static let liveActivityPanelMaxSide: CGFloat = 560
 
   private static func resizeForLiveActivityContent(_ image: UIImage) -> UIImage? {
     resizeImage(image, maxSide: liveActivityContentMaxSide)
