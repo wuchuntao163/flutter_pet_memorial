@@ -111,30 +111,31 @@ struct PetLiveActivityWidget: Widget {
     } dynamicIsland: { context in
       DynamicIsland {
         // DynamicIslandExpandedContentBuilder 不支持顶层 if/else，条件写在 Region 内部
+        // 自定义：四区同图裁切 + bottom 负边距上溢，盖住摄像头左右翼黑底
         DynamicIslandExpandedRegion(.leading) {
           if context.state.template == 6 {
-            customPanelWing(alignment: .leading)
+            customExpandedBleed(alignment: .leading)
               .id(context.state.imageRevision)
           }
         }
         DynamicIslandExpandedRegion(.trailing) {
           if context.state.template == 6 {
-            customPanelWing(alignment: .trailing)
+            customExpandedBleed(alignment: .trailing)
               .id(context.state.imageRevision)
           }
         }
         DynamicIslandExpandedRegion(.center) {
           if context.state.template == 6 {
-            // 占位，避免系统在中部留黑条；实际画面由 bottom 大图承接
-            Color.clear.frame(height: 1)
+            customExpandedBleed(alignment: .top)
+              .frame(maxWidth: .infinity)
+              .frame(minHeight: 44)
+              .id(context.state.imageRevision)
           }
         }
         DynamicIslandExpandedRegion(.bottom) {
           if context.state.template == 6 {
-            // 自定义：整图铺满展开区（含摄像头左右翼）
-            customPanel(state: context.state, height: 160, cornerRadius: 0)
+            customExpandedFullBleed(state: context.state)
               .id(context.state.imageRevision)
-              .frame(maxWidth: .infinity)
           } else {
             expandedContent(context: context)
           }
@@ -149,7 +150,7 @@ struct PetLiveActivityWidget: Widget {
         compactLeading(context: context)
           .id(context.state.imageRevision)
       }
-      // 展开态外边距清零：自定义岛才能铺满；其它岛用自身 padding 控边距
+      // 展开态外边距清零，自定义岛才能贴边铺满
       .contentMargins(.all, 0, for: .expanded)
       .keylineTint(Color.orange.opacity(0.8))
     }
@@ -275,25 +276,77 @@ struct PetLiveActivityWidget: Widget {
       .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
   }
 
-  /// 自定义岛展开：摄像头左右翼用同一张面板图 cover 裁切，避免两侧黑底
+  /// 自定义岛展开：单区用同一面板图 cover 填满（左右翼 / 中心条）
   @ViewBuilder
-  private func customPanelWing(alignment: Alignment) -> some View {
-    GeometryReader { geo in
+  private func customExpandedBleed(alignment: Alignment) -> some View {
+    ZStack {
       if let panel = LiveActivityShared.loadPanel() {
         Image(uiImage: panel)
           .resizable()
           .interpolation(.high)
           .antialiased(true)
           .scaledToFill()
-          .frame(width: geo.size.width, height: geo.size.height)
-          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+          .frame(minWidth: 72, maxWidth: .infinity, minHeight: 44, maxHeight: .infinity)
           .clipped()
       } else {
-        Color.clear
+        Color.black
       }
     }
-    // 给左右翼足够占位，让面板图能延伸上去
-    .frame(minWidth: 40, maxWidth: .infinity, minHeight: 28, maxHeight: .infinity)
+    .frame(minWidth: 56, maxWidth: .infinity, minHeight: 44, maxHeight: .infinity)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+  }
+
+  /// 自定义岛展开主画面：超大 cover + 负边距上溢到摄像头两侧，消除黑边
+  @ViewBuilder
+  private func customExpandedFullBleed(
+    state: PetLiveActivityAttributes.ContentState
+  ) -> some View {
+    // 略大于展开内容区，再靠负 padding 盖住系统留白与左右翼
+    let coverW: CGFloat = 430
+    let coverH: CGFloat = 196
+    let margin: CGFloat = 18
+    let fontSize = CGFloat(max(14, min(24, state.textFontSize > 0 ? state.textFontSize : 18)))
+    let textBlockH: CGFloat = fontSize * 1.35 + 4
+    let normX = min(1, max(0, state.textNormX))
+    let normY = min(1, max(0, state.textNormY))
+    let left = margin + (coverW - margin * 2 - 100) * normX
+    let top = margin + (coverH - margin * 2 - textBlockH) * normY
+    let subtitle = state.subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    ZStack(alignment: .topLeading) {
+      Group {
+        if let panel = LiveActivityShared.loadPanel() {
+          Image(uiImage: panel)
+            .resizable()
+            .interpolation(.high)
+            .antialiased(true)
+            .scaledToFill()
+        } else {
+          Rectangle()
+            .fill(LiveActivityShared.color(from: state.backgroundColorARGB))
+        }
+      }
+      .frame(width: coverW, height: coverH)
+      .clipped()
+
+      if !subtitle.isEmpty {
+        Text(subtitle)
+          .font(.system(size: fontSize, weight: .semibold))
+          .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
+          .lineLimit(2)
+          .multilineTextAlignment(.leading)
+          .frame(maxWidth: max(60, coverW - left - margin), alignment: .leading)
+          .offset(
+            x: max(margin, left),
+            y: max(margin, min(top, coverH - margin - textBlockH))
+          )
+      }
+    }
+    .frame(width: coverW, height: coverH)
+    // 向摄像头左右翼与四周系统边距外溢
+    .padding(.top, -56)
+    .padding(.horizontal, -36)
+    .padding(.bottom, -20)
   }
 
   @ViewBuilder
