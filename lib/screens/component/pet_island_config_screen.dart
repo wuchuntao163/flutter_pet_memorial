@@ -458,8 +458,9 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
     final resolved = images.map(PetImageService.resolveUrl).toList();
     // 未手动选择时：跟当前档案走（自定义默认选自己的网络形象，而不是狗）
     final userPicked = prefs.getBool('pet_island_pet_user_picked') ?? false;
-    var selected = prefs.getInt(_petKey);
-    if (!userPicked || selected == null) {
+    final stored = prefs.getInt(_petKey);
+    final int selected;
+    if (!userPicked || stored == null) {
       if (resolved.isEmpty) {
         selected = 0;
       } else if (hasCustom) {
@@ -470,7 +471,7 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
         selected = 0;
       }
     } else if (resolved.isNotEmpty) {
-      selected = selected.clamp(0, resolved.length - 1);
+      selected = stored.clamp(0, resolved.length - 1);
     } else {
       selected = 0;
     }
