@@ -528,15 +528,26 @@ class LiveActivityService {
   Future<void> _syncLiveActivityImage({bool force = false}) async {
     final cache = AppCacheStore.instance;
     final prefs = await SharedPreferences.getInstance();
-    // 优先用户在宠物岛选中的图，避免锁屏/回前台 sync 用档案 type 覆盖成另一只
+    final userPicked = prefs.getBool('pet_island_pet_user_picked') ?? false;
+    // 优先用户在宠物岛手动选中的图
     final selectedUrl = prefs.getString('pet_island_pet_url')?.trim() ?? '';
-    String? petUrl = selectedUrl.isNotEmpty ? selectedUrl : null;
+    String? petUrl;
+    if (userPicked && selectedUrl.isNotEmpty) {
+      petUrl = selectedUrl;
+    } else if (PetDisplayImage.isCustomPet(cache.petProfile)) {
+      // 自定义宠物未手动改选时：与首页/头像一致，用当前档案网络图
+      final current = await PetDisplayImage.resolveUrl();
+      petUrl = current.isEmpty ? null : current;
+    } else if (selectedUrl.isNotEmpty) {
+      petUrl = selectedUrl;
+    }
     if (petUrl == null || petUrl.isEmpty) {
       final choices = await _petIslandImageChoices();
       if (choices.isNotEmpty) {
-        final index = (prefs.getInt('pet_island_selected_pet') ?? 0).clamp(
-          0,
-          choices.length - 1,
+        final index = _defaultPetIslandIndex(
+          prefs: prefs,
+          choices: choices,
+          hasCustom: PetDisplayImage.isCustomPet(cache.petProfile),
         );
         petUrl = choices[index];
       }
@@ -550,8 +561,6 @@ class LiveActivityService {
         petUrl = raw.isEmpty ? null : raw;
       }
     }
-    // 自定义宠物：优先本地缓存文件，避免仅有网络 URL 时锁屏同步失败
-    petUrl = await _preferLocalPetImageIfNeeded(petUrl);
     final fourCloverUrl = cache.fourCloverImageUrl;
     await _syncRemoteImages(
       petImageUrl: petUrl ?? '',
@@ -560,32 +569,22 @@ class LiveActivityService {
     );
   }
 
-  /// 若当前选中的是自定义形象，尽量改用本地 Documents 副本写入 App Group
-  Future<String?> _preferLocalPetImageIfNeeded(String? petUrl) async {
-    final raw = petUrl?.trim() ?? '';
-    if (raw.isEmpty) return petUrl;
-    if (_isLocalFileRef(raw)) return raw;
-
-    final cache = AppCacheStore.instance;
-    if (!PetDisplayImage.isCustomPet(cache.petProfile)) return petUrl;
-
-    final customUrl = await PetDisplayImage.resolveUrl();
-    final resolved = PetImageService.resolveUrl(raw);
-    final choices = await _petIslandImageChoices();
-    final isCustomSelection =
-        (customUrl.isNotEmpty &&
-            (resolved == customUrl || raw == customUrl)) ||
-        (choices.isNotEmpty && resolved == choices.last);
-
-    if (!isCustomSelection) return petUrl;
-
-    final local = PetAvatarStore.localPathForPetSync(cache.petId);
-    if (local != null && local.isNotEmpty) return local;
-    final ensured = await PetAvatarStore.ensureLocalCacheForWidget(
-      petId: cache.petId,
-    );
-    if (ensured != null && ensured.isNotEmpty) return ensured;
-    return petUrl;
+  int _defaultPetIslandIndex({
+    required SharedPreferences prefs,
+    required List<String> choices,
+    required bool hasCustom,
+  }) {
+    if (choices.isEmpty) return 0;
+    final userPicked = prefs.getBool('pet_island_pet_user_picked') ?? false;
+    final stored = prefs.getInt('pet_island_selected_pet');
+    if (userPicked && stored != null) {
+      return stored.clamp(0, choices.length - 1);
+    }
+    // 未手动选择：跟当前档案宠物走（自定义 → 最后一项）
+    if (hasCustom) return choices.length - 1;
+    final type = AppCacheStore.instance.petTypeCode;
+    if (type == 2 && choices.length >= 2) return 1;
+    return 0;
   }
 
   bool _isLocalFileRef(String value) {
@@ -610,9 +609,20 @@ class LiveActivityService {
 
     add(cache.liveActivityDogImageUrl);
     add(cache.liveActivityCatImageUrl);
+    // 自定义宠物：始终把当前档案网络图加入可选列表（与首页/头像同源）
     if (PetDisplayImage.isCustomPet(cache.petProfile)) {
       final profile = await PetDisplayImage.resolveUrl();
       add(profile);
+    } else {
+      // 非自定义也可能有 AI 形象 URL，一并可选
+      final profile = await PetDisplayImage.resolveUrl();
+      final dog = cache.liveActivityDogImageUrl;
+      final cat = cache.liveActivityCatImageUrl;
+      if (profile.isNotEmpty &&
+          profile != PetImageService.resolveUrl(dog ?? '') &&
+          profile != PetImageService.resolveUrl(cat ?? '')) {
+        add(profile);
+      }
     }
     return images;
   }
@@ -634,8 +644,8 @@ class LiveActivityService {
     }
 
     try {
-      // 本地路径 / asset：走 syncAsset，原生 URL 下载无法处理
       final pet = petImageUrl.trim();
+      // 本地路径 / asset：走 syncAsset
       if (pet.isNotEmpty &&
           (_isLocalFileRef(pet) || pet.startsWith('assets/'))) {
         final ok = await syncAsset(role: 'pet', imagePath: pet);
@@ -651,6 +661,32 @@ class LiveActivityService {
         }
         if (ok) _lastSyncedImageKey = syncKey;
         return;
+      }
+
+      // 网络图：先用 Flutter 下载（与首页同源），再写入 App Group，避免原生下载差异
+      if (pet.isNotEmpty &&
+          (pet.startsWith('http://') || pet.startsWith('https://'))) {
+        final bytes = await _resolveImageBytes(pet);
+        if (bytes != null && bytes.isNotEmpty) {
+          final ok = await syncAsset(
+            role: 'pet',
+            imageBase64: base64Encode(bytes),
+          );
+          debugPrint(
+            '[LiveActivityService] sync network pet via flutter ok=$ok url=$pet',
+          );
+          if (fourCloverUrl.trim().isNotEmpty) {
+            await _channel.invokeMethod<bool>('syncImage', {
+              'petImageUrl': '',
+              'fourCloverUrl': fourCloverUrl,
+              'authToken': AuthSessionStore.instance.token ?? '',
+            });
+          }
+          if (ok) {
+            _lastSyncedImageKey = syncKey;
+            return;
+          }
+        }
       }
 
       final ok =

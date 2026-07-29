@@ -410,6 +410,7 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
     final petUrl = _petImages[index];
     await Future.wait([
       prefs.setInt(_petKey, index),
+      prefs.setBool('pet_island_pet_user_picked', true),
       prefs.setString('pet_island_pet_url', petUrl),
     ]);
     // 已上岛时立刻同步选中形象，避免回前台/关屏后被档案 type 覆盖
@@ -455,9 +456,20 @@ class _PetIslandConfigScreenState extends State<PetIslandConfigScreen> {
       add(profile);
     }
     final resolved = images.map(PetImageService.resolveUrl).toList();
-    // 未存过选择时默认第一项（狗），不要用档案 type 悄悄跳到猫
-    var selected = prefs.getInt(_petKey) ?? 0;
-    if (resolved.isNotEmpty) {
+    // 未手动选择时：跟当前档案走（自定义默认选自己的网络形象，而不是狗）
+    final userPicked = prefs.getBool('pet_island_pet_user_picked') ?? false;
+    var selected = prefs.getInt(_petKey);
+    if (!userPicked || selected == null) {
+      if (resolved.isEmpty) {
+        selected = 0;
+      } else if (hasCustom) {
+        selected = resolved.length - 1;
+      } else if (cache.petTypeCode == 2 && resolved.length >= 2) {
+        selected = 1;
+      } else {
+        selected = 0;
+      }
+    } else if (resolved.isNotEmpty) {
       selected = selected.clamp(0, resolved.length - 1);
     } else {
       selected = 0;
