@@ -741,7 +741,7 @@ enum WidgetSync {
     )
   }
 
-  /// 自定义岛面板：边长约 560 + JPEG，配合更高锁屏卡片减轻发糊
+  /// 自定义岛面板：横版目标尺寸 + JPEG，竖图 cover 裁切后仍保持清晰
   private static func replaceLiveActivityPanelImage(
     with data: Data,
     fileName: String,
@@ -750,7 +750,7 @@ enum WidgetSync {
   ) -> Bool {
     guard let image = UIImage(data: data),
           let resized = resizeForLiveActivityPanel(image),
-          let jpeg = resized.jpegData(compressionQuality: 0.88) else {
+          let jpeg = resized.jpegData(compressionQuality: 0.9) else {
       NSLog("[\(logTag)] replace panel image decode/encode failed")
       return false
     }
@@ -1050,15 +1050,29 @@ enum WidgetSync {
   private static let liveActivityCompactSide: CGFloat = 84
   /// 锁屏 Live Activity 内容图过大时系统会丢弃不显示
   private static let liveActivityContentMaxSide: CGFloat = 300
-  /// 自定义面板：配合更高锁屏卡片，提高边长减轻发糊
-  private static let liveActivityPanelMaxSide: CGFloat = 560
+  /// 自定义面板：按锁屏横版比例高清导出（避免竖图只压长边导致宽度过小发糊）
+  /// 约 3x @ 168pt 高，宽高比贴近锁屏横条
+  private static let liveActivityPanelTarget = CGSize(width: 1104, height: 504)
 
   private static func resizeForLiveActivityContent(_ image: UIImage) -> UIImage? {
     resizeImage(image, maxSide: liveActivityContentMaxSide)
   }
 
   private static func resizeForLiveActivityPanel(_ image: UIImage) -> UIImage? {
-    resizeImage(image, maxSide: liveActivityPanelMaxSide)
+    let target = liveActivityPanelTarget
+    // 居中 cover 裁进横版目标，竖图也能保留足够横向像素
+    let aspect = max(target.width / max(image.size.width, 1), target.height / max(image.size.height, 1))
+    let drawSize = CGSize(width: image.size.width * aspect, height: image.size.height * aspect)
+    let origin = CGPoint(
+      x: (target.width - drawSize.width) / 2,
+      y: (target.height - drawSize.height) / 2
+    )
+    let format = UIGraphicsImageRendererFormat.default()
+    format.opaque = false
+    format.scale = 1
+    return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+      image.draw(in: CGRect(origin: origin, size: drawSize))
+    }
   }
 
   private static func resizeImage(_ image: UIImage, maxSide: CGFloat) -> UIImage? {
