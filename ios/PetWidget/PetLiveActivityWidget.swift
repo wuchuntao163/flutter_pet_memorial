@@ -116,7 +116,7 @@ struct PetLiveActivityWidget: Widget {
           if context.state.template == 6 {
             customIslandCanvasSlice(
               alignment: .topLeading,
-              width: CustomIslandBleed.earW,
+              minWidth: CustomIslandBleed.earW,
               height: CustomIslandBleed.earH,
               yOffset: 0,
               fallbackARGB: context.state.backgroundColorARGB
@@ -128,7 +128,7 @@ struct PetLiveActivityWidget: Widget {
           if context.state.template == 6 {
             customIslandCanvasSlice(
               alignment: .topTrailing,
-              width: CustomIslandBleed.earW,
+              minWidth: CustomIslandBleed.earW,
               height: CustomIslandBleed.earH,
               yOffset: 0,
               fallbackARGB: context.state.backgroundColorARGB
@@ -141,7 +141,7 @@ struct PetLiveActivityWidget: Widget {
             // 必须铺图：center 留空会出现「中间一条大黑块」
             customIslandCanvasSlice(
               alignment: .top,
-              width: CustomIslandBleed.canvasW,
+              minWidth: 1,
               height: CustomIslandBleed.centerH,
               yOffset: -CustomIslandBleed.earH,
               fallbackARGB: context.state.backgroundColorARGB
@@ -326,21 +326,27 @@ struct PetLiveActivityWidget: Widget {
   @ViewBuilder
   private func customIslandCanvasSlice(
     alignment: Alignment,
-    width: CGFloat,
+    minWidth: CGFloat,
     height: CGFloat,
     yOffset: CGFloat,
     fallbackARGB: UInt32
   ) -> some View {
-    customIslandCanvasImage(fallbackARGB: fallbackARGB)
-      .offset(y: yOffset)
-      .frame(
-        minWidth: width,
-        maxWidth: .infinity,
-        minHeight: height,
-        maxHeight: height,
-        alignment: alignment
-      )
-      .clipped()
+    GeometryReader { geo in
+      customIslandCanvasImage(fallbackARGB: fallbackARGB)
+        .offset(y: yOffset)
+        .frame(
+          width: max(geo.size.width, 1),
+          height: height,
+          alignment: alignment
+        )
+        .clipped()
+    }
+    .frame(
+      minWidth: minWidth,
+      maxWidth: .infinity,
+      minHeight: height,
+      maxHeight: height
+    )
   }
 
   @ViewBuilder
@@ -361,7 +367,7 @@ struct PetLiveActivityWidget: Widget {
     ZStack(alignment: .topLeading) {
       customIslandCanvasSlice(
         alignment: .top,
-        width: w,
+        minWidth: 1,
         height: h,
         yOffset: CustomIslandBleed.bottomYOffset,
         fallbackARGB: state.backgroundColorARGB
