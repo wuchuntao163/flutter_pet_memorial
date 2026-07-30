@@ -261,13 +261,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 showArrow: true,
                 onTap: () => _onShareRecommend(context),
               ),
-              const SizedBox(height: 8),
-              SettingsItem(
-                iconAsset: _iconRate,
-                title: tr('profile.rate_us'),
-                showArrow: true,
-                onTap: () => _onRateApp(context),
-              ),
+              if (!Platform.isIOS) ...[
+                const SizedBox(height: 8),
+                SettingsItem(
+                  iconAsset: _iconRate,
+                  title: tr('profile.rate_us'),
+                  showArrow: true,
+                  onTap: () => _onRateApp(context),
+                ),
+              ],
               const SizedBox(height: 8),
               SettingsItem(
                 iconAsset: _iconPrivacy,
