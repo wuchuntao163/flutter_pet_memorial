@@ -19,10 +19,19 @@ class BottomNavBar extends StatelessWidget {
   static const _barHeight = 55.0;
   static const _barRadius = 29.0;
 
+  /// 接口未返回时的兜底；组件仅 iOS，图标用本地 component.png
   static const _fallback = [
     {'name': '', 'url': AppRoutes.home, 'icon': ''},
     {'name': '', 'url': AppRoutes.profile, 'icon': ''},
   ];
+
+  static const _componentFallback = {
+    'name': '组件',
+    'url': AppRoutes.component,
+    'icon': 'component.png',
+  };
+
+  static const _componentAsset = 'assets/images/component.png';
 
   /// 接口 name（如「日子」「我的」「组件」）→ nav.{name} 双语文案
   static String _localizedNavName(String rawName) {
@@ -44,6 +53,11 @@ class BottomNavBar extends StatelessWidget {
     return path.startsWith('/') ? path : '/$path';
   }
 
+  static bool _isHttpIcon(String icon) {
+    final value = icon.trim().toLowerCase();
+    return value.startsWith('http://') || value.startsWith('https://');
+  }
+
   /// url → StatefulShell 分支下标（与 app_router 中 branches 顺序一致）
   static int? shellBranchIndexForUrl(String url) {
     final path = _normalizePath(url);
@@ -54,7 +68,14 @@ class BottomNavBar extends StatelessWidget {
   }
 
   static List<dynamic> _buildItems(List<dynamic> apiItems) {
-    final items = apiItems.isNotEmpty ? apiItems : _fallback;
+    final List<dynamic> items;
+    if (apiItems.isNotEmpty) {
+      items = apiItems;
+    } else if (Platform.isIOS) {
+      items = [_componentFallback, ..._fallback];
+    } else {
+      items = _fallback;
+    }
     return items.where((raw) {
       if (raw is! Map) return true;
       final path = _normalizePath(raw['url']?.toString() ?? '');
@@ -169,9 +190,17 @@ class BottomNavBar extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (icon.isNotEmpty)
+            if (icon.isNotEmpty && _isHttpIcon(icon))
               Image.network(
                 icon,
+                width: 28,
+                height: 28,
+                errorBuilder: (_, _, _) =>
+                    Icon(fallback, size: 26, color: fallbackColor),
+              )
+            else if (icon.isNotEmpty)
+              Image.asset(
+                icon == 'component.png' ? _componentAsset : 'assets/images/$icon',
                 width: 28,
                 height: 28,
                 errorBuilder: (_, _, _) =>
