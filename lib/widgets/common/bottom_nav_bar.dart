@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,8 +9,9 @@ import '../../data/app_cache_store.dart';
 import '../../l10n/tr.dart';
 import '../../router/app_routes.dart';
 import '../../services/language_service.dart';
+import '../../utils/banner_util.dart';
 
-/// 底部导航（接口菜单 + 前端固定的组件菜单）
+/// 底部导航（完全走接口 `/api/common/nav?type=2`；「组件」仅 iOS 可见）
 class BottomNavBar extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
@@ -21,12 +24,6 @@ class BottomNavBar extends StatelessWidget {
     {'name': '', 'url': AppRoutes.home, 'icon': ''},
     {'name': '', 'url': AppRoutes.profile, 'icon': ''},
   ];
-
-  static const _componentItem = {
-    'name': '组件',
-    'url': AppRoutes.component,
-    'icon': 'component.png',
-  };
 
   /// 接口 name（如「日子」「我的」「组件」）→ nav.{name} 双语文案
   static String _localizedNavName(String rawName) {
@@ -57,16 +54,23 @@ class BottomNavBar extends StatelessWidget {
     return null;
   }
 
+  static bool _isHttpIcon(String icon) {
+    final value = icon.trim().toLowerCase();
+    return value.startsWith('http://') || value.startsWith('https://');
+  }
+
+  /// 接口菜单顺序；无数据时用日子/我的兜底。「组件」仅 iOS。
   static List<dynamic> _buildItems(List<dynamic> apiItems) {
-    final items = apiItems.isNotEmpty ? apiItems : _fallback;
-    return [
-      _componentItem,
-      ...items.where((raw) {
-        if (raw is! Map) return true;
-        return _normalizePath(raw['url']?.toString() ?? '') !=
-            AppRoutes.component;
-      }),
-    ];
+    final source = apiItems.isNotEmpty ? apiItems : _fallback;
+    return source.where((raw) {
+      if (raw is! Map) return true;
+      final map = Map<String, dynamic>.from(raw);
+      if (!BannerUtil.shouldShowOnCurrentPlatform(map)) return false;
+      final path = _normalizePath(map['url']?.toString() ?? '');
+      // 组件页依赖 iOS 小组件 / 灵动岛，Android 不展示该 Tab
+      if (path == AppRoutes.component && !Platform.isIOS) return false;
+      return true;
+    }).toList();
   }
 
   @override
@@ -155,6 +159,7 @@ class BottomNavBar extends StatelessWidget {
     final fallbackColor = itemPath == AppRoutes.profile
         ? const Color(0xFFB8A0D9)
         : AppColors.blue;
+    final fallbackIcon = Icon(fallback, size: 26, color: fallbackColor);
 
     return GestureDetector(
       onTap: url.isEmpty || branchIndex == null
@@ -174,24 +179,22 @@ class BottomNavBar extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (itemPath == AppRoutes.component)
-              Image.asset(
-                'assets/images/$icon',
-                width: 28,
-                height: 28,
-                errorBuilder: (_, _, _) =>
-                    Icon(fallback, size: 26, color: fallbackColor),
-              )
-            else if (icon.isNotEmpty)
+            if (icon.isNotEmpty && _isHttpIcon(icon))
               Image.network(
                 icon,
                 width: 28,
                 height: 28,
-                errorBuilder: (_, _, _) =>
-                    Icon(fallback, size: 26, color: fallbackColor),
+                errorBuilder: (_, _, _) => fallbackIcon,
+              )
+            else if (icon.isNotEmpty)
+              Image.asset(
+                'assets/images/$icon',
+                width: 28,
+                height: 28,
+                errorBuilder: (_, _, _) => fallbackIcon,
               )
             else
-              Icon(fallback, size: 26, color: fallbackColor),
+              fallbackIcon,
             const SizedBox(height: 0),
             Text(
               name,
