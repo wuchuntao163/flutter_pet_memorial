@@ -110,29 +110,49 @@ struct PetLiveActivityWidget: Widget {
         .activitySystemActionForegroundColor(Color.primary)
     } dynamicIsland: { context in
       DynamicIsland {
-        // DynamicIslandExpandedContentBuilder 不支持顶层 if/else，条件写在 Region 内部
-        // 自定义：各区共享同一画布尺寸裁切，摄像头上下才是同一张图的连续局部
+        // 别人 App 能「画满」：必须同时填 leading/trailing/center/bottom。
+        // 摄像头胶囊本身仍是系统黑，但两侧耳区和下方要同一张画布连续铺，不能留空。
         DynamicIslandExpandedRegion(.leading) {
           if context.state.template == 6 {
-            customIslandSharedWindow(alignment: .topLeading)
-              .id(context.state.imageRevision)
+            customIslandCanvasSlice(
+              alignment: .topLeading,
+              width: CustomIslandBleed.earW,
+              height: CustomIslandBleed.earH,
+              yOffset: 0,
+              fallbackARGB: context.state.backgroundColorARGB
+            )
+            .id(context.state.imageRevision)
           }
         }
         DynamicIslandExpandedRegion(.trailing) {
           if context.state.template == 6 {
-            customIslandSharedWindow(alignment: .topTrailing)
-              .id(context.state.imageRevision)
+            customIslandCanvasSlice(
+              alignment: .topTrailing,
+              width: CustomIslandBleed.earW,
+              height: CustomIslandBleed.earH,
+              yOffset: 0,
+              fallbackARGB: context.state.backgroundColorARGB
+            )
+            .id(context.state.imageRevision)
           }
         }
         DynamicIslandExpandedRegion(.center) {
           if context.state.template == 6 {
-            // 中间不单独裁图，避免与 bottom 重复；由 bottom 上延填满
-            Color.clear.frame(height: 1)
+            // 必须铺图：center 留空会出现「中间一条大黑块」
+            customIslandCanvasSlice(
+              alignment: .top,
+              width: CustomIslandBleed.canvasW,
+              height: CustomIslandBleed.centerH,
+              yOffset: -CustomIslandBleed.earH,
+              fallbackARGB: context.state.backgroundColorARGB
+            )
+            .frame(maxWidth: .infinity)
+            .id(context.state.imageRevision)
           }
         }
         DynamicIslandExpandedRegion(.bottom) {
           if context.state.template == 6 {
-            customIslandSharedBottom(state: context.state)
+            customIslandCanvasBottom(state: context.state)
               .id(context.state.imageRevision)
           } else {
             expandedContent(context: context)
@@ -273,81 +293,79 @@ struct PetLiveActivityWidget: Widget {
       .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
   }
 
-  /// 自定义展开岛共享画布：所有 Region 用同一宽高 scale，再按对齐裁窗，避免摄像头上下错位
-  private enum CustomIslandCanvas {
-    static let width: CGFloat = 430
-    static let height: CGFloat = 196
-    /// 摄像头 / 左右翼大约占用的顶带高度
-    static let topBand: CGFloat = 48
+  /// 自定义展开：整岛共享画布（与参考 App 一样绕摄像头铺满，仅传感器胶囊为系统黑）
+  private enum CustomIslandBleed {
+    static let canvasW: CGFloat = 380
+    static let canvasH: CGFloat = 168
+    /// 摄像头两侧耳区高度
+    static let earH: CGFloat = 37
+    static let earW: CGFloat = 78
+    /// center 区高度（摄像头正下方）
+    static let centerH: CGFloat = 28
+    static var bottomH: CGFloat { canvasH - earH - centerH }
+    static var bottomYOffset: CGFloat { -(earH + centerH) }
   }
 
   @ViewBuilder
-  private func customIslandPanelImage() -> some View {
+  private func customIslandCanvasImage(fallbackARGB: UInt32) -> some View {
     if let panel = LiveActivityShared.loadPanel() {
       Image(uiImage: panel)
         .resizable()
         .interpolation(.high)
         .antialiased(true)
         .scaledToFill()
+        .frame(width: CustomIslandBleed.canvasW, height: CustomIslandBleed.canvasH)
     } else {
-      Rectangle().fill(Color.black)
+      Rectangle()
+        .fill(LiveActivityShared.color(from: fallbackARGB))
+        .frame(width: CustomIslandBleed.canvasW, height: CustomIslandBleed.canvasH)
     }
   }
 
-  /// 在共享画布上开窗：先按 canvas 尺寸 cover，再裁到本 Region
+  /// 固定开窗：先按整岛 canvas cover，再裁到本区，四区缩放一致才能接得上
   @ViewBuilder
-  private func customIslandSharedWindow(
+  private func customIslandCanvasSlice(
     alignment: Alignment,
-    yOffset: CGFloat = 0
+    width: CGFloat,
+    height: CGFloat,
+    yOffset: CGFloat,
+    fallbackARGB: UInt32
   ) -> some View {
-    GeometryReader { geo in
-      customIslandPanelImage()
-        .frame(
-          width: CustomIslandCanvas.width,
-          height: CustomIslandCanvas.height
-        )
-        .offset(y: yOffset)
-        .frame(
-          width: max(geo.size.width, 1),
-          height: max(geo.size.height, 1),
-          alignment: alignment
-        )
-        .clipped()
-    }
-    .frame(
-      minWidth: 48,
-      maxWidth: .infinity,
-      minHeight: CustomIslandCanvas.topBand,
-      maxHeight: .infinity
-    )
+    customIslandCanvasImage(fallbackARGB: fallbackARGB)
+      .offset(y: yOffset)
+      .frame(
+        minWidth: width,
+        maxWidth: .infinity,
+        minHeight: height,
+        maxHeight: height,
+        alignment: alignment
+      )
+      .clipped()
   }
 
-  /// 底部主区：同一画布上移 topBand，与摄像头下沿对齐；文案叠在图上
   @ViewBuilder
-  private func customIslandSharedBottom(
+  private func customIslandCanvasBottom(
     state: PetLiveActivityAttributes.ContentState
   ) -> some View {
-    let coverW = CustomIslandCanvas.width
-    let coverH = CustomIslandCanvas.height
-    let topBand = CustomIslandCanvas.topBand
-    let contentH = coverH - topBand
-    let margin: CGFloat = 18
+    let w = CustomIslandBleed.canvasW
+    let h = CustomIslandBleed.bottomH
+    let margin: CGFloat = 16
     let fontSize = CGFloat(max(14, min(24, state.textFontSize > 0 ? state.textFontSize : 18)))
     let textBlockH: CGFloat = fontSize * 1.35 + 4
     let normX = min(1, max(0, state.textNormX))
     let normY = min(1, max(0, state.textNormY))
-    // 文案坐标系相对「摄像头以下」内容区
-    let left = margin + (coverW - margin * 2 - 100) * normX
-    let top = margin + (contentH - margin * 2 - textBlockH) * normY
+    let left = margin + (w - margin * 2 - 100) * normX
+    let top = margin + (h - margin * 2 - textBlockH) * normY
     let subtitle = state.subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
 
     ZStack(alignment: .topLeading) {
-      customIslandPanelImage()
-        .frame(width: coverW, height: coverH)
-        // 与左右翼共用画布：底部顶边对应画布 y = topBand
-        .offset(y: -topBand)
-        .frame(width: coverW, height: contentH, alignment: .top)
-        .clipped()
+      customIslandCanvasSlice(
+        alignment: .top,
+        width: w,
+        height: h,
+        yOffset: CustomIslandBleed.bottomYOffset,
+        fallbackARGB: state.backgroundColorARGB
+      )
 
       if !subtitle.isEmpty {
         Text(subtitle)
@@ -355,19 +373,15 @@ struct PetLiveActivityWidget: Widget {
           .foregroundColor(LiveActivityShared.color(from: state.textColorARGB))
           .lineLimit(2)
           .multilineTextAlignment(.leading)
-          .frame(maxWidth: max(60, coverW - left - margin), alignment: .leading)
+          .frame(maxWidth: max(60, w - left - margin), alignment: .leading)
           .offset(
             x: max(margin, left),
-            y: max(margin, min(top, contentH - margin - textBlockH))
+            y: max(margin, min(top, h - margin - textBlockH))
           )
       }
     }
-    .frame(width: coverW, height: contentH)
+    .frame(width: w, height: h)
     .frame(maxWidth: .infinity)
-    // 上延填满 center 空隙，与左右翼下沿对齐
-    .padding(.top, -12)
-    .padding(.horizontal, -20)
-    .padding(.bottom, -8)
   }
 
   @ViewBuilder
