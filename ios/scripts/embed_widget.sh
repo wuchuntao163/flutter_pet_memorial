@@ -110,6 +110,18 @@ if [ -n "${INTENTS_SRC}" ] && [ -d "${INTENTS_SRC}" ]; then
   echo "Synced PetWidgetIntents.appex to ${INTENTS_DST}"
 fi
 
+# App Store ITMS-90206: app extensions must NOT contain a Frameworks folder.
+# Flutter/Pods/SPM may copy Flutter.framework (or Swift stdlib) into .appex; strip before signing.
+strip_appex_frameworks() {
+  appex="$1"
+  if [ -d "${appex}/Frameworks" ]; then
+    echo "Removing disallowed Frameworks from ${appex}"
+    rm -rf "${appex}/Frameworks"
+  fi
+}
+strip_appex_frameworks "${WIDGET_DST}"
+strip_appex_frameworks "${INTENTS_DST}"
+
 TMP_ENTITLEMENTS="$(mktemp -t petwidget_entitlements).plist"
 trap 'rm -f "$TMP_ENTITLEMENTS"' EXIT
 make_expanded_entitlements "$TMP_ENTITLEMENTS"
@@ -131,12 +143,10 @@ if [ ! -f "$WIDGET_DST/Info.plist" ]; then
   exit 1
 fi
 
+# Always re-sign after strip/copy so ITMS sees a valid signature without Frameworks.
+echo "Re-signing PetWidget ($APP_GROUP_ID)"
+codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --entitlements "$TMP_ENTITLEMENTS" "$WIDGET_DST"
 widget_entitlements="$(codesign -d --entitlements - "$WIDGET_DST" 2>/dev/null || true)"
-if ! echo "$widget_entitlements" | grep -q "$APP_GROUP_ID"; then
-  echo "Re-signing PetWidget with App Groups entitlements ($APP_GROUP_ID)"
-  codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --entitlements "$TMP_ENTITLEMENTS" "$WIDGET_DST"
-  widget_entitlements="$(codesign -d --entitlements - "$WIDGET_DST" 2>/dev/null || true)"
-fi
 
 if echo "$widget_entitlements" | grep -q "$APP_GROUP_ID"; then
   echo "PetWidget App Groups entitlement OK ($APP_GROUP_ID)"
@@ -148,9 +158,6 @@ else
 fi
 
 if [ -d "$INTENTS_DST" ]; then
-  intents_entitlements="$(codesign -d --entitlements - "$INTENTS_DST" 2>/dev/null || true)"
-  if ! echo "$intents_entitlements" | grep -q "$APP_GROUP_ID"; then
-    echo "Re-signing PetWidgetIntents with App Groups entitlements ($APP_GROUP_ID)"
-    codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --entitlements "$TMP_ENTITLEMENTS" "$INTENTS_DST"
-  fi
+  echo "Re-signing PetWidgetIntents ($APP_GROUP_ID)"
+  codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --entitlements "$TMP_ENTITLEMENTS" "$INTENTS_DST"
 fi
