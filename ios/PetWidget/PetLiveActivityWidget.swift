@@ -111,30 +111,28 @@ struct PetLiveActivityWidget: Widget {
     } dynamicIsland: { context in
       DynamicIsland {
         // DynamicIslandExpandedContentBuilder 不支持顶层 if/else，条件写在 Region 内部
-        // 自定义：四区同图裁切 + bottom 负边距上溢，盖住摄像头左右翼黑底
+        // 自定义：各区共享同一画布尺寸裁切，摄像头上下才是同一张图的连续局部
         DynamicIslandExpandedRegion(.leading) {
           if context.state.template == 6 {
-            customExpandedBleed(alignment: .leading)
+            customIslandSharedWindow(alignment: .topLeading)
               .id(context.state.imageRevision)
           }
         }
         DynamicIslandExpandedRegion(.trailing) {
           if context.state.template == 6 {
-            customExpandedBleed(alignment: .trailing)
+            customIslandSharedWindow(alignment: .topTrailing)
               .id(context.state.imageRevision)
           }
         }
         DynamicIslandExpandedRegion(.center) {
           if context.state.template == 6 {
-            customExpandedBleed(alignment: .top)
-              .frame(maxWidth: .infinity)
-              .frame(minHeight: 44)
-              .id(context.state.imageRevision)
+            // 中间不单独裁图，避免与 bottom 重复；由 bottom 上延填满
+            Color.clear.frame(height: 1)
           }
         }
         DynamicIslandExpandedRegion(.bottom) {
           if context.state.template == 6 {
-            customExpandedFullBleed(state: context.state)
+            customIslandSharedBottom(state: context.state)
               .id(context.state.imageRevision)
           } else {
             expandedContent(context: context)
@@ -150,7 +148,6 @@ struct PetLiveActivityWidget: Widget {
         compactLeading(context: context)
           .id(context.state.imageRevision)
       }
-      // 展开态外边距清零，自定义岛才能贴边铺满
       .contentMargins(.all, 0, for: .expanded)
       .keylineTint(Color.orange.opacity(0.8))
     }
@@ -276,58 +273,81 @@ struct PetLiveActivityWidget: Widget {
       .frame(maxWidth: .infinity, minHeight: 125, alignment: .leading)
   }
 
-  /// 自定义岛展开：单区用同一面板图 cover 填满（左右翼 / 中心条）
-  @ViewBuilder
-  private func customExpandedBleed(alignment: Alignment) -> some View {
-    ZStack {
-      if let panel = LiveActivityShared.loadPanel() {
-        Image(uiImage: panel)
-          .resizable()
-          .interpolation(.high)
-          .antialiased(true)
-          .scaledToFill()
-          .frame(minWidth: 72, maxWidth: .infinity, minHeight: 44, maxHeight: .infinity)
-          .clipped()
-      } else {
-        Color.black
-      }
-    }
-    .frame(minWidth: 56, maxWidth: .infinity, minHeight: 44, maxHeight: .infinity)
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+  /// 自定义展开岛共享画布：所有 Region 用同一宽高 scale，再按对齐裁窗，避免摄像头上下错位
+  private enum CustomIslandCanvas {
+    static let width: CGFloat = 430
+    static let height: CGFloat = 196
+    /// 摄像头 / 左右翼大约占用的顶带高度
+    static let topBand: CGFloat = 48
   }
 
-  /// 自定义岛展开主画面：超大 cover + 负边距上溢到摄像头两侧，消除黑边
   @ViewBuilder
-  private func customExpandedFullBleed(
+  private func customIslandPanelImage() -> some View {
+    if let panel = LiveActivityShared.loadPanel() {
+      Image(uiImage: panel)
+        .resizable()
+        .interpolation(.high)
+        .antialiased(true)
+        .scaledToFill()
+    } else {
+      Rectangle().fill(Color.black)
+    }
+  }
+
+  /// 在共享画布上开窗：先按 canvas 尺寸 cover，再裁到本 Region
+  @ViewBuilder
+  private func customIslandSharedWindow(
+    alignment: Alignment,
+    yOffset: CGFloat = 0
+  ) -> some View {
+    GeometryReader { geo in
+      customIslandPanelImage()
+        .frame(
+          width: CustomIslandCanvas.width,
+          height: CustomIslandCanvas.height
+        )
+        .offset(y: yOffset)
+        .frame(
+          width: max(geo.size.width, 1),
+          height: max(geo.size.height, 1),
+          alignment: alignment
+        )
+        .clipped()
+    }
+    .frame(
+      minWidth: 48,
+      maxWidth: .infinity,
+      minHeight: CustomIslandCanvas.topBand,
+      maxHeight: .infinity
+    )
+  }
+
+  /// 底部主区：同一画布上移 topBand，与摄像头下沿对齐；文案叠在图上
+  @ViewBuilder
+  private func customIslandSharedBottom(
     state: PetLiveActivityAttributes.ContentState
   ) -> some View {
-    // 略大于展开内容区，再靠负 padding 盖住系统留白与左右翼
-    let coverW: CGFloat = 430
-    let coverH: CGFloat = 196
+    let coverW = CustomIslandCanvas.width
+    let coverH = CustomIslandCanvas.height
+    let topBand = CustomIslandCanvas.topBand
+    let contentH = coverH - topBand
     let margin: CGFloat = 18
     let fontSize = CGFloat(max(14, min(24, state.textFontSize > 0 ? state.textFontSize : 18)))
     let textBlockH: CGFloat = fontSize * 1.35 + 4
     let normX = min(1, max(0, state.textNormX))
     let normY = min(1, max(0, state.textNormY))
+    // 文案坐标系相对「摄像头以下」内容区
     let left = margin + (coverW - margin * 2 - 100) * normX
-    let top = margin + (coverH - margin * 2 - textBlockH) * normY
+    let top = margin + (contentH - margin * 2 - textBlockH) * normY
     let subtitle = state.subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
 
     ZStack(alignment: .topLeading) {
-      Group {
-        if let panel = LiveActivityShared.loadPanel() {
-          Image(uiImage: panel)
-            .resizable()
-            .interpolation(.high)
-            .antialiased(true)
-            .scaledToFill()
-        } else {
-          Rectangle()
-            .fill(LiveActivityShared.color(from: state.backgroundColorARGB))
-        }
-      }
-      .frame(width: coverW, height: coverH)
-      .clipped()
+      customIslandPanelImage()
+        .frame(width: coverW, height: coverH)
+        // 与左右翼共用画布：底部顶边对应画布 y = topBand
+        .offset(y: -topBand)
+        .frame(width: coverW, height: contentH, alignment: .top)
+        .clipped()
 
       if !subtitle.isEmpty {
         Text(subtitle)
@@ -338,15 +358,16 @@ struct PetLiveActivityWidget: Widget {
           .frame(maxWidth: max(60, coverW - left - margin), alignment: .leading)
           .offset(
             x: max(margin, left),
-            y: max(margin, min(top, coverH - margin - textBlockH))
+            y: max(margin, min(top, contentH - margin - textBlockH))
           )
       }
     }
-    .frame(width: coverW, height: coverH)
-    // 向摄像头左右翼与四周系统边距外溢
-    .padding(.top, -56)
-    .padding(.horizontal, -36)
-    .padding(.bottom, -20)
+    .frame(width: coverW, height: contentH)
+    .frame(maxWidth: .infinity)
+    // 上延填满 center 空隙，与左右翼下沿对齐
+    .padding(.top, -12)
+    .padding(.horizontal, -20)
+    .padding(.bottom, -8)
   }
 
   @ViewBuilder
