@@ -329,34 +329,64 @@ class BackgroundStore extends ChangeNotifier {
     }
   }
 
-  /// 相册选图：只走 `/api/base/upload`。
-  /// [addToLibrary] 为 true 时才插入背景库列表（纪念日「背景样式」）；
-  /// 组件配置页上传应传 false，避免污染纪念日背景列表。
+  /// 相册选图：先走 `/api/base/upload`。
+  ///
+  /// - [addToLibrary] 为 true（纪念日「背景样式」）：再调 `/api/pet/uploadBackground`
+  ///   写入服务端自定义背景库，并插入本地列表。
+  /// - [addToLibrary] 为 false（灵动岛 / 组件配置页）：只返回上传后的图片 URL，
+  ///   不调用 uploadBackground，也不污染纪念日背景列表。
   Future<Map<String, dynamic>?> uploadCustomBackground({
     required String localPath,
     String? name,
     bool addToLibrary = false,
   }) async {
     final imageUrl = await PetImageService.upload(localPath);
-    final created = <String, dynamic>{
-      'id': 'upload_${DateTime.now().millisecondsSinceEpoch}',
+
+    if (!addToLibrary) {
+      return <String, dynamic>{
+        'id': 'upload_${DateTime.now().millisecondsSinceEpoch}',
+        'image': imageUrl,
+        if (name != null && name.isNotEmpty) 'name': name,
+      };
+    }
+
+    final data = <String, dynamic>{
       'image': imageUrl,
       if (name != null && name.isNotEmpty) 'name': name,
     };
+    final userId = AuthSessionStore.instance.userId;
+    if (userId != null) data['user_id'] = userId;
 
-    if (addToLibrary) {
-      final cacheKey = customTabKey;
-      final bucket = List<Map<String, dynamic>>.from(
-        _itemsByCategory[cacheKey] ?? const [],
-      );
-      bucket.insert(0, created);
-      _itemsByCategory[cacheKey] = bucket;
-      if (_isCustomTab) {
-        _currentItems = bucket;
+    ApiResponse<dynamic> res;
+    try {
+      res = await Api.post(ApiPaths.uploadBackground, data: data);
+      if (kDebugMode) {
+        debugPrint('[BackgroundStore] uploadBackground res=$res');
       }
-      notifyListeners();
+    } on ApiException catch (e) {
+      if (kDebugMode) {
+        debugPrint('[BackgroundStore] uploadBackground failed: $e');
+      }
+      rethrow;
     }
-    return created;
+
+    final created = _normalizeCreatedItem(res.data, fallbackImage: imageUrl);
+    if (created == null) return null;
+
+    _mergeItems([created]);
+    final cacheKey = customTabKey;
+    final bucket = List<Map<String, dynamic>>.from(
+      _itemsByCategory[cacheKey] ?? const [],
+    );
+    if (!bucket.any((item) => '${item['id']}' == '${created['id']}')) {
+      bucket.insert(0, created);
+    }
+    _itemsByCategory[cacheKey] = bucket;
+    if (_isCustomTab) {
+      _currentItems = bucket;
+    }
+    notifyListeners();
+    return findById('${created['id']}') ?? created;
   }
 
   Future<bool> updateBackground({
@@ -443,6 +473,21 @@ class BackgroundStore extends ChangeNotifier {
     _currentItems = _currentItems
         .where((item) => '${item['id']}' != key)
         .toList();
+  }
+
+  static Map<String, dynamic>? _normalizeCreatedItem(
+    dynamic data, {
+    required String fallbackImage,
+  }) {
+    if (data is! Map) return null;
+    final map = Map<String, dynamic>.from(data);
+    if (map['id'] == null) return null;
+    if (map['image'] == null || '${map['image']}'.isEmpty) {
+      map['image'] = fallbackImage;
+    }
+    map['user_id'] ??= AuthSessionStore.instance.userId ?? 0;
+    map['is_show'] ??= 1;
+    return map;
   }
 
   static int? _categoryId(Map<String, dynamic> category) {
